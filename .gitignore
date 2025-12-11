@@ -11,7 +11,7 @@ coverage.html
 
 # 依赖目录
 vendor/
-
+node_modules
 # IDE
 .idea/
 .vscode/

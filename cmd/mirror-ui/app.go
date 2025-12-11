@@ -29,17 +29,32 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// 加载配置
-	cfg, err := config.Load("config/config.yaml")
-	if err != nil {
-		cfg, _ = config.Load("../config/config.yaml")
+	// 加载配置，尝试多个可能的路径
+	var cfg *config.Config
+	var err error
+	configPaths := []string{
+		"config/config.yaml",
+		"../config/config.yaml",
+		"../../config/config.yaml",
+		"e:/project/Mirror/config/config.yaml", // 绝对路径作为后备
+	}
+
+	for _, path := range configPaths {
+		cfg, err = config.Load(path)
+		if err == nil {
+			break
+		}
+	}
+
+	if cfg == nil {
+		panic("无法加载配置文件，请确保 config/config.yaml 存在")
 	}
 	a.cfg = cfg
 
 	// 初始化数据库
 	db, err := repository.NewDatabase(cfg.Storage.DBPath)
 	if err != nil {
-		return
+		panic("无法初始化数据库: " + err.Error())
 	}
 	a.db = db
 

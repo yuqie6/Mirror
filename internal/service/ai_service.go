@@ -85,6 +85,26 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 
 // GenerateDailySummary 生成每日总结
 func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*model.DailySummary, error) {
+	// 尝试获取缓存
+	cached, err := s.summaryRepo.GetByDate(ctx, date)
+	if err != nil {
+		slog.Warn("查询缓存总结失败", "date", date, "error", err)
+	}
+
+	today := time.Now().Format("2006-01-02")
+
+	// 如果是过去日期的总结，直接返回缓存
+	if date != today && cached != nil {
+		slog.Info("返回历史总结缓存", "date", date)
+		return cached, nil
+	}
+
+	// 如果是今日总结，且最近 5 分钟内生成过，直接返回
+	if date == today && cached != nil && time.Since(cached.UpdatedAt) < 5*time.Minute {
+		slog.Info("返回最近生成的今日总结", "date", date)
+		return cached, nil
+	}
+
 	// 获取当日 Diff
 	diffs, err := s.diffRepo.GetByDate(ctx, date)
 	if err != nil {
@@ -128,6 +148,11 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 	// 生成总结
 	result, err := s.analyzer.GenerateDailySummary(ctx, req)
 	if err != nil {
+		// 如果生成失败但有缓存，返回缓存
+		if cached != nil {
+			slog.Error("生成总结失败，降级返回缓存", "error", err)
+			return cached, nil
+		}
 		return nil, err
 	}
 
