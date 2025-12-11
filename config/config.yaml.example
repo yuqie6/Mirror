@@ -34,6 +34,12 @@ diff:
   buffer_size: 512
   debounce_sec: 2 # 防抖时间（秒）
 
+# 浏览器采集配置
+browser:
+  enabled: true
+  poll_interval_sec: 30 # 轮询间隔（秒）
+  history_path: "" # Chrome History 路径（为空则自动检测）
+
 # 存储配置
 storage:
   db_path: "./data/mirror.db"

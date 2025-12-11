@@ -15,6 +15,7 @@ type Config struct {
 	App       AppConfig       `mapstructure:"app"`
 	Collector CollectorConfig `mapstructure:"collector"`
 	Diff      DiffConfig      `mapstructure:"diff"`
+	Browser   BrowserConfig   `mapstructure:"browser"`
 	Storage   StorageConfig   `mapstructure:"storage"`
 	AI        AIConfig        `mapstructure:"ai"`
 	Privacy   PrivacyConfig   `mapstructure:"privacy"`
@@ -48,6 +49,13 @@ type DiffConfig struct {
 	Extensions  []string `mapstructure:"extensions"`
 	BufferSize  int      `mapstructure:"buffer_size"`
 	DebounceSec int      `mapstructure:"debounce_sec"`
+}
+
+// BrowserConfig 浏览器采集配置
+type BrowserConfig struct {
+	Enabled         bool   `mapstructure:"enabled"`
+	PollIntervalSec int    `mapstructure:"poll_interval_sec"`
+	HistoryPath     string `mapstructure:"history_path"`
 }
 
 // AIConfig AI 配置

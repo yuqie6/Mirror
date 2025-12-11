@@ -1,0 +1,100 @@
+package repository
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/danielsclee/mirror/internal/model"
+	"gorm.io/gorm"
+)
+
+// BrowserEventRepository 浏览器事件仓储
+type BrowserEventRepository struct {
+	db *gorm.DB
+}
+
+// NewBrowserEventRepository 创建仓储
+func NewBrowserEventRepository(db *gorm.DB) *BrowserEventRepository {
+	return &BrowserEventRepository{db: db}
+}
+
+// Create 创建记录
+func (r *BrowserEventRepository) Create(ctx context.Context, event *model.BrowserEvent) error {
+	if err := r.db.WithContext(ctx).Create(event).Error; err != nil {
+		return fmt.Errorf("创建浏览器事件失败: %w", err)
+	}
+	return nil
+}
+
+// BatchInsert 批量插入
+func (r *BrowserEventRepository) BatchInsert(ctx context.Context, events []*model.BrowserEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	if err := r.db.WithContext(ctx).CreateInBatches(events, 100).Error; err != nil {
+		return fmt.Errorf("批量插入浏览器事件失败: %w", err)
+	}
+
+	slog.Debug("批量插入浏览器事件", "count", len(events))
+	return nil
+}
+
+// GetByDate 按日期查询
+func (r *BrowserEventRepository) GetByDate(ctx context.Context, date string) ([]model.BrowserEvent, error) {
+	loc := time.Local
+	t, err := time.ParseInLocation("2006-01-02", date, loc)
+	if err != nil {
+		return nil, fmt.Errorf("解析日期失败: %w", err)
+	}
+
+	startTime := t.UnixMilli()
+	endTime := t.Add(24*time.Hour).UnixMilli() - 1
+
+	var events []model.BrowserEvent
+	if err := r.db.WithContext(ctx).
+		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
+		Order("timestamp DESC").
+		Find(&events).Error; err != nil {
+		return nil, fmt.Errorf("查询浏览器事件失败: %w", err)
+	}
+
+	return events, nil
+}
+
+// GetDomainStats 获取域名统计
+func (r *BrowserEventRepository) GetDomainStats(ctx context.Context, startTime, endTime int64, limit int) ([]DomainStat, error) {
+	var stats []DomainStat
+	if err := r.db.WithContext(ctx).
+		Model(&model.BrowserEvent{}).
+		Select("domain, COUNT(*) as visit_count, SUM(duration) as total_duration").
+		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
+		Group("domain").
+		Order("visit_count DESC").
+		Limit(limit).
+		Scan(&stats).Error; err != nil {
+		return nil, fmt.Errorf("查询域名统计失败: %w", err)
+	}
+
+	return stats, nil
+}
+
+// DomainStat 域名统计
+type DomainStat struct {
+	Domain        string `json:"domain"`
+	VisitCount    int64  `json:"visit_count"`
+	TotalDuration int    `json:"total_duration"`
+}
+
+// CountByDateRange 统计日期范围内的事件数量
+func (r *BrowserEventRepository) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&model.BrowserEvent{}).
+		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("统计浏览器事件失败: %w", err)
+	}
+	return count, nil
+}
