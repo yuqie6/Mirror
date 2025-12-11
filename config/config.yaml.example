@@ -52,11 +52,12 @@ ai:
     base_url: "https://api.deepseek.com"
     model: "deepseek-chat"
 
-  # Jina Embedding & Reranker
-  jina:
-    api_key: "${JINA_API_KEY}"
-    embedding_model: "jina-embeddings-v3"
-    reranker_model: "jina-reranker-v2-base-multilingual"
+  # SiliconFlow Embedding & Reranker
+  siliconflow:
+    api_key: "${SILICONFLOW_API_KEY}"
+    base_url: "https://api.siliconflow.cn/v1"
+    embedding_model: "BAAI/bge-large-zh-v1.5"
+    reranker_model: "BAAI/bge-reranker-v2-m3"
 
 # 隐私配置 (Phase 2)
 privacy:

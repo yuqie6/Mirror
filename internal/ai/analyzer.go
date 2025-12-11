@@ -189,3 +189,74 @@ func cleanJSONResponse(response string) string {
 
 	return strings.TrimSpace(response)
 }
+
+// WeeklySummaryRequest 周报请求
+type WeeklySummaryRequest struct {
+	StartDate      string
+	EndDate        string
+	DailySummaries []DailySummaryInfo
+	TotalCoding    int
+	TotalDiffs     int
+}
+
+// DailySummaryInfo 日报信息
+type DailySummaryInfo struct {
+	Date       string
+	Summary    string
+	Highlights string
+	Skills     []string
+}
+
+// WeeklySummaryResult 周报结果
+type WeeklySummaryResult struct {
+	Overview     string   `json:"overview"`     // 本周整体概述
+	Achievements []string `json:"achievements"` // 主要成就
+	Patterns     string   `json:"patterns"`     // 学习模式分析
+	Suggestions  string   `json:"suggestions"`  // 下周建议
+	TopSkills    []string `json:"top_skills"`   // 本周重点技能
+}
+
+// GenerateWeeklySummary 生成周报
+func (a *DiffAnalyzer) GenerateWeeklySummary(ctx context.Context, req *WeeklySummaryRequest) (*WeeklySummaryResult, error) {
+	var dailyDetails strings.Builder
+	for _, s := range req.DailySummaries {
+		dailyDetails.WriteString(fmt.Sprintf("【%s】%s 亮点: %s\n", s.Date, s.Summary, s.Highlights))
+	}
+
+	prompt := fmt.Sprintf(`请分析以下一周的工作记录，生成周报总结：
+
+时间范围: %s 至 %s
+总编码时长: %d 分钟
+总代码变更: %d 次
+
+每日记录:
+%s
+
+请用 JSON 格式返回（不要 markdown 代码块）:
+{
+  "overview": "本周整体概述（3-4句话总结这周做了什么，有什么进展）",
+  "achievements": ["成就1", "成就2", "成就3"],
+  "patterns": "学习模式分析（发现了什么规律或趋势）",
+  "suggestions": "下周建议（基于本周情况给出具体可行的建议）",
+  "top_skills": ["本周最常用的技能"]
+}`, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String())
+
+	messages := []Message{
+		{Role: "system", Content: "你是一个个人成长助手，帮助用户回顾一周的工作和学习，提供有深度的分析和建设性的反馈。回复必须是纯 JSON。"},
+		{Role: "user", Content: prompt},
+	}
+
+	response, err := a.client.ChatWithOptions(ctx, messages, 0.5, 1500)
+	if err != nil {
+		return nil, fmt.Errorf("生成周报失败: %w", err)
+	}
+
+	response = cleanJSONResponse(response)
+
+	var result WeeklySummaryResult
+	if err := json.Unmarshal([]byte(response), &result); err != nil {
+		return nil, fmt.Errorf("解析周报失败: %w", err)
+	}
+
+	return &result, nil
+}

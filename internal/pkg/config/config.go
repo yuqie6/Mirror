@@ -60,8 +60,8 @@ type BrowserConfig struct {
 
 // AIConfig AI 配置
 type AIConfig struct {
-	DeepSeek DeepSeekConfig `mapstructure:"deepseek"`
-	Jina     JinaConfig     `mapstructure:"jina"`
+	DeepSeek    DeepSeekConfig    `mapstructure:"deepseek"`
+	SiliconFlow SiliconFlowConfig `mapstructure:"siliconflow"`
 }
 
 // DeepSeekConfig DeepSeek 配置
@@ -71,9 +71,10 @@ type DeepSeekConfig struct {
 	Model   string `mapstructure:"model"`
 }
 
-// JinaConfig Jina 配置
-type JinaConfig struct {
+// SiliconFlowConfig 硅基流动配置
+type SiliconFlowConfig struct {
 	APIKey         string `mapstructure:"api_key"`
+	BaseURL        string `mapstructure:"base_url"`
 	EmbeddingModel string `mapstructure:"embedding_model"`
 	RerankerModel  string `mapstructure:"reranker_model"`
 }
@@ -126,7 +127,7 @@ func Load(configPath string) (*Config, error) {
 
 	// 处理环境变量占位符
 	cfg.AI.DeepSeek.APIKey = expandEnv(cfg.AI.DeepSeek.APIKey)
-	cfg.AI.Jina.APIKey = expandEnv(cfg.AI.Jina.APIKey)
+	cfg.AI.SiliconFlow.APIKey = expandEnv(cfg.AI.SiliconFlow.APIKey)
 
 	// 处理相对路径
 	cfg.Storage.DBPath = resolvePath(cfg.Storage.DBPath)

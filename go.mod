@@ -5,6 +5,7 @@ go 1.25.4
 require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/glebarez/sqlite v1.11.0
+	github.com/philippgille/chromem-go v0.7.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	golang.org/x/sys v0.39.0

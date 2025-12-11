@@ -167,3 +167,8 @@ func isCodeEditor(appName string) bool {
 	}
 	return false
 }
+
+// GenerateWeeklySummary 生成周报（代理到 analyzer）
+func (s *AIService) GenerateWeeklySummary(ctx context.Context, req *ai.WeeklySummaryRequest) (*ai.WeeklySummaryResult, error) {
+	return s.analyzer.GenerateWeeklySummary(ctx, req)
+}

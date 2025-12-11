@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/danielsclee/mirror/internal/ai"
+	"github.com/danielsclee/mirror/internal/model"
 	"github.com/danielsclee/mirror/internal/pkg/config"
 	"github.com/danielsclee/mirror/internal/repository"
 	"github.com/danielsclee/mirror/internal/service"
@@ -151,7 +152,7 @@ func generateDailyReport(ctx context.Context, aiService *service.AIService, targ
 
 // generateWeeklyReport 生成周报
 func generateWeeklyReport(ctx context.Context, aiService *service.AIService, summaryRepo *repository.SummaryRepository) {
-	fmt.Println("📊 正在生成本周报告...\n")
+	fmt.Println("📊 正在生成本周报告...")
 
 	// 获取最近 7 天的日报
 	summaries, err := summaryRepo.GetRecent(ctx, 7)
@@ -171,8 +172,8 @@ func generateWeeklyReport(ctx context.Context, aiService *service.AIService, sum
 	totalDiffs := 0
 	allSkills := make(map[string]int)
 
-	fmt.Printf("📅 本周周报 (%d 天数据)\n", len(summaries))
-	fmt.Println("═══════════════════════════════════════")
+	// 构建请求数据
+	dailyInfos := make([]ai.DailySummaryInfo, 0, len(summaries))
 
 	for _, s := range summaries {
 		totalCoding += s.TotalCoding
@@ -180,21 +181,75 @@ func generateWeeklyReport(ctx context.Context, aiService *service.AIService, sum
 		for _, skill := range s.SkillsGained {
 			allSkills[skill]++
 		}
+		dailyInfos = append(dailyInfos, ai.DailySummaryInfo{
+			Date:       s.Date,
+			Summary:    s.Summary,
+			Highlights: s.Highlights,
+			Skills:     []string(s.SkillsGained),
+		})
 	}
 
-	// 按天显示摘要
+	// 确定日期范围
+	startDate := summaries[len(summaries)-1].Date
+	endDate := summaries[0].Date
+
+	fmt.Printf("📅 本周周报 (%s ~ %s)\n", startDate, endDate)
+	fmt.Println("═══════════════════════════════════════")
+
+	// 调用 AI 生成周报分析
+	weeklyResult, err := aiService.GenerateWeeklySummary(ctx, &ai.WeeklySummaryRequest{
+		StartDate:      startDate,
+		EndDate:        endDate,
+		DailySummaries: dailyInfos,
+		TotalCoding:    totalCoding,
+		TotalDiffs:     totalDiffs,
+	})
+
+	if err != nil {
+		fmt.Printf("\n⚠️  AI 分析失败: %v\n", err)
+		fmt.Println("   显示基础统计信息:")
+		// 降级：显示基础统计
+		printBasicWeeklyStats(summaries, totalCoding, totalDiffs, allSkills)
+		return
+	}
+
+	// 输出 AI 分析结果
+	fmt.Printf("\n📝 本周概述\n%s\n", weeklyResult.Overview)
+
+	fmt.Printf("\n🏆 主要成就\n")
+	for _, a := range weeklyResult.Achievements {
+		fmt.Printf("  • %s\n", a)
+	}
+
+	fmt.Printf("\n🔍 学习模式\n%s\n", weeklyResult.Patterns)
+
+	fmt.Printf("\n💡 下周建议\n%s\n", weeklyResult.Suggestions)
+
+	fmt.Printf("\n🎯 重点技能\n")
+	for _, skill := range weeklyResult.TopSkills {
+		fmt.Printf("  • %s\n", skill)
+	}
+
+	fmt.Printf("\n📊 本周统计\n")
+	fmt.Printf("  • 总编码时长: %d 分钟 (%.1f 小时)\n", totalCoding, float64(totalCoding)/60)
+	fmt.Printf("  • 总代码变更: %d 次\n", totalDiffs)
+	fmt.Printf("  • 日报天数: %d 天\n", len(summaries))
+
+	fmt.Println("\n═══════════════════════════════════════")
+}
+
+// printBasicWeeklyStats 打印基础周统计（AI 失败时的降级方案）
+func printBasicWeeklyStats(summaries []model.DailySummary, totalCoding, totalDiffs int, allSkills map[string]int) {
 	fmt.Printf("\n📋 每日回顾\n")
 	for _, s := range summaries {
 		fmt.Printf("  %s: %s\n", s.Date, truncateString(s.Summary, 50))
 	}
 
-	// 技能统计
 	fmt.Printf("\n🎯 本周技能 (出现次数)\n")
 	for skill, count := range allSkills {
 		fmt.Printf("  • %s ×%d\n", skill, count)
 	}
 
-	// 总计
 	fmt.Printf("\n📊 本周统计\n")
 	fmt.Printf("  • 总编码时长: %d 分钟 (%.1f 小时)\n", totalCoding, float64(totalCoding)/60)
 	fmt.Printf("  • 总代码变更: %d 次\n", totalDiffs)
