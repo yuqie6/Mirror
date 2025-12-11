@@ -26,7 +26,7 @@ data/
 *.db-wal
 
 # 配置文件（包含敏感信息）
-config/config.local.yaml
+config/config.yaml
 
 # 日志
 *.log
