@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/danielsclee/mirror/internal/ai"
-	"github.com/danielsclee/mirror/internal/model"
-	"github.com/danielsclee/mirror/internal/repository"
+	"github.com/yuqie6/mirror/internal/ai"
+	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // AIService AI 分析服务

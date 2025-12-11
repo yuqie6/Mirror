@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/danielsclee/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/model"
 	_ "github.com/glebarez/sqlite"
 )
 

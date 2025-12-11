@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/danielsclee/mirror/internal/handler"
-	"github.com/danielsclee/mirror/internal/model"
-	"github.com/danielsclee/mirror/internal/repository"
+	"github.com/yuqie6/mirror/internal/handler"
+	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // DiffService Diff 处理服务

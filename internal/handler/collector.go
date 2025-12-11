@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/danielsclee/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/model"
 )
 
 // Collector 采集器接口

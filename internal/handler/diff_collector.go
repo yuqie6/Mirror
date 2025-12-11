@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/danielsclee/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/model"
 	"github.com/fsnotify/fsnotify"
 )
 

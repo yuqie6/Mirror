@@ -1,4 +1,4 @@
-module github.com/danielsclee/mirror
+module github.com/yuqie6/mirror
 
 go 1.25.4
 

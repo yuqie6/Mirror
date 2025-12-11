@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/danielsclee/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

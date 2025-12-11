@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/danielsclee/mirror/internal/handler"
-	"github.com/danielsclee/mirror/internal/pkg/config"
-	"github.com/danielsclee/mirror/internal/repository"
-	"github.com/danielsclee/mirror/internal/service"
+	"github.com/yuqie6/mirror/internal/handler"
+	"github.com/yuqie6/mirror/internal/pkg/config"
+	"github.com/yuqie6/mirror/internal/repository"
+	"github.com/yuqie6/mirror/internal/service"
 )
 
 func main() {

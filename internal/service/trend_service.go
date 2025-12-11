@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/danielsclee/mirror/internal/repository"
+	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // TrendService 趋势分析服务

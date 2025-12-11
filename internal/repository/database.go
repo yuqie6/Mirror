@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/danielsclee/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/model"
 	"github.com/glebarez/sqlite" // 纯 Go SQLite 驱动
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

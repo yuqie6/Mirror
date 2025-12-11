@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/danielsclee/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/model"
 	"gorm.io/gorm"
 )
 

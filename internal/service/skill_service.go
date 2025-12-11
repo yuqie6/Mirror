@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/danielsclee/mirror/internal/model"
-	"github.com/danielsclee/mirror/internal/repository"
+	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // SkillService 技能服务
