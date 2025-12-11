@@ -288,6 +288,31 @@ func (c *DiffCollector) findGitRoot(filePath string) (string, bool) {
 func (c *DiffCollector) gitDiff(filePath string) (string, int, int, error) {
 	dir := filepath.Dir(filePath)
 
+	// 检查文件是否被 Git 跟踪
+	checkCmd := exec.Command("git", "ls-files", "--", filePath)
+	checkCmd.Dir = dir
+	checkOutput, _ := checkCmd.Output()
+
+	isTracked := strings.TrimSpace(string(checkOutput)) != ""
+
+	if !isTracked {
+		// 新文件：读取整个文件内容作为 diff
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return "", 0, 0, fmt.Errorf("读取新文件失败: %w", err)
+		}
+
+		lines := strings.Split(string(content), "\n")
+		diffContent := fmt.Sprintf("--- /dev/null\n+++ b/%s\n@@ -0,0 +1,%d @@\n",
+			filepath.Base(filePath), len(lines))
+		for _, line := range lines {
+			diffContent += "+" + line + "\n"
+		}
+
+		slog.Debug("检测到新文件", "file", filePath, "lines", len(lines))
+		return diffContent, len(lines), 0, nil
+	}
+
 	// 获取未暂存的改动
 	cmd := exec.Command("git", "diff", "--", filePath)
 	cmd.Dir = dir

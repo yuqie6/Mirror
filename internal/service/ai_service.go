@@ -167,23 +167,3 @@ func isCodeEditor(appName string) bool {
 	}
 	return false
 }
-
-// isBrowser 判断是否是浏览器
-func isBrowser(appName string) bool {
-	browsers := []string{
-		"comet.exe",   // Comet Browser
-		"chrome.exe",  // Chrome
-		"msedge.exe",  // Edge
-		"firefox.exe", // Firefox
-		"brave.exe",   // Brave
-		"opera.exe",   // Opera
-		"Arc.exe",     // Arc
-	}
-
-	for _, browser := range browsers {
-		if appName == browser {
-			return true
-		}
-	}
-	return false
-}
