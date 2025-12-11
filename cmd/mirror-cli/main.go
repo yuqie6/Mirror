@@ -56,6 +56,7 @@ func main() {
 	rootCmd.AddCommand(analyzeCmd())
 	rootCmd.AddCommand(statsCmd())
 	rootCmd.AddCommand(skillsCmd())
+	rootCmd.AddCommand(trendsCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -65,6 +66,7 @@ func main() {
 // reportCmd 生成报告命令
 func reportCmd() *cobra.Command {
 	var today bool
+	var week bool
 	var date string
 
 	cmd := &cobra.Command{
@@ -72,14 +74,6 @@ func reportCmd() *cobra.Command {
 		Short: "生成每日/每周报告",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx := context.Background()
-
-			// 确定日期
-			targetDate := date
-			if today || targetDate == "" {
-				targetDate = time.Now().Format("2006-01-02")
-			}
-
-			fmt.Printf("📊 正在生成 %s 的报告...\n\n", targetDate)
 
 			// 检查 API Key
 			if cfg.AI.DeepSeek.APIKey == "" {
@@ -107,36 +101,115 @@ func reportCmd() *cobra.Command {
 				fmt.Printf("✅ 已分析 %d 个代码变更\n\n", analyzed)
 			}
 
-			// 生成每日总结
-			summary, err := aiService.GenerateDailySummary(ctx, targetDate)
-			if err != nil {
-				fmt.Printf("❌ 生成报告失败: %v\n", err)
-				os.Exit(1)
+			if week {
+				// 生成周报
+				generateWeeklyReport(ctx, aiService, summaryRepo)
+			} else {
+				// 生成日报
+				targetDate := date
+				if today || targetDate == "" {
+					targetDate = time.Now().Format("2006-01-02")
+				}
+				generateDailyReport(ctx, aiService, targetDate)
 			}
-
-			// 输出报告
-			fmt.Printf("📅 %s 日报\n", targetDate)
-			fmt.Println("═══════════════════════════════════════")
-			fmt.Printf("\n📝 总结\n%s\n", summary.Summary)
-			fmt.Printf("\n🌟 亮点\n%s\n", summary.Highlights)
-			if summary.Struggles != "" && summary.Struggles != "无" {
-				fmt.Printf("\n💪 挑战\n%s\n", summary.Struggles)
-			}
-			fmt.Printf("\n🎯 技能\n")
-			for _, skill := range summary.SkillsGained {
-				fmt.Printf("  • %s\n", skill)
-			}
-			fmt.Printf("\n📊 统计\n")
-			fmt.Printf("  • 编码时长: %d 分钟\n", summary.TotalCoding)
-			fmt.Printf("  • 代码变更: %d 次\n", summary.TotalDiffs)
-			fmt.Println("\n═══════════════════════════════════════")
 		},
 	}
 
 	cmd.Flags().BoolVar(&today, "today", false, "生成今日报告")
+	cmd.Flags().BoolVar(&week, "week", false, "生成本周报告")
 	cmd.Flags().StringVar(&date, "date", "", "指定日期 (YYYY-MM-DD)")
 
 	return cmd
+}
+
+// generateDailyReport 生成日报
+func generateDailyReport(ctx context.Context, aiService *service.AIService, targetDate string) {
+	fmt.Printf("📊 正在生成 %s 的报告...\n\n", targetDate)
+
+	summary, err := aiService.GenerateDailySummary(ctx, targetDate)
+	if err != nil {
+		fmt.Printf("❌ 生成报告失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("📅 %s 日报\n", targetDate)
+	fmt.Println("═══════════════════════════════════════")
+	fmt.Printf("\n📝 总结\n%s\n", summary.Summary)
+	fmt.Printf("\n🌟 亮点\n%s\n", summary.Highlights)
+	if summary.Struggles != "" && summary.Struggles != "无" {
+		fmt.Printf("\n💪 挑战\n%s\n", summary.Struggles)
+	}
+	fmt.Printf("\n🎯 技能\n")
+	for _, skill := range summary.SkillsGained {
+		fmt.Printf("  • %s\n", skill)
+	}
+	fmt.Printf("\n📊 统计\n")
+	fmt.Printf("  • 编码时长: %d 分钟\n", summary.TotalCoding)
+	fmt.Printf("  • 代码变更: %d 次\n", summary.TotalDiffs)
+	fmt.Println("\n═══════════════════════════════════════")
+}
+
+// generateWeeklyReport 生成周报
+func generateWeeklyReport(ctx context.Context, aiService *service.AIService, summaryRepo *repository.SummaryRepository) {
+	fmt.Println("📊 正在生成本周报告...\n")
+
+	// 获取最近 7 天的日报
+	summaries, err := summaryRepo.GetRecent(ctx, 7)
+	if err != nil {
+		fmt.Printf("❌ 获取日报失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	if len(summaries) == 0 {
+		fmt.Println("📚 本周还没有日报记录")
+		fmt.Println("   先使用 'mirror report --today' 生成日报")
+		return
+	}
+
+	// 统计汇总
+	totalCoding := 0
+	totalDiffs := 0
+	allSkills := make(map[string]int)
+
+	fmt.Printf("📅 本周周报 (%d 天数据)\n", len(summaries))
+	fmt.Println("═══════════════════════════════════════")
+
+	for _, s := range summaries {
+		totalCoding += s.TotalCoding
+		totalDiffs += s.TotalDiffs
+		for _, skill := range s.SkillsGained {
+			allSkills[skill]++
+		}
+	}
+
+	// 按天显示摘要
+	fmt.Printf("\n📋 每日回顾\n")
+	for _, s := range summaries {
+		fmt.Printf("  %s: %s\n", s.Date, truncateString(s.Summary, 50))
+	}
+
+	// 技能统计
+	fmt.Printf("\n🎯 本周技能 (出现次数)\n")
+	for skill, count := range allSkills {
+		fmt.Printf("  • %s ×%d\n", skill, count)
+	}
+
+	// 总计
+	fmt.Printf("\n📊 本周统计\n")
+	fmt.Printf("  • 总编码时长: %d 分钟 (%.1f 小时)\n", totalCoding, float64(totalCoding)/60)
+	fmt.Printf("  • 总代码变更: %d 次\n", totalDiffs)
+	fmt.Printf("  • 日报天数: %d 天\n", len(summaries))
+
+	fmt.Println("\n═══════════════════════════════════════")
+}
+
+// truncateString 截断字符串
+func truncateString(s string, maxLen int) string {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen]) + "..."
 }
 
 // analyzeCmd 分析命令
@@ -334,6 +407,83 @@ func skillsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().IntVarP(&top, "top", "n", 0, "每个分类显示前 N 个技能 (0=全部)")
+
+	return cmd
+}
+
+// trendsCmd 趋势分析命令
+func trendsCmd() *cobra.Command {
+	var days int
+
+	cmd := &cobra.Command{
+		Use:   "trends",
+		Short: "查看技能和编码趋势",
+		Run: func(cmd *cobra.Command, args []string) {
+			ctx := context.Background()
+
+			skillRepo := repository.NewSkillRepository(db.DB)
+			diffRepo := repository.NewDiffRepository(db.DB)
+			eventRepo := repository.NewEventRepository(db.DB)
+			trendService := service.NewTrendService(skillRepo, diffRepo, eventRepo)
+
+			period := service.TrendPeriod7Days
+			if days == 30 {
+				period = service.TrendPeriod30Days
+			}
+
+			report, err := trendService.GetTrendReport(ctx, period)
+			if err != nil {
+				fmt.Printf("❌ 获取趋势失败: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("📈 趋势分析 (%s - %s)\n", report.StartDate, report.EndDate)
+			fmt.Println("═══════════════════════════════════════")
+
+			// 语言分布
+			fmt.Printf("\n💻 编程语言分布\n")
+			for _, lang := range report.TopLanguages {
+				bar := ""
+				width := int(lang.Percentage / 5)
+				for i := 0; i < width; i++ {
+					bar += "█"
+				}
+				fmt.Printf("  %s: %s %.1f%% (%d次)\n", lang.Language, bar, lang.Percentage, lang.DiffCount)
+			}
+
+			// 技能状态
+			fmt.Printf("\n🎯 技能状态\n")
+			for _, skill := range report.TopSkills {
+				status := ""
+				switch skill.Status {
+				case "growing":
+					status = "🔼"
+				case "declining":
+					status = "🔽"
+				default:
+					status = "➡️"
+				}
+				fmt.Printf("  %s %s (%d天活跃)\n", status, skill.SkillName, skill.DaysActive)
+			}
+
+			// 统计
+			fmt.Printf("\n📊 期间统计\n")
+			fmt.Printf("  • 代码变更: %d 次 (日均 %.1f)\n", report.TotalDiffs, report.AvgDiffsPerDay)
+			fmt.Printf("  • 编码时长: %d 分钟 (%.1f 小时)\n", report.TotalCodingMins, float64(report.TotalCodingMins)/60)
+
+			// 瓶颈
+			if len(report.Bottlenecks) > 0 {
+				fmt.Printf("\n⚠️ 需要关注\n")
+				for _, b := range report.Bottlenecks {
+					fmt.Printf("  • %s\n", b)
+				}
+			}
+
+			fmt.Println("\n═══════════════════════════════════════")
+		},
+	}
+
+	cmd.Flags().IntVarP(&days, "days", "d", 7, "分析天数 (7 或 30)")
 
 	return cmd
 }
