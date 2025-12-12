@@ -14,6 +14,10 @@ export function GetDiffDetail(arg1) {
   return window['go']['main']['App']['GetDiffDetail'](arg1);
 }
 
+export function GetPeriodSummary(arg1, arg2) {
+  return window['go']['main']['App']['GetPeriodSummary'](arg1, arg2);
+}
+
 export function GetSkillEvidence(arg1) {
   return window['go']['main']['App']['GetSkillEvidence'](arg1);
 }
@@ -28,6 +32,10 @@ export function GetTodaySummary() {
 
 export function GetTrends(arg1) {
   return window['go']['main']['App']['GetTrends'](arg1);
+}
+
+export function ListPeriodSummaryIndex(arg1, arg2) {
+  return window['go']['main']['App']['ListPeriodSummaryIndex'](arg1, arg2);
 }
 
 export function ListSummaryIndex(arg1) {

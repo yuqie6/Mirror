@@ -84,6 +84,52 @@ export namespace main {
 	        this.percentage = source["percentage"];
 	    }
 	}
+	export class PeriodSummaryDTO {
+	    type: string;
+	    start_date: string;
+	    end_date: string;
+	    overview: string;
+	    achievements: string[];
+	    patterns: string;
+	    suggestions: string;
+	    top_skills: string[];
+	    total_coding: number;
+	    total_diffs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PeriodSummaryDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.start_date = source["start_date"];
+	        this.end_date = source["end_date"];
+	        this.overview = source["overview"];
+	        this.achievements = source["achievements"];
+	        this.patterns = source["patterns"];
+	        this.suggestions = source["suggestions"];
+	        this.top_skills = source["top_skills"];
+	        this.total_coding = source["total_coding"];
+	        this.total_diffs = source["total_diffs"];
+	    }
+	}
+	export class PeriodSummaryIndexDTO {
+	    type: string;
+	    start_date: string;
+	    end_date: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PeriodSummaryIndexDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.start_date = source["start_date"];
+	        this.end_date = source["end_date"];
+	    }
+	}
 	export class SkillEvidenceDTO {
 	    source: string;
 	    evidence_id: number;

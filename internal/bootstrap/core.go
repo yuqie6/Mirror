@@ -15,19 +15,20 @@ type Core struct {
 	DB  *repository.Database
 
 	Repos struct {
-		Diff    *repository.DiffRepository
-		Event   *repository.EventRepository
-		Summary *repository.SummaryRepository
-		Skill   *repository.SkillRepository
-		Browser *repository.BrowserEventRepository
-		Session *repository.SessionRepository
-		SessionDiff *repository.SessionDiffRepository
+		Diff          *repository.DiffRepository
+		Event         *repository.EventRepository
+		Summary       *repository.SummaryRepository
+		Skill         *repository.SkillRepository
+		Browser       *repository.BrowserEventRepository
+		Session       *repository.SessionRepository
+		SessionDiff   *repository.SessionDiffRepository
+		PeriodSummary *repository.PeriodSummaryRepository
 	}
 
 	Services struct {
-		Skills *service.SkillService
-		AI     *service.AIService
-		Trends *service.TrendService
+		Skills   *service.SkillService
+		AI       *service.AIService
+		Trends   *service.TrendService
 		Sessions *service.SessionService
 	}
 
@@ -60,6 +61,7 @@ func NewCore(cfgPath string) (*Core, error) {
 	c.Repos.Browser = repository.NewBrowserEventRepository(db.DB)
 	c.Repos.Session = repository.NewSessionRepository(db.DB)
 	c.Repos.SessionDiff = repository.NewSessionDiffRepository(db.DB)
+	c.Repos.PeriodSummary = repository.NewPeriodSummaryRepository(db.DB)
 
 	// Clients / Analyzer
 	c.Clients.DeepSeek = ai.NewDeepSeekClient(&ai.DeepSeekConfig{

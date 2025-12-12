@@ -116,11 +116,11 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 				}
 
 				// 索引到 RAG（如果已配置）
-					if s.ragService != nil {
-						if err := s.ragService.IndexDiff(ctx, &diff); err != nil {
-							slog.Warn("索引 Diff 失败", "file", diff.FileName, "error", err)
-						}
+				if s.ragService != nil {
+					if err := s.ragService.IndexDiff(ctx, &diff); err != nil {
+						slog.Warn("索引 Diff 失败", "file", diff.FileName, "error", err)
 					}
+				}
 
 				atomic.AddInt32(&analyzed, 1)
 				slog.Info("Diff 分析完成", "worker", workerID, "file", diff.FileName)
@@ -285,5 +285,26 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 
 // GenerateWeeklySummary 生成周报（代理到 analyzer）
 func (s *AIService) GenerateWeeklySummary(ctx context.Context, req *ai.WeeklySummaryRequest) (*ai.WeeklySummaryResult, error) {
+	return s.analyzer.GenerateWeeklySummary(ctx, req)
+}
+
+// GeneratePeriodSummary 生成阶段汇总（周/月）
+func (s *AIService) GeneratePeriodSummary(ctx context.Context, startDate, endDate string, summaries []model.DailySummary) (*ai.WeeklySummaryResult, error) {
+	req := &ai.WeeklySummaryRequest{
+		StartDate: startDate,
+		EndDate:   endDate,
+	}
+
+	for _, sum := range summaries {
+		req.DailySummaries = append(req.DailySummaries, ai.DailySummaryInfo{
+			Date:       sum.Date,
+			Summary:    sum.Summary,
+			Highlights: sum.Highlights,
+			Skills:     sum.SkillsGained,
+		})
+		req.TotalCoding += sum.TotalCoding
+		req.TotalDiffs += sum.TotalDiffs
+	}
+
 	return s.analyzer.GenerateWeeklySummary(ctx, req)
 }

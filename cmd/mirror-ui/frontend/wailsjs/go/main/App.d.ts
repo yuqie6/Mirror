@@ -8,6 +8,8 @@ export function GetDailySummary(arg1:string):Promise<main.DailySummaryDTO>;
 
 export function GetDiffDetail(arg1:number):Promise<main.DiffDetailDTO>;
 
+export function GetPeriodSummary(arg1:string,arg2:string):Promise<main.PeriodSummaryDTO>;
+
 export function GetSkillEvidence(arg1:string):Promise<Array<main.SkillEvidenceDTO>>;
 
 export function GetSkillTree():Promise<Array<main.SkillNodeDTO>>;
@@ -15,5 +17,7 @@ export function GetSkillTree():Promise<Array<main.SkillNodeDTO>>;
 export function GetTodaySummary():Promise<main.DailySummaryDTO>;
 
 export function GetTrends(arg1:number):Promise<main.TrendReportDTO>;
+
+export function ListPeriodSummaryIndex(arg1:string,arg2:number):Promise<Array<main.PeriodSummaryIndexDTO>>;
 
 export function ListSummaryIndex(arg1:number):Promise<Array<main.SummaryIndexDTO>>;
