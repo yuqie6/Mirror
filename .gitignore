@@ -41,3 +41,4 @@ dist/
 build/
 
 .agent
+AGENTS.md
