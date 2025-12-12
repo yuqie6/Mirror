@@ -26,6 +26,7 @@ type DiffCollector struct {
 	stopChan    chan struct{}
 	running     bool
 	mu          sync.Mutex
+	stopOnce    sync.Once
 	debounceMap map[string]time.Time // 防抖：file -> lastSave
 	debounceDur time.Duration
 }
@@ -120,11 +121,13 @@ func (c *DiffCollector) AddWatchPath(path string) error {
 
 // Start 启动采集
 func (c *DiffCollector) Start(ctx context.Context) error {
+	c.mu.Lock()
 	if c.running {
+		c.mu.Unlock()
 		return nil
 	}
-
 	c.running = true
+	c.mu.Unlock()
 	slog.Info("Diff 采集器启动", "watch_paths", c.watchPaths)
 
 	go c.watchLoop(ctx)
@@ -133,14 +136,19 @@ func (c *DiffCollector) Start(ctx context.Context) error {
 
 // Stop 停止采集
 func (c *DiffCollector) Stop() error {
-	if !c.running {
-		return nil
-	}
+	c.stopOnce.Do(func() {
+		c.mu.Lock()
+		if !c.running {
+			c.mu.Unlock()
+			return
+		}
+		c.running = false
+		c.mu.Unlock()
 
-	close(c.stopChan)
-	c.watcher.Close()
-	c.running = false
-	slog.Info("Diff 采集器已停止")
+		close(c.stopChan)
+		_ = c.watcher.Close()
+		slog.Info("Diff 采集器已停止")
+	})
 	return nil
 }
 
@@ -151,6 +159,7 @@ func (c *DiffCollector) Events() <-chan *model.Diff {
 
 // watchLoop 监控循环
 func (c *DiffCollector) watchLoop(ctx context.Context) {
+	defer close(c.eventChan)
 	for {
 		select {
 		case <-ctx.Done():
@@ -161,7 +170,7 @@ func (c *DiffCollector) watchLoop(ctx context.Context) {
 			if !ok {
 				return
 			}
-			c.handleFsEvent(event)
+			c.handleFsEvent(ctx, event)
 		case err, ok := <-c.watcher.Errors:
 			if !ok {
 				return
@@ -172,7 +181,7 @@ func (c *DiffCollector) watchLoop(ctx context.Context) {
 }
 
 // handleFsEvent 处理文件系统事件
-func (c *DiffCollector) handleFsEvent(event fsnotify.Event) {
+func (c *DiffCollector) handleFsEvent(ctx context.Context, event fsnotify.Event) {
 	// 只处理写入事件
 	if !event.Has(fsnotify.Write) {
 		return
@@ -198,7 +207,7 @@ func (c *DiffCollector) handleFsEvent(event fsnotify.Event) {
 	c.mu.Unlock()
 
 	// 获取 Diff
-	diff, err := c.captureDiff(filePath)
+	diff, err := c.captureDiff(ctx, filePath)
 	if err != nil {
 		slog.Debug("获取 Diff 失败", "file", filePath, "error", err)
 		return
@@ -222,7 +231,7 @@ func (c *DiffCollector) handleFsEvent(event fsnotify.Event) {
 }
 
 // captureDiff 捕获文件 Diff
-func (c *DiffCollector) captureDiff(filePath string) (*model.Diff, error) {
+func (c *DiffCollector) captureDiff(ctx context.Context, filePath string) (*model.Diff, error) {
 	// 检查是否在 Git 仓库中
 	projectPath, isGit := c.findGitRoot(filePath)
 
@@ -231,7 +240,7 @@ func (c *DiffCollector) captureDiff(filePath string) (*model.Diff, error) {
 
 	if isGit {
 		// 使用 git diff
-		content, added, deleted, err := c.gitDiff(filePath)
+		content, added, deleted, err := c.gitDiff(ctx, projectPath, filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -284,12 +293,27 @@ func (c *DiffCollector) findGitRoot(filePath string) (string, bool) {
 	return "", false
 }
 
-// gitDiff 使用 git diff 获取差异
-func (c *DiffCollector) gitDiff(filePath string) (string, int, int, error) {
-	dir := filepath.Dir(filePath)
+// gitDiff 使用 git diff 获取差异（带超时）
+func (c *DiffCollector) gitDiff(ctx context.Context, repoRoot, filePath string) (string, int, int, error) {
+	// 统一在仓库根目录执行 git
+	dir := repoRoot
+	if dir == "" {
+		dir = filepath.Dir(filePath)
+	}
+
+	// 超时保护
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	// 检查文件是否被 Git 跟踪
-	checkCmd := exec.Command("git", "ls-files", "--", filePath)
+	relPath := filePath
+	if repoRoot != "" {
+		if p, err := filepath.Rel(repoRoot, filePath); err == nil {
+			relPath = p
+		}
+	}
+
+	checkCmd := exec.CommandContext(timeoutCtx, "git", "ls-files", "--", relPath)
 	checkCmd.Dir = dir
 	checkOutput, _ := checkCmd.Output()
 
@@ -314,7 +338,7 @@ func (c *DiffCollector) gitDiff(filePath string) (string, int, int, error) {
 	}
 
 	// 获取未暂存的改动
-	cmd := exec.Command("git", "diff", "--", filePath)
+	cmd := exec.CommandContext(timeoutCtx, "git", "diff", "--", relPath)
 	cmd.Dir = dir
 	output, err := cmd.Output()
 	if err != nil {

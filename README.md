@@ -32,6 +32,7 @@ go build -o mirror.exe ./cmd/mirror-agent/
 ├── config/              # 配置文件
 ├── internal/
 │   ├── handler/         # 采集层 (Win32 API)
+│   ├── bootstrap/       # 依赖组装/运行时构建
 │   ├── service/         # 业务逻辑层
 │   ├── repository/      # 数据访问层
 │   ├── model/           # 数据模型

@@ -10,25 +10,24 @@ import (
 
 	"github.com/yuqie6/mirror/internal/ai"
 	"github.com/yuqie6/mirror/internal/model"
-	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // AIService AI 分析服务
 type AIService struct {
-	analyzer     *ai.DiffAnalyzer
-	diffRepo     *repository.DiffRepository
-	eventRepo    *repository.EventRepository
-	summaryRepo  *repository.SummaryRepository
+	analyzer     Analyzer
+	diffRepo     DiffRepository
+	eventRepo    EventRepository
+	summaryRepo  SummaryRepository
 	skillService *SkillService
-	ragService   *RAGService // 可选，用于查询历史记忆
+	ragService   RAGQuerier // 可选，用于查询历史记忆/索引
 }
 
 // NewAIService 创建 AI 服务
 func NewAIService(
-	analyzer *ai.DiffAnalyzer,
-	diffRepo *repository.DiffRepository,
-	eventRepo *repository.EventRepository,
-	summaryRepo *repository.SummaryRepository,
+	analyzer Analyzer,
+	diffRepo DiffRepository,
+	eventRepo EventRepository,
+	summaryRepo SummaryRepository,
 	skillService *SkillService,
 ) *AIService {
 	return &AIService{
@@ -41,7 +40,7 @@ func NewAIService(
 }
 
 // SetRAGService 设置 RAG 服务（可选）
-func (s *AIService) SetRAGService(ragService *RAGService) {
+func (s *AIService) SetRAGService(ragService RAGQuerier) {
 	s.ragService = ragService
 }
 
@@ -117,11 +116,11 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 				}
 
 				// 索引到 RAG（如果已配置）
-				if s.ragService != nil {
-					if err := s.ragService.IndexDiff(ctx, &diff); err != nil {
-						slog.Warn("索引 Diff 失败", "file", diff.FileName, "error", err)
+					if s.ragService != nil {
+						if err := s.ragService.IndexDiff(ctx, &diff); err != nil {
+							slog.Warn("索引 Diff 失败", "file", diff.FileName, "error", err)
+						}
 					}
-				}
 
 				atomic.AddInt32(&analyzed, 1)
 				slog.Info("Diff 分析完成", "worker", workerID, "file", diff.FileName)

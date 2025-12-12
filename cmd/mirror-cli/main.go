@@ -10,16 +10,16 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yuqie6/mirror/internal/ai"
+	"github.com/yuqie6/mirror/internal/bootstrap"
 	"github.com/yuqie6/mirror/internal/model"
 	"github.com/yuqie6/mirror/internal/pkg/config"
-	"github.com/yuqie6/mirror/internal/repository"
 	"github.com/yuqie6/mirror/internal/service"
 )
 
 var (
 	cfgFile string
 	cfg     *config.Config
-	db      *repository.Database
+	core    *bootstrap.Core
 )
 
 func main() {
@@ -28,25 +28,17 @@ func main() {
 		Short: "Mirror - 智能个人行为量化与成长归因系统",
 		Long:  `Mirror 是一个本地运行的 AI 系统，通过自动记录电脑行为，生成学习总结和能力建模。`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// 加载配置
 			var err error
-			cfg, err = config.Load(cfgFile)
+			core, err = bootstrap.NewCore(cfgFile)
 			if err != nil {
-				slog.Error("加载配置失败", "error", err)
+				slog.Error("初始化失败", "error", err)
 				os.Exit(1)
 			}
-			config.SetupLogger(cfg.App.LogLevel)
-
-			// 初始化数据库
-			db, err = repository.NewDatabase(cfg.Storage.DBPath)
-			if err != nil {
-				slog.Error("初始化数据库失败", "error", err)
-				os.Exit(1)
-			}
+			cfg = core.Cfg
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if db != nil {
-				db.Close()
+			if core != nil {
+				core.Close()
 			}
 		},
 	}
@@ -77,9 +69,7 @@ func cleanupSkillsCmd() *cobra.Command {
 		Short: "查看和清理技能数据（删除旧格式条目）",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx := context.Background()
-			skillRepo := repository.NewSkillRepository(db.DB)
-
-			skills, err := skillRepo.GetAll(ctx)
+			skills, err := core.Repos.Skill.GetAll(ctx)
 			if err != nil {
 				fmt.Printf("❌ 获取技能失败: %v\n", err)
 				return
@@ -117,7 +107,7 @@ func cleanupSkillsCmd() *cobra.Command {
 				if deleteAll && !dryRun {
 					fmt.Printf("\n🗑️ 正在删除 %d 个旧格式条目...\n", len(oldFormat))
 					for _, s := range oldFormat {
-						if err := db.DB.Delete(&s).Error; err != nil {
+						if err := core.DB.DB.Delete(&s).Error; err != nil {
 							fmt.Printf("  ❌ 删除 %s 失败: %v\n", s.Key, err)
 						} else {
 							fmt.Printf("  ✅ 已删除 %s\n", s.Key)
@@ -153,46 +143,32 @@ func reportCmd() *cobra.Command {
 			ctx := context.Background()
 
 			// 检查 API Key
-			if cfg.AI.DeepSeek.APIKey == "" {
+			if err := core.RequireAIConfigured(); err != nil {
 				fmt.Println("⚠️  DeepSeek API Key 未配置")
 				fmt.Println("   请设置环境变量: DEEPSEEK_API_KEY")
 				fmt.Println("   或在 config.yaml 中配置")
 				os.Exit(1)
 			}
 
-			// 创建服务
-			deepseek := ai.NewDeepSeekClient(&ai.DeepSeekConfig{
-				APIKey:  cfg.AI.DeepSeek.APIKey,
-				BaseURL: cfg.AI.DeepSeek.BaseURL,
-				Model:   cfg.AI.DeepSeek.Model,
-			})
-			analyzer := ai.NewDiffAnalyzer(deepseek)
-			diffRepo := repository.NewDiffRepository(db.DB)
-			eventRepo := repository.NewEventRepository(db.DB)
-			summaryRepo := repository.NewSummaryRepository(db.DB)
-			skillRepo := repository.NewSkillRepository(db.DB)
-			skillService := service.NewSkillService(skillRepo, diffRepo)
-			aiService := service.NewAIService(analyzer, diffRepo, eventRepo, summaryRepo, skillService)
-
 			// 先分析待处理的 Diff
-			analyzed, _ := aiService.AnalyzePendingDiffs(ctx, 20)
+			analyzed, _ := core.Services.AI.AnalyzePendingDiffs(ctx, 20)
 			if analyzed > 0 {
 				fmt.Printf("✅ 已分析 %d 个代码变更\n\n", analyzed)
 			}
 
 			if week {
 				// 生成周报
-				generateWeeklyReport(ctx, aiService, summaryRepo)
-			} else {
-				// 生成日报
-				targetDate := date
-				if today || targetDate == "" {
-					targetDate = time.Now().Format("2006-01-02")
+					generateWeeklyReport(ctx, core.Services.AI, core.Repos.Summary)
+				} else {
+					// 生成日报
+					targetDate := date
+					if today || targetDate == "" {
+						targetDate = time.Now().Format("2006-01-02")
+					}
+					generateDailyReport(ctx, core.Services.AI, targetDate)
 				}
-				generateDailyReport(ctx, aiService, targetDate)
-			}
-		},
-	}
+			},
+		}
 
 	cmd.Flags().BoolVar(&today, "today", false, "生成今日报告")
 	cmd.Flags().BoolVar(&week, "week", false, "生成本周报告")
@@ -229,7 +205,7 @@ func generateDailyReport(ctx context.Context, aiService *service.AIService, targ
 }
 
 // generateWeeklyReport 生成周报
-func generateWeeklyReport(ctx context.Context, aiService *service.AIService, summaryRepo *repository.SummaryRepository) {
+func generateWeeklyReport(ctx context.Context, aiService *service.AIService, summaryRepo service.SummaryRepository) {
 	fmt.Println("📊 正在生成本周报告...")
 
 	// 获取最近 7 天的日报
@@ -352,34 +328,21 @@ func analyzeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "analyze",
 		Short: "分析待处理的代码变更",
-		Run: func(cmd *cobra.Command, args []string) {
-			ctx := context.Background()
+			Run: func(cmd *cobra.Command, args []string) {
+				ctx := context.Background()
 
-			if cfg.AI.DeepSeek.APIKey == "" {
-				fmt.Println("⚠️  DeepSeek API Key 未配置")
-				os.Exit(1)
-			}
+				if err := core.RequireAIConfigured(); err != nil {
+					fmt.Println("⚠️  DeepSeek API Key 未配置")
+					os.Exit(1)
+				}
 
-			deepseek := ai.NewDeepSeekClient(&ai.DeepSeekConfig{
-				APIKey:  cfg.AI.DeepSeek.APIKey,
-				BaseURL: cfg.AI.DeepSeek.BaseURL,
-				Model:   cfg.AI.DeepSeek.Model,
-			})
-			analyzer := ai.NewDiffAnalyzer(deepseek)
-			diffRepo := repository.NewDiffRepository(db.DB)
-			eventRepo := repository.NewEventRepository(db.DB)
-			summaryRepo := repository.NewSummaryRepository(db.DB)
-			skillRepo := repository.NewSkillRepository(db.DB)
-			skillService := service.NewSkillService(skillRepo, diffRepo)
-			aiService := service.NewAIService(analyzer, diffRepo, eventRepo, summaryRepo, skillService)
+				fmt.Printf("🔍 正在分析待处理的代码变更 (最多 %d 个)...\n", limit)
 
-			fmt.Printf("🔍 正在分析待处理的代码变更 (最多 %d 个)...\n", limit)
-
-			analyzed, err := aiService.AnalyzePendingDiffs(ctx, limit)
-			if err != nil {
-				fmt.Printf("❌ 分析失败: %v\n", err)
-				os.Exit(1)
-			}
+				analyzed, err := core.Services.AI.AnalyzePendingDiffs(ctx, limit)
+				if err != nil {
+					fmt.Printf("❌ 分析失败: %v\n", err)
+					os.Exit(1)
+				}
 
 			fmt.Printf("✅ 已分析 %d 个代码变更\n", analyzed)
 		},
@@ -397,24 +360,21 @@ func statsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stats",
 		Short: "查看统计信息",
-		Run: func(cmd *cobra.Command, args []string) {
-			ctx := context.Background()
+			Run: func(cmd *cobra.Command, args []string) {
+				ctx := context.Background()
 
-			eventRepo := repository.NewEventRepository(db.DB)
-			diffRepo := repository.NewDiffRepository(db.DB)
+				// 计算时间范围
+				now := time.Now()
+				endTime := now.UnixMilli()
+				startTime := now.AddDate(0, 0, -days).UnixMilli()
 
-			// 计算时间范围
-			now := time.Now()
-			endTime := now.UnixMilli()
-			startTime := now.AddDate(0, 0, -days).UnixMilli()
+				// 事件统计
+				eventCount, _ := core.Repos.Event.Count(ctx)
+				appStats, _ := core.Repos.Event.GetAppStats(ctx, startTime, endTime)
 
-			// 事件统计
-			eventCount, _ := eventRepo.Count(ctx)
-			appStats, _ := eventRepo.GetAppStats(ctx, startTime, endTime)
-
-			// Diff 统计
-			diffCount, _ := diffRepo.CountByDateRange(ctx, startTime, endTime)
-			langStats, _ := diffRepo.GetLanguageStats(ctx, startTime, endTime)
+				// Diff 统计
+				diffCount, _ := core.Repos.Diff.CountByDateRange(ctx, startTime, endTime)
+				langStats, _ := core.Repos.Diff.GetLanguageStats(ctx, startTime, endTime)
 
 			fmt.Printf("📊 最近 %d 天统计\n", days)
 			fmt.Println("═══════════════════════════════════════")
@@ -457,19 +417,15 @@ func skillsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skills",
 		Short: "查看技能树",
-		Run: func(cmd *cobra.Command, args []string) {
-			ctx := context.Background()
+			Run: func(cmd *cobra.Command, args []string) {
+				ctx := context.Background()
 
-			skillRepo := repository.NewSkillRepository(db.DB)
-			diffRepo := repository.NewDiffRepository(db.DB)
-			skillService := service.NewSkillService(skillRepo, diffRepo)
-
-			// 获取技能树
-			tree, err := skillService.GetSkillTree(ctx)
-			if err != nil {
-				fmt.Printf("❌ 获取技能树失败: %v\n", err)
-				os.Exit(1)
-			}
+				// 获取技能树
+				tree, err := core.Services.Skills.GetSkillTree(ctx)
+				if err != nil {
+					fmt.Printf("❌ 获取技能树失败: %v\n", err)
+					os.Exit(1)
+				}
 
 			if tree.TotalSkills == 0 {
 				fmt.Println("📚 还没有技能记录")
@@ -553,24 +509,19 @@ func trendsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trends",
 		Short: "查看技能和编码趋势",
-		Run: func(cmd *cobra.Command, args []string) {
-			ctx := context.Background()
+			Run: func(cmd *cobra.Command, args []string) {
+				ctx := context.Background()
 
-			skillRepo := repository.NewSkillRepository(db.DB)
-			diffRepo := repository.NewDiffRepository(db.DB)
-			eventRepo := repository.NewEventRepository(db.DB)
-			trendService := service.NewTrendService(skillRepo, diffRepo, eventRepo)
+				period := service.TrendPeriod7Days
+				if days == 30 {
+					period = service.TrendPeriod30Days
+				}
 
-			period := service.TrendPeriod7Days
-			if days == 30 {
-				period = service.TrendPeriod30Days
-			}
-
-			report, err := trendService.GetTrendReport(ctx, period)
-			if err != nil {
-				fmt.Printf("❌ 获取趋势失败: %v\n", err)
-				os.Exit(1)
-			}
+				report, err := core.Services.Trends.GetTrendReport(ctx, period)
+				if err != nil {
+					fmt.Printf("❌ 获取趋势失败: %v\n", err)
+					os.Exit(1)
+				}
 
 			fmt.Printf("📈 趋势分析 (%s - %s)\n", report.StartDate, report.EndDate)
 			fmt.Println("═══════════════════════════════════════")
@@ -635,31 +586,23 @@ func queryCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			query := strings.Join(args, " ")
 
-			cfg, err := config.Load(cfgFile)
-			if err != nil {
-				fmt.Printf("❌ 加载配置失败: %v\n", err)
-				return
-			}
-
-			// 初始化数据库
-			db, err := repository.NewDatabase(cfg.Storage.DBPath)
-			if err != nil {
-				fmt.Printf("❌ 初始化数据库失败: %v\n", err)
-				return
-			}
-			defer db.Close()
-
-			// 创建仓储
-			summaryRepo := repository.NewSummaryRepository(db.DB)
-			diffRepo := repository.NewDiffRepository(db.DB)
+				localCore, err := bootstrap.NewCore(cfgFile)
+				if err != nil {
+					fmt.Printf("❌ 初始化失败: %v\n", err)
+					return
+				}
+				defer localCore.Close()
+				cfg := localCore.Cfg
+				summaryRepo := localCore.Repos.Summary
+				diffRepo := localCore.Repos.Diff
 
 			// 创建 SiliconFlow 客户端
-			sfClient := ai.NewSiliconFlowClient(&ai.SiliconFlowConfig{
-				APIKey:         cfg.AI.SiliconFlow.APIKey,
-				BaseURL:        cfg.AI.SiliconFlow.BaseURL,
-				EmbeddingModel: cfg.AI.SiliconFlow.EmbeddingModel,
-				RerankerModel:  cfg.AI.SiliconFlow.RerankerModel,
-			})
+				sfClient := ai.NewSiliconFlowClient(&ai.SiliconFlowConfig{
+					APIKey:         cfg.AI.SiliconFlow.APIKey,
+					BaseURL:        cfg.AI.SiliconFlow.BaseURL,
+					EmbeddingModel: cfg.AI.SiliconFlow.EmbeddingModel,
+					RerankerModel:  cfg.AI.SiliconFlow.RerankerModel,
+				})
 
 			if !sfClient.IsConfigured() {
 				fmt.Println("❌ SiliconFlow API 未配置，无法使用 RAG 查询")

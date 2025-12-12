@@ -3,22 +3,20 @@ package service
 import (
 	"context"
 	"time"
-
-	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // TrendService 趋势分析服务
 type TrendService struct {
-	skillRepo *repository.SkillRepository
-	diffRepo  *repository.DiffRepository
-	eventRepo *repository.EventRepository
+	skillRepo SkillRepository
+	diffRepo  DiffRepository
+	eventRepo EventRepository
 }
 
 // NewTrendService 创建趋势服务
 func NewTrendService(
-	skillRepo *repository.SkillRepository,
-	diffRepo *repository.DiffRepository,
-	eventRepo *repository.EventRepository,
+	skillRepo SkillRepository,
+	diffRepo DiffRepository,
+	eventRepo EventRepository,
 ) *TrendService {
 	return &TrendService{
 		skillRepo: skillRepo,

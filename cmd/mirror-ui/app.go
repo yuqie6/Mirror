@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/ai"
+	"github.com/yuqie6/mirror/internal/bootstrap"
 	"github.com/yuqie6/mirror/internal/pkg/config"
-	"github.com/yuqie6/mirror/internal/repository"
 	"github.com/yuqie6/mirror/internal/service"
 )
 
@@ -14,10 +14,7 @@ import (
 type App struct {
 	ctx          context.Context
 	cfg          *config.Config
-	db           *repository.Database
-	aiService    *service.AIService
-	skillService *service.SkillService
-	trendService *service.TrendService
+	core         *bootstrap.Core
 }
 
 // NewApp creates a new App application struct
@@ -29,51 +26,15 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// 加载配置，尝试多个可能的路径
-	var cfg *config.Config
-	var err error
-	configPaths := []string{
-		"config/config.yaml",
-		"../config/config.yaml",
-		"../../config/config.yaml",
-		"e:/project/Mirror/config/config.yaml", // 绝对路径作为后备
-	}
-
-	for _, path := range configPaths {
-		cfg, err = config.Load(path)
-		if err == nil {
-			break
-		}
-	}
-
-	if cfg == nil {
-		panic("无法加载配置文件，请确保 config/config.yaml 存在")
-	}
-	a.cfg = cfg
-
-	// 初始化数据库
-	db, err := repository.NewDatabase(cfg.Storage.DBPath)
+	core, err := bootstrap.NewCore("")
 	if err != nil {
-		panic("无法初始化数据库: " + err.Error())
+		// UI 启动时不 panic，改为延迟报错
+		a.core = nil
+		a.cfg = &config.Config{}
+		return
 	}
-	a.db = db
-
-	// 初始化服务
-	diffRepo := repository.NewDiffRepository(db.DB)
-	eventRepo := repository.NewEventRepository(db.DB)
-	summaryRepo := repository.NewSummaryRepository(db.DB)
-	skillRepo := repository.NewSkillRepository(db.DB)
-
-	deepseek := ai.NewDeepSeekClient(&ai.DeepSeekConfig{
-		APIKey:  cfg.AI.DeepSeek.APIKey,
-		BaseURL: cfg.AI.DeepSeek.BaseURL,
-		Model:   cfg.AI.DeepSeek.Model,
-	})
-	analyzer := ai.NewDiffAnalyzer(deepseek)
-
-	a.skillService = service.NewSkillService(skillRepo, diffRepo)
-	a.aiService = service.NewAIService(analyzer, diffRepo, eventRepo, summaryRepo, a.skillService)
-	a.trendService = service.NewTrendService(skillRepo, diffRepo, eventRepo)
+	a.core = core
+	a.cfg = core.Cfg
 }
 
 // DailySummaryDTO 每日总结 DTO
@@ -93,8 +54,12 @@ func (a *App) GetTodaySummary() (*DailySummaryDTO, error) {
 	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 	defer cancel()
 
+	if a.core == nil || a.core.Services.AI == nil {
+		return nil, errors.New("AI 服务未初始化，请检查配置与数据库")
+	}
+
 	today := time.Now().Format("2006-01-02")
-	summary, err := a.aiService.GenerateDailySummary(ctx, today)
+	summary, err := a.core.Services.AI.GenerateDailySummary(ctx, today)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +90,11 @@ type SkillNodeDTO struct {
 
 // GetSkillTree 获取技能树
 func (a *App) GetSkillTree() ([]SkillNodeDTO, error) {
-	skillTree, err := a.skillService.GetSkillTree(a.ctx)
+	if a.core == nil || a.core.Services.Skills == nil {
+		return nil, errors.New("技能服务未初始化")
+	}
+
+	skillTree, err := a.core.Services.Skills.GetSkillTree(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -178,12 +147,16 @@ type SkillTrendDTO struct {
 
 // GetTrends 获取趋势报告
 func (a *App) GetTrends(days int) (*TrendReportDTO, error) {
+	if a.core == nil || a.core.Services.Trends == nil {
+		return nil, errors.New("趋势服务未初始化")
+	}
+
 	period := service.TrendPeriod7Days
 	if days == 30 {
 		period = service.TrendPeriod30Days
 	}
 
-	report, err := a.trendService.GetTrendReport(a.ctx, period)
+	report, err := a.core.Services.Trends.GetTrendReport(a.ctx, period)
 	if err != nil {
 		return nil, err
 	}
@@ -232,8 +205,11 @@ func (a *App) GetAppStats() ([]AppStatsDTO, error) {
 	startTime := now.AddDate(0, 0, -7).UnixMilli()
 	endTime := now.UnixMilli()
 
-	eventRepo := repository.NewEventRepository(a.db.DB)
-	stats, err := eventRepo.GetAppStats(a.ctx, startTime, endTime)
+	if a.core == nil {
+		return nil, errors.New("数据库未初始化")
+	}
+
+	stats, err := a.core.Repos.Event.GetAppStats(a.ctx, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}

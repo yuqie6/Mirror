@@ -9,13 +9,12 @@ import (
 
 	"github.com/yuqie6/mirror/internal/handler"
 	"github.com/yuqie6/mirror/internal/model"
-	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // BrowserService 浏览器采集服务
 type BrowserService struct {
 	collector   *handler.BrowserCollector
-	browserRepo *repository.BrowserEventRepository
+	browserRepo BrowserEventRepository
 	buffer      []*model.BrowserEvent
 	bufferSize  int
 	mu          sync.Mutex
@@ -27,7 +26,7 @@ type BrowserService struct {
 // NewBrowserService 创建浏览器服务
 func NewBrowserService(
 	collector *handler.BrowserCollector,
-	browserRepo *repository.BrowserEventRepository,
+	browserRepo BrowserEventRepository,
 ) *BrowserService {
 	return &BrowserService{
 		collector:   collector,

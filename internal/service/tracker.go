@@ -11,13 +11,12 @@ import (
 
 	"github.com/yuqie6/mirror/internal/handler"
 	"github.com/yuqie6/mirror/internal/model"
-	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // TrackerService 追踪服务 - 负责接收事件并批量写入数据库
 type TrackerService struct {
 	collector      handler.Collector
-	eventRepo      *repository.EventRepository
+	eventRepo      EventRepository
 	buffer         []model.Event
 	bufferMu       sync.Mutex
 	flushBatchSize int
@@ -49,7 +48,7 @@ func DefaultTrackerConfig() *TrackerConfig {
 // NewTrackerService 创建追踪服务
 func NewTrackerService(
 	collector handler.Collector,
-	eventRepo *repository.EventRepository,
+	eventRepo EventRepository,
 	cfg *TrackerConfig,
 ) *TrackerService {
 	if cfg == nil {

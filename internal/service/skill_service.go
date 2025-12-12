@@ -8,17 +8,16 @@ import (
 
 	"github.com/yuqie6/mirror/internal/ai"
 	"github.com/yuqie6/mirror/internal/model"
-	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // SkillService 技能服务
 type SkillService struct {
-	skillRepo *repository.SkillRepository
-	diffRepo  *repository.DiffRepository
+	skillRepo SkillRepository
+	diffRepo  DiffRepository
 }
 
 // NewSkillService 创建技能服务
-func NewSkillService(skillRepo *repository.SkillRepository, diffRepo *repository.DiffRepository) *SkillService {
+func NewSkillService(skillRepo SkillRepository, diffRepo DiffRepository) *SkillService {
 	return &SkillService{
 		skillRepo: skillRepo,
 		diffRepo:  diffRepo,
