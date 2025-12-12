@@ -3,15 +3,21 @@ package service
 import (
 	"context"
 	"strings"
+
+	"github.com/yuqie6/mirror/internal/model"
 )
 
 // DiffContributor 从已分析 Diff 生成技能贡献（Phase B 预留）
 type DiffContributor struct {
 	diffRepo DiffRepository
+	expPolicy ExpPolicy
 }
 
-func NewDiffContributor(diffRepo DiffRepository) *DiffContributor {
-	return &DiffContributor{diffRepo: diffRepo}
+func NewDiffContributor(diffRepo DiffRepository, expPolicy ExpPolicy) *DiffContributor {
+	if expPolicy == nil {
+		expPolicy = DefaultExpPolicy{}
+	}
+	return &DiffContributor{diffRepo: diffRepo, expPolicy: expPolicy}
 }
 
 func (c *DiffContributor) Contribute(ctx context.Context, startTime, endTime int64) ([]SkillContribution, error) {
@@ -24,8 +30,7 @@ func (c *DiffContributor) Contribute(ctx context.Context, startTime, endTime int
 		if d.AIInsight == "" || len(d.SkillsDetected) == 0 {
 			continue
 		}
-		lines := d.LinesAdded + d.LinesDeleted
-		baseExp := 1.0 + float64(lines)/10.0
+		baseExp := c.expPolicy.CalcDiffExp([]model.Diff{d})
 		perSkillExp := baseExp / float64(len(d.SkillsDetected))
 		for _, name := range d.SkillsDetected {
 			key := normalizeKey(name)

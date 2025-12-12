@@ -57,6 +57,9 @@ func (s *SessionService) BuildSessionsIncremental(ctx context.Context) (int, err
 	start := int64(0)
 	if last != nil && last.EndTime > 0 {
 		start = last.EndTime
+	} else {
+		// 冷启动：避免从 0 纪元扫全库，先回溯最近 24h
+		start = time.Now().Add(-24 * time.Hour).UnixMilli()
 	}
 	end := time.Now().UnixMilli()
 	return s.BuildSessionsForRange(ctx, start, end)

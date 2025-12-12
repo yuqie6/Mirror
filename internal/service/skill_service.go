@@ -14,13 +14,18 @@ import (
 type SkillService struct {
 	skillRepo SkillRepository
 	diffRepo  DiffRepository
+	expPolicy ExpPolicy
 }
 
 // NewSkillService 创建技能服务
-func NewSkillService(skillRepo SkillRepository, diffRepo DiffRepository) *SkillService {
+func NewSkillService(skillRepo SkillRepository, diffRepo DiffRepository, expPolicy ExpPolicy) *SkillService {
+	if expPolicy == nil {
+		expPolicy = DefaultExpPolicy{}
+	}
 	return &SkillService{
 		skillRepo: skillRepo,
 		diffRepo:  diffRepo,
+		expPolicy: expPolicy,
 	}
 }
 
@@ -134,7 +139,7 @@ func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, di
 			latestDiffID = diff.ID
 		}
 	}
-	baseExp := 1.0 + float64(totalLines)/10.0
+	baseExp := s.expPolicy.CalcDiffExp(diffs)
 	perSkillExp := baseExp / float64(len(skills))
 
 	contribs := make([]SkillContribution, 0, len(skills))

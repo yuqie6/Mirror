@@ -70,7 +70,7 @@ func NewCore(cfgPath string) (*Core, error) {
 	analyzer := ai.NewDiffAnalyzer(c.Clients.DeepSeek)
 
 	// Services
-	c.Services.Skills = service.NewSkillService(c.Repos.Skill, c.Repos.Diff)
+	c.Services.Skills = service.NewSkillService(c.Repos.Skill, c.Repos.Diff, service.DefaultExpPolicy{})
 	c.Services.AI = service.NewAIService(analyzer, c.Repos.Diff, c.Repos.Event, c.Repos.Summary, c.Services.Skills)
 	c.Services.Trends = service.NewTrendService(c.Repos.Skill, c.Repos.Diff, c.Repos.Event)
 	c.Services.Sessions = service.NewSessionService(

@@ -102,7 +102,7 @@ func TestUpdateSkillsFromDiffsWithCategory(t *testing.T) {
 	existingChild := model.NewSkillNode("reactjs", "ReactJS", "other")
 	repo := newFakeSkillRepo(existingParent, existingChild)
 
-	svc := NewSkillService(repo, fakeDiffRepo{})
+	svc := NewSkillService(repo, fakeDiffRepo{}, DefaultExpPolicy{})
 
 	diffs := []model.Diff{
 		{LinesAdded: 5, LinesDeleted: 5},
@@ -140,7 +140,7 @@ func TestUpdateSkillsFromDiffsWithCategory(t *testing.T) {
 func TestUpdateSkillsFromDiffsWithCategory_EmptySkillsNoop(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeSkillRepo()
-	svc := NewSkillService(repo, fakeDiffRepo{})
+	svc := NewSkillService(repo, fakeDiffRepo{}, DefaultExpPolicy{})
 	if err := svc.UpdateSkillsFromDiffsWithCategory(ctx, nil, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestApplyDecayToAll(t *testing.T) {
 	recentSkill.LastActive = time.Now().Add(-2 * 24 * time.Hour).UnixMilli()
 
 	repo := newFakeSkillRepo(oldSkill, recentSkill)
-	svc := NewSkillService(repo, fakeDiffRepo{})
+	svc := NewSkillService(repo, fakeDiffRepo{}, DefaultExpPolicy{})
 
 	if err := svc.ApplyDecayToAll(ctx); err != nil {
 		t.Fatalf("ApplyDecayToAll error: %v", err)
