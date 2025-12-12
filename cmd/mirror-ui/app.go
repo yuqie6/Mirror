@@ -12,9 +12,9 @@ import (
 
 // App struct
 type App struct {
-	ctx          context.Context
-	cfg          *config.Config
-	core         *bootstrap.Core
+	ctx  context.Context
+	cfg  *config.Config
+	core *bootstrap.Core
 }
 
 // NewApp creates a new App application struct
@@ -254,4 +254,49 @@ func (a *App) GetAppStats() ([]AppStatsDTO, error) {
 		}
 	}
 	return result, nil
+}
+
+// DiffDetailDTO Diff 详情 DTO
+type DiffDetailDTO struct {
+	ID           int64    `json:"id"`
+	FileName     string   `json:"file_name"`
+	Language     string   `json:"language"`
+	DiffContent  string   `json:"diff_content"`
+	Insight      string   `json:"insight"`
+	Skills       []string `json:"skills"`
+	LinesAdded   int      `json:"lines_added"`
+	LinesDeleted int      `json:"lines_deleted"`
+	Timestamp    int64    `json:"timestamp"`
+}
+
+// GetDiffDetail 获取 Diff 详情
+func (a *App) GetDiffDetail(id int64) (*DiffDetailDTO, error) {
+	if a.core == nil || a.core.Repos.Diff == nil {
+		return nil, errors.New("Diff 仓储未初始化")
+	}
+
+	diff, err := a.core.Repos.Diff.GetByID(a.ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if diff == nil {
+		return nil, errors.New("Diff not found")
+	}
+
+	var skills []string
+	if len(diff.SkillsDetected) > 0 {
+		skills = []string(diff.SkillsDetected)
+	}
+
+	return &DiffDetailDTO{
+		ID:           diff.ID,
+		FileName:     diff.FileName,
+		Language:     diff.Language,
+		DiffContent:  diff.DiffContent,
+		Insight:      diff.AIInsight,
+		Skills:       skills,
+		LinesAdded:   diff.LinesAdded,
+		LinesDeleted: diff.LinesDeleted,
+		Timestamp:    diff.Timestamp,
+	}, nil
 }

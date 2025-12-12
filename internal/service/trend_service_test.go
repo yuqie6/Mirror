@@ -20,7 +20,9 @@ func (f fakeDiffRepoForTrend) GetPendingAIAnalysis(ctx context.Context, limit in
 func (f fakeDiffRepoForTrend) UpdateAIInsight(ctx context.Context, id int64, insight string, skills []string) error {
 	return nil
 }
-func (f fakeDiffRepoForTrend) GetByDate(ctx context.Context, date string) ([]model.Diff, error) { return nil, nil }
+func (f fakeDiffRepoForTrend) GetByDate(ctx context.Context, date string) ([]model.Diff, error) {
+	return nil, nil
+}
 func (f fakeDiffRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
 	return nil, nil
 }
@@ -33,12 +35,17 @@ func (f fakeDiffRepoForTrend) CountByDateRange(ctx context.Context, startTime, e
 func (f fakeDiffRepoForTrend) GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error) {
 	return nil, nil
 }
+func (f fakeDiffRepoForTrend) GetByID(ctx context.Context, id int64) (*model.Diff, error) {
+	return nil, nil
+}
 
 type fakeSkillRepoForTrend struct {
 	active []model.SkillNode
 }
 
-func (f fakeSkillRepoForTrend) GetAll(ctx context.Context) ([]model.SkillNode, error) { return nil, nil }
+func (f fakeSkillRepoForTrend) GetAll(ctx context.Context) ([]model.SkillNode, error) {
+	return nil, nil
+}
 func (f fakeSkillRepoForTrend) GetByKey(ctx context.Context, key string) (*model.SkillNode, error) {
 	return nil, nil
 }
@@ -57,7 +64,9 @@ type fakeEventRepoForTrend struct {
 	stats []repository.AppStat
 }
 
-func (f fakeEventRepoForTrend) BatchInsert(ctx context.Context, events []model.Event) error { return nil }
+func (f fakeEventRepoForTrend) BatchInsert(ctx context.Context, events []model.Event) error {
+	return nil
+}
 func (f fakeEventRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Event, error) {
 	return nil, nil
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 export interface DailySummary {
     date: string;
@@ -10,12 +10,33 @@ export interface DailySummary {
     total_diffs: number;
 }
 
+export interface AppStat {
+    app_name: string;
+    total_duration: number;
+    event_count: number;
+}
+
+export interface SkillNode {
+    key: string;
+    name: string;
+    category: string;
+}
+
 interface SummaryViewProps {
     summary: DailySummary | null;
     loading: boolean;
     error: string | null;
     onGenerate: () => void;
+    skills?: SkillNode[];
+    appStats?: AppStat[];
 }
+
+// 判断是否为编码应用
+const isCodeEditor = (appName: string): boolean => {
+    const codeEditors = ['code', 'cursor', 'goland', 'idea', 'pycharm', 'webstorm', 'vim', 'nvim', 'sublime', 'atom', 'vscode', 'android studio'];
+    const lower = appName.toLowerCase();
+    return codeEditors.some(editor => lower.includes(editor));
+};
 
 // 统计卡片组件
 const StatCard: React.FC<{
@@ -70,35 +91,6 @@ const MainCard: React.FC<{
     </div>
 );
 
-// 信号卡片
-const SignalCard: React.FC<{
-    signal: string;
-    strength: number;
-}> = ({ signal, strength }) => (
-    <div className="card">
-        <div className="flex items-center justify-between mb-4">
-            <span className="text-xs text-gray-400 uppercase tracking-wider">AI 分析</span>
-            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-            </svg>
-        </div>
-        <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-2xl font-bold text-gray-900">{signal}</span>
-            <span className="px-2 py-0.5 bg-accent-gold/20 text-accent-gold text-xs font-medium rounded-full">{strength}%</span>
-        </div>
-        {/* 简易柱状图占位 */}
-        <div className="flex items-end gap-1 h-12">
-            {[40, 60, 80, 100, 70, 90].map((h, i) => (
-                <div
-                    key={i}
-                    className="flex-1 bg-accent-gold/20 rounded-t transition-all hover:bg-accent-gold/40"
-                    style={{ height: `${h}%` }}
-                />
-            ))}
-        </div>
-    </div>
-);
-
 // 活动时间线
 const ActivityItem: React.FC<{
     time: string;
@@ -147,7 +139,57 @@ const AlertCard: React.FC<{
     </div>
 );
 
-const SummaryView: React.FC<SummaryViewProps> = ({ summary, loading, error, onGenerate }) => {
+const SummaryView: React.FC<SummaryViewProps> = ({ summary, loading, error, onGenerate, skills = [], appStats = [] }) => {
+    // 计算编码专注度
+    const focusStats = useMemo(() => {
+        if (!appStats.length) return { focusPercent: 0, codingTime: 0, totalTime: 0 };
+        
+        let codingTime = 0;
+        let totalTime = 0;
+        
+        for (const stat of appStats) {
+            totalTime += stat.total_duration;
+            if (isCodeEditor(stat.app_name)) {
+                codingTime += stat.total_duration;
+            }
+        }
+        
+        const focusPercent = totalTime > 0 ? Math.round((codingTime / totalTime) * 100) : 0;
+        return { focusPercent, codingTime, totalTime };
+    }, [appStats]);
+
+    // 计算技能分布
+    const skillDistribution = useMemo(() => {
+        if (!skills.length) return [];
+        
+        const categoryCount: Record<string, number> = {};
+        for (const skill of skills) {
+            const cat = skill.category || 'other';
+            categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+        }
+        
+        const total = skills.length;
+        const categoryLabels: Record<string, string> = {
+            language: '编程语言',
+            framework: '框架',
+            database: '数据库',
+            devops: 'DevOps',
+            tool: '工具',
+            concept: '概念',
+            other: '其他',
+        };
+        
+        return Object.entries(categoryCount)
+            .map(([cat, count]) => ({
+                category: cat,
+                label: categoryLabels[cat] || cat,
+                count,
+                percent: Math.round((count / total) * 100),
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3); // 只显示前3个
+    }, [skills]);
+
     // 空状态
     if (!summary && !loading) {
         return (
@@ -215,10 +257,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({ summary, loading, error, onGe
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
                         <span className="text-sm text-gray-500">编码专注度</span>
-                        <span className="text-sm font-medium text-gray-900">85%</span>
+                        <span className="text-sm font-medium text-gray-900">{focusStats.focusPercent}%</span>
                     </div>
                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-gradient-gold" style={{ width: '85%' }} />
+                        <div className="h-full rounded-full bg-gradient-gold transition-all duration-500" style={{ width: `${focusStats.focusPercent}%` }} />
                     </div>
                 </div>
             </header>
@@ -234,9 +276,24 @@ const SummaryView: React.FC<SummaryViewProps> = ({ summary, loading, error, onGe
                     />
                 </div>
 
-                {/* AI 信号卡片 */}
+                {/* 专注度卡片 - 使用真实数据 */}
                 <div className="col-span-3">
-                    <SignalCard signal="High" strength={88} />
+                    <div className="card">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-xs text-gray-400 uppercase tracking-wider">编码专注</span>
+                            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                        </div>
+                        <div className="flex items-baseline gap-2 mb-3">
+                            <span className="text-2xl font-bold text-gray-900">{focusStats.focusPercent > 70 ? 'High' : focusStats.focusPercent > 40 ? 'Medium' : 'Low'}</span>
+                            <span className="px-2 py-0.5 bg-accent-gold/20 text-accent-gold text-xs font-medium rounded-full">{focusStats.focusPercent}%</span>
+                        </div>
+                        {/* 显示应用时长分布 */}
+                        <div className="text-xs text-gray-500">
+                            编码 {Math.round(focusStats.codingTime / 60)} 分钟 / 总计 {Math.round(focusStats.totalTime / 60)} 分钟
+                        </div>
+                    </div>
                 </div>
 
                 {/* 时间卡片 */}
@@ -246,7 +303,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ summary, loading, error, onGe
                         <div className="relative w-20 h-20">
                             <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                                 <circle cx="18" cy="18" r="16" fill="none" stroke="#E5E7EB" strokeWidth="2" />
-                                <circle cx="18" cy="18" r="16" fill="none" stroke="#D4AF37" strokeWidth="2" strokeDasharray="75 25" />
+                                <circle cx="18" cy="18" r="16" fill="none" stroke="#D4AF37" strokeWidth="2" strokeDasharray={`${focusStats.focusPercent} ${100 - focusStats.focusPercent}`} />
                             </svg>
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <span className="text-lg font-bold text-gray-900">{Math.round(summary.total_coding / 60)}h</span>
@@ -255,18 +312,24 @@ const SummaryView: React.FC<SummaryViewProps> = ({ summary, loading, error, onGe
                     </div>
                 </div>
 
-                {/* 分配卡片 */}
+                {/* 技能分布卡片 - 使用真实数据 */}
                 <div className="col-span-3">
                     <div className="card">
                         <span className="text-xs text-gray-400 uppercase tracking-wider">技能分布</span>
                         <div className="mt-3 space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-600">编程</span>
-                                <span className="font-medium">60%</span>
-                            </div>
-                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-accent-gold rounded-full" style={{ width: '60%' }} />
-                            </div>
+                            {skillDistribution.length > 0 ? skillDistribution.map((item, i) => (
+                                <div key={item.category}>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-600">{item.label}</span>
+                                        <span className="font-medium">{item.percent}%</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden mt-1">
+                                        <div className="h-full bg-accent-gold rounded-full transition-all duration-500" style={{ width: `${item.percent}%`, opacity: 1 - i * 0.2 }} />
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="text-sm text-gray-400">暂无技能数据</div>
+                            )}
                         </div>
                     </div>
                 </div>

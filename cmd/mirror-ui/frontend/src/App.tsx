@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import { GetTodaySummary, GetSkillTree } from "../wailsjs/go/main/App";
+// @ts-ignore
+import { GetTodaySummary, GetSkillTree, GetAppStats } from "../wailsjs/go/main/App";
 import MainLayout from './components/layout/MainLayout';
-import SummaryView, { DailySummary } from './components/dashboard/SummaryView';
+import SummaryView, { DailySummary, AppStat } from './components/dashboard/SummaryView';
 import SkillView, { SkillNode } from './components/skills/SkillView';
 import TrendsView from './components/dashboard/TrendsView';
 
@@ -13,6 +14,7 @@ function App() {
     // 数据状态
     const [summary, setSummary] = useState<DailySummary | null>(null);
     const [skills, setSkills] = useState<SkillNode[]>([]);
+    const [appStats, setAppStats] = useState<AppStat[]>([]);
     
     // UI状态
     const [loading, setLoading] = useState(false);
@@ -23,7 +25,6 @@ function App() {
         setLoading(true);
         setError(null);
         try {
-            // @ts-ignore
             const result = await GetTodaySummary();
             setSummary(result);
         } catch (e: any) {
@@ -36,7 +37,6 @@ function App() {
     // 加载技能树
     const loadSkills = async () => {
         try {
-            // @ts-ignore
             const result = await GetSkillTree();
             setSkills(result || []);
         } catch (e: any) {
@@ -44,9 +44,20 @@ function App() {
         }
     };
 
+    // 加载应用统计
+    const loadAppStats = async () => {
+        try {
+            const result = await GetAppStats();
+            setAppStats(result || []);
+        } catch (e: any) {
+            console.error('加载应用统计失败:', e);
+        }
+    };
+
     // 初始加载
     useEffect(() => {
         loadSkills();
+        loadAppStats();
     }, []);
 
     // 视图渲染逻辑
@@ -58,7 +69,9 @@ function App() {
                         summary={summary} 
                         loading={loading} 
                         error={error} 
-                        onGenerate={loadSummary} 
+                        onGenerate={loadSummary}
+                        skills={skills}
+                        appStats={appStats}
                     />
                 );
             case 'skills':

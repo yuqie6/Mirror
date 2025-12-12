@@ -13,7 +13,7 @@ const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange }) => {
     ];
 
     return (
-        <header className="sticky top-0 z-50 px-6 py-4">
+        <header className="sticky top-0 z-50 px-6 py-4 bg-[#FDF8F3]/95 backdrop-blur-md border-b border-amber-100/50">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
                 {/* Logo */}
                 <div className="flex items-center gap-3">

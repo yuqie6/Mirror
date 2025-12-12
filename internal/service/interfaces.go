@@ -19,6 +19,7 @@ type DiffRepository interface {
 	GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error)
 	CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error)
 	GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error)
+	GetByID(ctx context.Context, id int64) (*model.Diff, error)
 }
 
 type EventRepository interface {

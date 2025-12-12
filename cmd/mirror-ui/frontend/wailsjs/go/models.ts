@@ -40,6 +40,34 @@ export namespace main {
 	        this.total_diffs = source["total_diffs"];
 	    }
 	}
+	export class DiffDetailDTO {
+	    id: number;
+	    file_name: string;
+	    language: string;
+	    diff_content: string;
+	    insight: string;
+	    skills: string[];
+	    lines_added: number;
+	    lines_deleted: number;
+	    timestamp: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DiffDetailDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.file_name = source["file_name"];
+	        this.language = source["language"];
+	        this.diff_content = source["diff_content"];
+	        this.insight = source["insight"];
+	        this.skills = source["skills"];
+	        this.lines_added = source["lines_added"];
+	        this.lines_deleted = source["lines_deleted"];
+	        this.timestamp = source["timestamp"];
+	    }
+	}
 	export class LanguageTrendDTO {
 	    language: string;
 	    diff_count: number;

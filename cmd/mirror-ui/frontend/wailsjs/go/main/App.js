@@ -6,6 +6,10 @@ export function GetAppStats() {
   return window['go']['main']['App']['GetAppStats']();
 }
 
+export function GetDiffDetail(arg1) {
+  return window['go']['main']['App']['GetDiffDetail'](arg1);
+}
+
 export function GetSkillEvidence(arg1) {
   return window['go']['main']['App']['GetSkillEvidence'](arg1);
 }

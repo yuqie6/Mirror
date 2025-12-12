@@ -62,20 +62,29 @@ func (r *fakeSkillRepo) GetActiveSkillsInPeriod(ctx context.Context, startTime, 
 
 type fakeDiffRepo struct{}
 
-func (f fakeDiffRepo) Create(ctx context.Context, diff *model.Diff) error                                { return nil }
-func (f fakeDiffRepo) GetPendingAIAnalysis(ctx context.Context, limit int) ([]model.Diff, error)        { return nil, nil }
+func (f fakeDiffRepo) Create(ctx context.Context, diff *model.Diff) error { return nil }
+func (f fakeDiffRepo) GetPendingAIAnalysis(ctx context.Context, limit int) ([]model.Diff, error) {
+	return nil, nil
+}
 func (f fakeDiffRepo) UpdateAIInsight(ctx context.Context, id int64, insight string, skills []string) error {
 	return nil
 }
-func (f fakeDiffRepo) GetByDate(ctx context.Context, date string) ([]model.Diff, error)                 { return nil, nil }
+func (f fakeDiffRepo) GetByDate(ctx context.Context, date string) ([]model.Diff, error) {
+	return nil, nil
+}
 func (f fakeDiffRepo) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
 	return nil, nil
 }
 func (f fakeDiffRepo) GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error) {
 	return nil, nil
 }
-func (f fakeDiffRepo) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error)    { return 0, nil }
+func (f fakeDiffRepo) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error) {
+	return 0, nil
+}
 func (f fakeDiffRepo) GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error) {
+	return nil, nil
+}
+func (f fakeDiffRepo) GetByID(ctx context.Context, id int64) (*model.Diff, error) {
 	return nil, nil
 }
 

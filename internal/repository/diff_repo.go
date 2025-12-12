@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"fmt"
 	"log/slog"
@@ -182,4 +183,16 @@ func (r *DiffRepository) GetRecentAnalyzed(ctx context.Context, limit int) ([]mo
 		return nil, fmt.Errorf("查询最近 Diff 失败: %w", err)
 	}
 	return diffs, nil
+}
+
+// GetByID 根据 ID 查询 Diff
+func (r *DiffRepository) GetByID(ctx context.Context, id int64) (*model.Diff, error) {
+	var diff model.Diff
+	if err := r.db.WithContext(ctx).First(&diff, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("查询 Diff 失败: %w", err)
+	}
+	return &diff, nil
 }
