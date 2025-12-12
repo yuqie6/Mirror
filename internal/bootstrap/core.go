@@ -20,12 +20,15 @@ type Core struct {
 		Summary *repository.SummaryRepository
 		Skill   *repository.SkillRepository
 		Browser *repository.BrowserEventRepository
+		Session *repository.SessionRepository
+		SessionDiff *repository.SessionDiffRepository
 	}
 
 	Services struct {
 		Skills *service.SkillService
 		AI     *service.AIService
 		Trends *service.TrendService
+		Sessions *service.SessionService
 	}
 
 	Clients struct {
@@ -55,6 +58,8 @@ func NewCore(cfgPath string) (*Core, error) {
 	c.Repos.Summary = repository.NewSummaryRepository(db.DB)
 	c.Repos.Skill = repository.NewSkillRepository(db.DB)
 	c.Repos.Browser = repository.NewBrowserEventRepository(db.DB)
+	c.Repos.Session = repository.NewSessionRepository(db.DB)
+	c.Repos.SessionDiff = repository.NewSessionDiffRepository(db.DB)
 
 	// Clients / Analyzer
 	c.Clients.DeepSeek = ai.NewDeepSeekClient(&ai.DeepSeekConfig{
@@ -68,6 +73,14 @@ func NewCore(cfgPath string) (*Core, error) {
 	c.Services.Skills = service.NewSkillService(c.Repos.Skill, c.Repos.Diff)
 	c.Services.AI = service.NewAIService(analyzer, c.Repos.Diff, c.Repos.Event, c.Repos.Summary, c.Services.Skills)
 	c.Services.Trends = service.NewTrendService(c.Repos.Skill, c.Repos.Diff, c.Repos.Event)
+	c.Services.Sessions = service.NewSessionService(
+		c.Repos.Event,
+		c.Repos.Diff,
+		c.Repos.Browser,
+		c.Repos.Session,
+		c.Repos.SessionDiff,
+		&service.SessionServiceConfig{IdleGapMinutes: cfg.Collector.SessionIdleMin},
+	)
 
 	// Optional SiliconFlow client 由 Agent 侧按需启动 RAG
 	if cfg.AI.SiliconFlow.APIKey != "" {
@@ -95,4 +108,3 @@ func (c *Core) RequireAIConfigured() error {
 	}
 	return nil
 }
-

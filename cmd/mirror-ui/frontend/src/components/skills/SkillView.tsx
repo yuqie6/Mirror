@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { GetSkillEvidence } from '../../../wailsjs/go/main/App';
 
 export interface SkillNode {
     key: string;
@@ -11,6 +12,14 @@ export interface SkillNode {
     status: string;
     last_active?: number;
     created_at?: string;
+}
+
+interface SkillEvidence {
+    source: string;
+    evidence_id: number;
+    timestamp: number;
+    contribution_context: string;
+    file_name: string;
 }
 
 interface SkillViewProps {
@@ -45,9 +54,10 @@ interface TreeNodeProps {
     depth: number;
     getStatus: (status: string) => { color: string; bgColor: string; label: string };
     getCategory: (category: string) => { abbr: string; label: string; color: string };
+    onSelect: (skill: SkillNode) => void;
 }
 
-const TreeNode: React.FC<TreeNodeProps> = ({ skill, children, allSkills, depth, getStatus, getCategory }) => {
+const TreeNode: React.FC<TreeNodeProps> = ({ skill, children, allSkills, depth, getStatus, getCategory, onSelect }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const status = getStatus(skill.status);
     const category = getCategory(skill.category);
@@ -100,7 +110,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({ skill, children, allSkills, depth, 
                     </div>
                 )}
 
-                <div className="flex-1 card !p-4 hover:shadow-card-lg transition-all duration-300 group-hover:-translate-y-0.5">
+                <div
+                    className="flex-1 card !p-4 hover:shadow-card-lg transition-all duration-300 group-hover:-translate-y-0.5 cursor-pointer"
+                    onClick={() => onSelect(skill)}
+                >
                     <div className="flex items-center gap-4">
                         <div 
                             className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
@@ -158,6 +171,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ skill, children, allSkills, depth, 
                                 depth={depth + 1}
                                 getStatus={getStatus}
                                 getCategory={getCategory}
+                                onSelect={onSelect}
                             />
                         );
                     })}
@@ -251,9 +265,28 @@ const SkillStats: React.FC<{ skills: SkillNode[] }> = ({ skills }) => {
 const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
     const [viewMode, setViewMode] = useState<'tree' | 'grid'>('tree');
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
+    const [selectedSkill, setSelectedSkill] = useState<SkillNode | null>(null);
+    const [evidences, setEvidences] = useState<SkillEvidence[]>([]);
+    const [evidenceLoading, setEvidenceLoading] = useState(false);
+    const [evidenceError, setEvidenceError] = useState<string | null>(null);
     
     const getStatus = (status: string) => statusConfig[status] || statusConfig.stable;
     const getCategory = (category: string) => categoryConfig[category] || categoryConfig.other;
+
+    const loadEvidence = async (skill: SkillNode) => {
+        setSelectedSkill(skill);
+        setEvidenceLoading(true);
+        setEvidenceError(null);
+        try {
+            const res = await GetSkillEvidence(skill.key);
+            setEvidences(res || []);
+        } catch (err: any) {
+            setEvidenceError(err?.message || '获取证据失败');
+            setEvidences([]);
+        } finally {
+            setEvidenceLoading(false);
+        }
+    };
 
     const categories = useMemo(() => 
         Array.from(new Set(skills.map(s => s.category))), 
@@ -363,6 +396,7 @@ const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
                                             depth={0}
                                             getStatus={getStatus}
                                             getCategory={getCategory}
+                                            onSelect={loadEvidence}
                                         />
                                     );
                                 })}
@@ -375,7 +409,11 @@ const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
                                 const category = getCategory(skill.category);
                                 
                                 return (
-                                    <div key={skill.key} className="card group hover:shadow-card-lg transition-all duration-300">
+                                    <div
+                                        key={skill.key}
+                                        className="card group hover:shadow-card-lg transition-all duration-300 cursor-pointer"
+                                        onClick={() => loadEvidence(skill)}
+                                    >
                                         <div className="flex justify-between items-start mb-4">
                                             <div 
                                                 className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold text-white"
@@ -415,6 +453,46 @@ const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
                 {/* 成长记录侧边栏 */}
                 <div className="col-span-3">
                     <GrowthTimeline skills={skills} />
+
+                    <div className="card mt-4 !p-5">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-gray-900">证据链</h3>
+                            {selectedSkill && (
+                                <span className="text-xs text-gray-400 truncate max-w-[120px]">{selectedSkill.name}</span>
+                            )}
+                        </div>
+
+                        {!selectedSkill && (
+                            <div className="text-sm text-gray-500">点选一个技能查看“为什么我认为你在提升它”。</div>
+                        )}
+
+                        {selectedSkill && evidenceLoading && (
+                            <div className="text-sm text-gray-500">加载中...</div>
+                        )}
+
+                        {selectedSkill && evidenceError && (
+                            <div className="text-sm text-red-500">{evidenceError}</div>
+                        )}
+
+                        {selectedSkill && !evidenceLoading && !evidenceError && (
+                            <div className="space-y-2">
+                                {evidences.length === 0 && (
+                                    <div className="text-sm text-gray-500">暂无最近证据</div>
+                                )}
+                                {evidences.map((e) => {
+                                    const t = new Date(e.timestamp);
+                                    const timeLabel = t.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                    return (
+                                        <div key={e.evidence_id} className="p-3 rounded-xl bg-gray-50">
+                                            <div className="text-xs text-gray-400 mb-1">{timeLabel}</div>
+                                            <div className="text-sm text-gray-900 leading-snug">{e.contribution_context}</div>
+                                            {e.file_name && <div className="text-xs text-gray-500 mt-1 truncate">{e.file_name}</div>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

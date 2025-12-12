@@ -102,6 +102,11 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		go runAIAnalysisLoop(ctx, core.Services.AI, 5*time.Minute)
 	}
 
+	// Session 定时切分（可离线，无需 AI）
+	if core.Services.Sessions != nil {
+		go runSessionSplitLoop(ctx, core.Services.Sessions, 5*time.Minute)
+	}
+
 	return rt, nil
 }
 
@@ -146,4 +151,28 @@ func analyzeWithRetry(ctx context.Context, aiService *service.AIService) {
 		return
 	}
 	_, _ = aiService.AnalyzePendingDiffs(ctx, 10)
+}
+
+// runSessionSplitLoop 定时运行会话切分（增量）
+func runSessionSplitLoop(ctx context.Context, sessionService *service.SessionService, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	splitWithRetry(ctx, sessionService)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			splitWithRetry(ctx, sessionService)
+		}
+	}
+}
+
+func splitWithRetry(ctx context.Context, sessionService *service.SessionService) {
+	if sessionService == nil {
+		return
+	}
+	_, _ = sessionService.BuildSessionsIncremental(ctx)
 }

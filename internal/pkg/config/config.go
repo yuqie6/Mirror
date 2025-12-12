@@ -36,6 +36,7 @@ type CollectorConfig struct {
 	FlushBatchSize   int      `mapstructure:"flush_batch_size"`
 	FlushIntervalSec int      `mapstructure:"flush_interval_sec"`
 	CodeEditors      []string `mapstructure:"code_editors"` // 代码编辑器进程名列表
+	SessionIdleMin   int      `mapstructure:"session_idle_min"` // 会话 idle 切分阈值（分钟）
 }
 
 // StorageConfig 存储配置
@@ -149,6 +150,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("collector.buffer_size", 2048)
 	v.SetDefault("collector.flush_batch_size", 100)
 	v.SetDefault("collector.flush_interval_sec", 5)
+	v.SetDefault("collector.session_idle_min", 6)
 	v.SetDefault("collector.code_editors", []string{
 		"Code.exe", "code.exe", "Cursor.exe", "cursor.exe",
 		"Antigravity.exe", "antigravity.exe",

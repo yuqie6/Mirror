@@ -29,21 +29,11 @@ func (s *SkillService) GetAllSkills(ctx context.Context) ([]model.SkillNode, err
 	return s.skillRepo.GetAll(ctx)
 }
 
-// UpdateSkillsFromDiffsWithCategory 根据 AI 返回的技能信息更新技能（完全 AI 驱动）
-func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, diffs []model.Diff, skills []ai.SkillWithCategory) error {
-	if len(skills) == 0 {
+// ApplyContributions 统一入口：根据贡献更新技能
+func (s *SkillService) ApplyContributions(ctx context.Context, contributions []SkillContribution) error {
+	if len(contributions) == 0 {
 		return nil
 	}
-
-	// 计算每个 diff 的基础经验
-	totalLines := 0
-	for _, diff := range diffs {
-		totalLines += diff.LinesAdded + diff.LinesDeleted
-	}
-	baseExp := 1.0 + float64(totalLines)/10.0
-
-	// 收集需要更新的技能
-	skillsToUpdate := make([]*model.SkillNode, 0, len(skills))
 
 	// 构建已存在技能名->Key 映射（用于父技能查表）
 	existingSkills, _ := s.skillRepo.GetAll(ctx)
@@ -52,53 +42,126 @@ func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, di
 		nameToKeyMap[strings.ToLower(sk.Name)] = sk.Key
 	}
 
-	for _, aiSkill := range skills {
-		// 统一 Key 格式
-		skillKey := normalizeKey(aiSkill.Name)
+	// 以 skill_key 聚合 exp 与最新元信息
+	type agg struct {
+		contrib SkillContribution
+		expSum  float64
+	}
+	aggMap := make(map[string]*agg)
+	for _, c := range contributions {
+		if c.SkillKey == "" {
+			c.SkillKey = normalizeKey(c.SkillName)
+		}
+		if c.SkillKey == "" {
+			continue
+		}
+		a, ok := aggMap[c.SkillKey]
+		if !ok {
+			aggMap[c.SkillKey] = &agg{contrib: c, expSum: c.Exp}
+			continue
+		}
+		a.expSum += c.Exp
+		// 选择时间最新的元信息用于覆盖
+		if c.Timestamp >= a.contrib.Timestamp {
+			a.contrib = c
+		}
+	}
+
+	skillsToUpdate := make([]*model.SkillNode, 0, len(aggMap))
+	for key, a := range aggMap {
+		c := a.contrib
 
 		// 父技能优先使用已存在的 Key，避免 Key 漂移
-		parentKey := ""
-		if aiSkill.Parent != "" {
-			if existingKey, ok := nameToKeyMap[strings.ToLower(aiSkill.Parent)]; ok {
+		parentKey := c.ParentKey
+		if parentKey == "" && c.ParentKey == "" && c.Category != "" {
+			// no-op，仅保持结构
+		}
+		if parentKey != "" {
+			if existingKey, ok := nameToKeyMap[strings.ToLower(parentKey)]; ok {
 				parentKey = existingKey
 			} else {
-				parentKey = normalizeKey(aiSkill.Parent)
+				parentKey = normalizeKey(parentKey)
 			}
 		}
 
-		// 获取或创建技能
-		skill, err := s.skillRepo.GetByKey(ctx, skillKey)
+		skill, err := s.skillRepo.GetByKey(ctx, key)
 		if err != nil {
-			slog.Warn("获取技能失败", "skill", skillKey, "error", err)
+			slog.Warn("获取技能失败", "skill", key, "error", err)
 			continue
 		}
 
 		if skill == nil {
-			// 创建新技能（使用 AI 决定的分类和父技能）
-			skill = model.NewSkillNode(skillKey, aiSkill.Name, aiSkill.Category)
+			skill = model.NewSkillNode(key, c.SkillName, c.Category)
 			skill.ParentKey = parentKey
 		} else {
-			// 更新分类和父技能（AI 优先）
-			if aiSkill.Category != "" && aiSkill.Category != "other" {
-				skill.Category = aiSkill.Category
+			if c.SkillName != "" {
+				skill.Name = c.SkillName
+			}
+			if c.Category != "" && c.Category != "other" {
+				skill.Category = c.Category
 			}
 			if parentKey != "" {
 				skill.ParentKey = parentKey
 			}
 		}
 
-		// 添加经验
-		skill.AddExp(baseExp / float64(len(skills))) // 均分经验
-
+		if a.expSum > 0 {
+			skill.AddExp(a.expSum)
+		}
 		skillsToUpdate = append(skillsToUpdate, skill)
 	}
 
-	// 批量更新
-	if err := s.skillRepo.UpsertBatch(ctx, skillsToUpdate); err != nil {
-		return err
+	return s.skillRepo.UpsertBatch(ctx, skillsToUpdate)
+}
+
+// UpdateSkillsFromDiffsWithCategory 根据 AI 返回的技能信息更新技能（兼容旧调用，内部转贡献）
+func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, diffs []model.Diff, skills []ai.SkillWithCategory) error {
+	if len(skills) == 0 {
+		return nil
 	}
 
-	return nil
+	totalLines := 0
+	var latestTs int64
+	var latestInsight string
+	var latestFile string
+	var latestDiffID int64
+	for _, diff := range diffs {
+		totalLines += diff.LinesAdded + diff.LinesDeleted
+		if diff.Timestamp > latestTs {
+			latestTs = diff.Timestamp
+			latestInsight = diff.AIInsight
+			latestFile = diff.FileName
+			latestDiffID = diff.ID
+		}
+	}
+	baseExp := 1.0 + float64(totalLines)/10.0
+	perSkillExp := baseExp / float64(len(skills))
+
+	contribs := make([]SkillContribution, 0, len(skills))
+	for _, aiSkill := range skills {
+		skillKey := normalizeKey(aiSkill.Name)
+		parentKey := ""
+		if aiSkill.Parent != "" {
+			parentKey = normalizeKey(aiSkill.Parent)
+		}
+		ctxText := latestInsight
+		if ctxText == "" {
+			ctxText = latestFile
+		}
+		contribs = append(contribs, SkillContribution{
+			Source:              "diff",
+			SkillKey:            skillKey,
+			SkillName:           aiSkill.Name,
+			Category:            aiSkill.Category,
+			ParentKey:           parentKey,
+			Exp:                 perSkillExp,
+			EvidenceID:          latestDiffID,
+			ContributionContext: ctxText,
+			Timestamp:           latestTs,
+		})
+	}
+
+	return s.ApplyContributions(ctx, contribs)
 }
 
 // normalizeKey 统一 Key 格式（稳定 slug 策略）
@@ -225,6 +288,81 @@ func (s *SkillService) GetSkillTree(ctx context.Context) (*SkillTree, error) {
 	}
 
 	return tree, nil
+}
+
+// SkillEvidence 技能证据（Phase B drill-down 最小返回）
+type SkillEvidence struct {
+	Source              string `json:"source"`
+	EvidenceID          int64  `json:"evidence_id"`
+	Timestamp           int64  `json:"timestamp"`
+	ContributionContext string `json:"contribution_context"`
+	FileName            string `json:"file_name,omitempty"`
+	Insight             string `json:"insight,omitempty"`
+}
+
+// GetSkillEvidence 获取某技能最近的贡献证据（当前仅 Diff）
+func (s *SkillService) GetSkillEvidence(ctx context.Context, skillKey string, limit int) ([]SkillEvidence, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+	skill, err := s.skillRepo.GetByKey(ctx, skillKey)
+	if err != nil || skill == nil {
+		return nil, err
+	}
+
+	// 取最近已分析 diffs 并在内存中过滤
+	diffs, err := s.diffRepo.GetRecentAnalyzed(ctx, 200)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]SkillEvidence, 0, limit)
+	seen := make(map[int64]struct{})
+	for _, d := range diffs {
+		if len(result) >= limit {
+			break
+		}
+		if _, ok := seen[d.ID]; ok {
+			continue
+		}
+		match := false
+		for _, name := range d.SkillsDetected {
+			if normalizeKey(name) == skillKey || strings.EqualFold(name, skill.Name) {
+				match = true
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		ctxText := strings.TrimSpace(d.AIInsight)
+		if ctxText == "" {
+			ctxText = d.FileName
+		}
+		ctxText = truncateRunes(ctxText, 120)
+		result = append(result, SkillEvidence{
+			Source:              "diff",
+			EvidenceID:          d.ID,
+			Timestamp:           d.Timestamp,
+			ContributionContext: ctxText,
+			FileName:            d.FileName,
+			Insight:             d.AIInsight,
+		})
+		seen[d.ID] = struct{}{}
+	}
+
+	return result, nil
+}
+
+func truncateRunes(s string, max int) string {
+	if max <= 0 || s == "" {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max]) + "..."
 }
 
 // SkillTree 技能树视图

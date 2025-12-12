@@ -51,6 +51,18 @@ func (r *DiffRepository) GetByDate(ctx context.Context, date string) ([]model.Di
 	return diffs, nil
 }
 
+// GetByTimeRange 按时间范围查询 Diff
+func (r *DiffRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
+	var diffs []model.Diff
+	if err := r.db.WithContext(ctx).
+		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
+		Order("timestamp ASC").
+		Find(&diffs).Error; err != nil {
+		return nil, fmt.Errorf("查询 Diff 失败: %w", err)
+	}
+	return diffs, nil
+}
+
 // GetByFilePath 按文件路径查询
 func (r *DiffRepository) GetByFilePath(ctx context.Context, filePath string, limit int) ([]model.Diff, error) {
 	var diffs []model.Diff
@@ -152,6 +164,22 @@ func (r *DiffRepository) GetAllAnalyzed(ctx context.Context) ([]model.Diff, erro
 		Where("ai_insight != '' AND ai_insight IS NOT NULL").
 		Find(&diffs).Error; err != nil {
 		return nil, fmt.Errorf("查询已分析 Diff 失败: %w", err)
+	}
+	return diffs, nil
+}
+
+// GetRecentAnalyzed 获取最近已分析的 Diff（按时间倒序）
+func (r *DiffRepository) GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	var diffs []model.Diff
+	if err := r.db.WithContext(ctx).
+		Where("ai_insight != '' AND ai_insight IS NOT NULL").
+		Order("timestamp DESC").
+		Limit(limit).
+		Find(&diffs).Error; err != nil {
+		return nil, fmt.Errorf("查询最近 Diff 失败: %w", err)
 	}
 	return diffs, nil
 }

@@ -324,12 +324,36 @@ func truncateString(s string, maxLen int) string {
 // analyzeCmd 分析命令
 func analyzeCmd() *cobra.Command {
 	var limit int
+	var sessions bool
+	var date string
 
 	cmd := &cobra.Command{
 		Use:   "analyze",
 		Short: "分析待处理的代码变更",
 			Run: func(cmd *cobra.Command, args []string) {
 				ctx := context.Background()
+
+				if sessions {
+					if core.Services.Sessions == nil {
+						fmt.Println("❌ SessionService 未初始化")
+						os.Exit(1)
+					}
+					var created int
+					var err error
+					if date != "" {
+						fmt.Printf("🧩 正在切分 %s 的会话...\n", date)
+						created, err = core.Services.Sessions.BuildSessionsForDate(ctx, date)
+					} else {
+						fmt.Println("🧩 正在增量切分会话...")
+						created, err = core.Services.Sessions.BuildSessionsIncremental(ctx)
+					}
+					if err != nil {
+						fmt.Printf("❌ 会话切分失败: %v\n", err)
+						os.Exit(1)
+					}
+					fmt.Printf("✅ 已创建 %d 个会话\n", created)
+					return
+				}
 
 				if err := core.RequireAIConfigured(); err != nil {
 					fmt.Println("⚠️  DeepSeek API Key 未配置")
@@ -349,6 +373,8 @@ func analyzeCmd() *cobra.Command {
 	}
 
 	cmd.Flags().IntVarP(&limit, "limit", "n", 10, "最大分析数量")
+	cmd.Flags().BoolVar(&sessions, "sessions", false, "切分会话（不调用 AI）")
+	cmd.Flags().StringVar(&date, "date", "", "指定日期切分会话 (YYYY-MM-DD)")
 
 	return cmd
 }

@@ -12,6 +12,7 @@ collector:
   buffer_size: 2048 # 事件缓冲区大小
   flush_batch_size: 100 # 批量写入阈值
   flush_interval_sec: 5 # 强制刷新间隔 (秒)
+  session_idle_min: 6 # idle >= X 分钟则切分新会话
 
 # Diff 采集配置
 diff:

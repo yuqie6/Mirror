@@ -15,18 +15,35 @@ type DiffRepository interface {
 	GetPendingAIAnalysis(ctx context.Context, limit int) ([]model.Diff, error)
 	UpdateAIInsight(ctx context.Context, id int64, insight string, skills []string) error
 	GetByDate(ctx context.Context, date string) ([]model.Diff, error)
+	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error)
 	GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error)
 	CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error)
+	GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error)
 }
 
 type EventRepository interface {
 	BatchInsert(ctx context.Context, events []model.Event) error
+	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Event, error)
+	GetByDate(ctx context.Context, date string) ([]model.Event, error)
 	GetAppStats(ctx context.Context, startTime, endTime int64) ([]repository.AppStat, error)
 	Count(ctx context.Context) (int64, error)
 }
 
 type BrowserEventRepository interface {
 	BatchInsert(ctx context.Context, events []*model.BrowserEvent) error
+	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.BrowserEvent, error)
+}
+
+type SessionRepository interface {
+	Create(ctx context.Context, session *model.Session) error
+	UpdateSummaryOnly(ctx context.Context, id int64, summary string, metadata model.JSONMap) error
+	GetByDate(ctx context.Context, date string) ([]model.Session, error)
+	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Session, error)
+	GetLastSession(ctx context.Context) (*model.Session, error)
+}
+
+type SessionDiffRepository interface {
+	BatchInsert(ctx context.Context, sessionID int64, diffIDs []int64) error
 }
 
 type SummaryRepository interface {

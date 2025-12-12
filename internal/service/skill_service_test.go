@@ -68,10 +68,16 @@ func (f fakeDiffRepo) UpdateAIInsight(ctx context.Context, id int64, insight str
 	return nil
 }
 func (f fakeDiffRepo) GetByDate(ctx context.Context, date string) ([]model.Diff, error)                 { return nil, nil }
+func (f fakeDiffRepo) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
+	return nil, nil
+}
 func (f fakeDiffRepo) GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error) {
 	return nil, nil
 }
 func (f fakeDiffRepo) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error)    { return 0, nil }
+func (f fakeDiffRepo) GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error) {
+	return nil, nil
+}
 
 func TestNormalizeKey(t *testing.T) {
 	cases := map[string]string{

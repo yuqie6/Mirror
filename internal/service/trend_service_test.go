@@ -21,11 +21,17 @@ func (f fakeDiffRepoForTrend) UpdateAIInsight(ctx context.Context, id int64, ins
 	return nil
 }
 func (f fakeDiffRepoForTrend) GetByDate(ctx context.Context, date string) ([]model.Diff, error) { return nil, nil }
+func (f fakeDiffRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
+	return nil, nil
+}
 func (f fakeDiffRepoForTrend) GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error) {
 	return f.langStats, nil
 }
 func (f fakeDiffRepoForTrend) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error) {
 	return 0, nil
+}
+func (f fakeDiffRepoForTrend) GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error) {
+	return nil, nil
 }
 
 type fakeSkillRepoForTrend struct {
@@ -52,6 +58,12 @@ type fakeEventRepoForTrend struct {
 }
 
 func (f fakeEventRepoForTrend) BatchInsert(ctx context.Context, events []model.Event) error { return nil }
+func (f fakeEventRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Event, error) {
+	return nil, nil
+}
+func (f fakeEventRepoForTrend) GetByDate(ctx context.Context, date string) ([]model.Event, error) {
+	return nil, nil
+}
 func (f fakeEventRepoForTrend) GetAppStats(ctx context.Context, startTime, endTime int64) ([]repository.AppStat, error) {
 	return f.stats, nil
 }
@@ -124,4 +136,3 @@ func TestDetectBottlenecks(t *testing.T) {
 		t.Fatalf("empty skills should return default message")
 	}
 }
-

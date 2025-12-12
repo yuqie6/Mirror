@@ -1,0 +1,297 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"sort"
+	"time"
+
+	"github.com/yuqie6/mirror/internal/model"
+)
+
+// SessionService 基于事件流切分会话（工程规则优先）
+type SessionService struct {
+	eventRepo   EventRepository
+	diffRepo    DiffRepository
+	browserRepo BrowserEventRepository
+	sessionRepo SessionRepository
+	sessionDiffRepo SessionDiffRepository
+	cfg         *SessionServiceConfig
+}
+
+type SessionServiceConfig struct {
+	IdleGapMinutes int
+}
+
+func NewSessionService(
+	eventRepo EventRepository,
+	diffRepo DiffRepository,
+	browserRepo BrowserEventRepository,
+	sessionRepo SessionRepository,
+	sessionDiffRepo SessionDiffRepository,
+	cfg *SessionServiceConfig,
+) *SessionService {
+	if cfg == nil {
+		cfg = &SessionServiceConfig{IdleGapMinutes: 6}
+	}
+	if cfg.IdleGapMinutes <= 0 {
+		cfg.IdleGapMinutes = 6
+	}
+	return &SessionService{
+		eventRepo:   eventRepo,
+		diffRepo:    diffRepo,
+		browserRepo: browserRepo,
+		sessionRepo: sessionRepo,
+		sessionDiffRepo: sessionDiffRepo,
+		cfg:         cfg,
+	}
+}
+
+// BuildSessionsIncremental 从最近一次会话结束处增量切分
+func (s *SessionService) BuildSessionsIncremental(ctx context.Context) (int, error) {
+	last, err := s.sessionRepo.GetLastSession(ctx)
+	if err != nil {
+		return 0, err
+	}
+	start := int64(0)
+	if last != nil && last.EndTime > 0 {
+		start = last.EndTime
+	}
+	end := time.Now().UnixMilli()
+	return s.BuildSessionsForRange(ctx, start, end)
+}
+
+// BuildSessionsForDate 按日期全量切分
+func (s *SessionService) BuildSessionsForDate(ctx context.Context, date string) (int, error) {
+	loc := time.Local
+	t, err := time.ParseInLocation("2006-01-02", date, loc)
+	if err != nil {
+		return 0, fmt.Errorf("解析日期失败: %w", err)
+	}
+	start := t.UnixMilli()
+	end := t.Add(24*time.Hour).UnixMilli() - 1
+	return s.BuildSessionsForRange(ctx, start, end)
+}
+
+// BuildSessionsForRange 按时间范围切分并写入 sessions 表
+func (s *SessionService) BuildSessionsForRange(ctx context.Context, startTime, endTime int64) (int, error) {
+	if startTime >= endTime {
+		return 0, nil
+	}
+
+	events, err := s.eventRepo.GetByTimeRange(ctx, startTime, endTime)
+	if err != nil {
+		return 0, err
+	}
+	diffs, err := s.diffRepo.GetByTimeRange(ctx, startTime, endTime)
+	if err != nil {
+		return 0, err
+	}
+	browserEvents, err := s.browserRepo.GetByTimeRange(ctx, startTime, endTime)
+	if err != nil {
+		return 0, err
+	}
+
+	sessions := s.splitSessions(events, diffs, startTime, endTime)
+	if len(sessions) == 0 {
+		return 0, nil
+	}
+
+	// 绑定浏览器事件（不参与切分）
+	s.attachBrowserEvents(sessions, browserEvents)
+
+	created := 0
+	for _, sess := range sessions {
+		if err := s.sessionRepo.Create(ctx, sess); err != nil {
+			slog.Warn("创建会话失败", "error", err)
+			continue
+		}
+		if s.sessionDiffRepo != nil && sess.Metadata != nil {
+			if raw, ok := sess.Metadata["diff_ids"].([]int64); ok && len(raw) > 0 {
+				_ = s.sessionDiffRepo.BatchInsert(ctx, sess.ID, raw)
+			}
+		}
+		created++
+	}
+	if created > 0 {
+		slog.Info("会话切分完成", "created", created, "start", startTime, "end", endTime)
+	}
+	return created, nil
+}
+
+func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff, startTime, endTime int64) []*model.Session {
+	idleMs := int64(s.cfg.IdleGapMinutes) * 60 * 1000
+
+	// 确保按时间排序
+	sort.Slice(events, func(i, j int) bool { return events[i].Timestamp < events[j].Timestamp })
+	sort.Slice(diffs, func(i, j int) bool { return diffs[i].Timestamp < diffs[j].Timestamp })
+
+	var sessions []*model.Session
+
+	var currentStart int64
+	var lastActivityEnd int64
+	appDurations := map[string]int{}
+	diffIDs := make([]int64, 0, 8)
+
+	openSession := func(start int64) {
+		currentStart = start
+		lastActivityEnd = start
+		appDurations = map[string]int{}
+		diffIDs = diffIDs[:0]
+	}
+
+	closeSession := func(end int64) {
+		if currentStart == 0 || end <= currentStart {
+			return
+		}
+		primaryApp := ""
+		maxDur := 0
+		for app, dur := range appDurations {
+			if dur > maxDur {
+				maxDur = dur
+				primaryApp = app
+			}
+		}
+
+		meta := make(model.JSONMap)
+		if len(diffIDs) > 0 {
+			meta["diff_ids"] = diffIDs
+		}
+
+		sessions = append(sessions, &model.Session{
+			Date:           formatDate(currentStart),
+			StartTime:      currentStart,
+			EndTime:        end,
+			PrimaryApp:     primaryApp,
+			SessionVersion: 1,
+			Metadata:       meta,
+		})
+		currentStart = 0
+	}
+
+	// 若无 window events，退化为按 diff 切分
+	if len(events) == 0 {
+		if len(diffs) == 0 {
+			return nil
+		}
+		openSession(diffs[0].Timestamp)
+		for i, d := range diffs {
+			if i > 0 && d.Timestamp-lastActivityEnd >= idleMs {
+				closeSession(lastActivityEnd)
+				openSession(d.Timestamp)
+			}
+			diffIDs = append(diffIDs, d.ID)
+			lastActivityEnd = d.Timestamp
+		}
+		closeSession(lastActivityEnd)
+		return sessions
+	}
+
+	openSession(events[0].Timestamp)
+	diffIdx := 0
+
+	for _, ev := range events {
+		evStart := ev.Timestamp
+		evEnd := ev.Timestamp + int64(ev.Duration)*1000
+
+		// 先处理落在当前窗口开始前的 diffs（可能在 idle gap 内）
+		for diffIdx < len(diffs) && diffs[diffIdx].Timestamp < evStart {
+			dt := diffs[diffIdx].Timestamp
+			if dt-lastActivityEnd >= idleMs {
+				closeSession(lastActivityEnd)
+				openSession(dt)
+			} else if currentStart == 0 {
+				openSession(dt)
+			}
+			diffIDs = append(diffIDs, diffs[diffIdx].ID)
+			if dt > lastActivityEnd {
+				lastActivityEnd = dt
+			}
+			diffIdx++
+		}
+
+		// idle hard boundary（不产生 idle session）
+		if evStart-lastActivityEnd >= idleMs {
+			closeSession(lastActivityEnd)
+			openSession(evStart)
+		} else if currentStart == 0 {
+			openSession(evStart)
+		}
+
+		// 累计 app 时长
+		if ev.AppName != "" && ev.Duration > 0 {
+			appDurations[ev.AppName] += ev.Duration
+		}
+
+		if evEnd > lastActivityEnd {
+			lastActivityEnd = evEnd
+		}
+	}
+
+	// 处理剩余 diffs（在最后窗口之后）
+	for diffIdx < len(diffs) {
+		dt := diffs[diffIdx].Timestamp
+		if dt-lastActivityEnd >= idleMs {
+			closeSession(lastActivityEnd)
+			openSession(dt)
+		} else if currentStart == 0 {
+			openSession(dt)
+		}
+		diffIDs = append(diffIDs, diffs[diffIdx].ID)
+		if dt > lastActivityEnd {
+			lastActivityEnd = dt
+		}
+		diffIdx++
+	}
+
+	closeSession(lastActivityEnd)
+
+	// 过滤空洞会话（无窗口且无 diff）
+	filtered := sessions[:0]
+	for _, sess := range sessions {
+		if sess == nil {
+			continue
+		}
+		hasDiffs := sess.Metadata != nil && sess.Metadata["diff_ids"] != nil
+		if sess.PrimaryApp == "" && !hasDiffs {
+			continue
+		}
+		filtered = append(filtered, sess)
+	}
+	return filtered
+}
+
+func (s *SessionService) attachBrowserEvents(sessions []*model.Session, events []model.BrowserEvent) {
+	if len(sessions) == 0 || len(events) == 0 {
+		return
+	}
+	sort.Slice(events, func(i, j int) bool { return events[i].Timestamp < events[j].Timestamp })
+
+	sessIdx := 0
+	for _, be := range events {
+		for sessIdx < len(sessions) && be.Timestamp > sessions[sessIdx].EndTime {
+			sessIdx++
+		}
+		if sessIdx >= len(sessions) {
+			break
+		}
+		sess := sessions[sessIdx]
+		if be.Timestamp < sess.StartTime || be.Timestamp > sess.EndTime {
+			continue
+		}
+		if sess.Metadata == nil {
+			sess.Metadata = make(model.JSONMap)
+		}
+		raw, ok := sess.Metadata["browser_event_ids"].([]int64)
+		if !ok {
+			raw = []int64{}
+		}
+		raw = append(raw, be.ID)
+		sess.Metadata["browser_event_ids"] = raw
+	}
+}
+
+func formatDate(ts int64) string {
+	return time.UnixMilli(ts).Format("2006-01-02")
+}

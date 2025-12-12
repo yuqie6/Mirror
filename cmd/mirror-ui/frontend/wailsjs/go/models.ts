@@ -56,6 +56,26 @@ export namespace main {
 	        this.percentage = source["percentage"];
 	    }
 	}
+	export class SkillEvidenceDTO {
+	    source: string;
+	    evidence_id: number;
+	    timestamp: number;
+	    contribution_context: string;
+	    file_name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SkillEvidenceDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source = source["source"];
+	        this.evidence_id = source["evidence_id"];
+	        this.timestamp = source["timestamp"];
+	        this.contribution_context = source["contribution_context"];
+	        this.file_name = source["file_name"];
+	    }
+	}
 	export class SkillNodeDTO {
 	    key: string;
 	    name: string;

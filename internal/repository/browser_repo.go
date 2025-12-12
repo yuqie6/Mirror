@@ -64,6 +64,18 @@ func (r *BrowserEventRepository) GetByDate(ctx context.Context, date string) ([]
 	return events, nil
 }
 
+// GetByTimeRange 按时间范围查询浏览器事件
+func (r *BrowserEventRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.BrowserEvent, error) {
+	var events []model.BrowserEvent
+	if err := r.db.WithContext(ctx).
+		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
+		Order("timestamp ASC").
+		Find(&events).Error; err != nil {
+		return nil, fmt.Errorf("查询浏览器事件失败: %w", err)
+	}
+	return events, nil
+}
+
 // GetDomainStats 获取域名统计
 func (r *BrowserEventRepository) GetDomainStats(ctx context.Context, startTime, endTime int64, limit int) ([]DomainStat, error) {
 	var stats []DomainStat
