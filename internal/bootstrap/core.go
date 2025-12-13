@@ -2,6 +2,9 @@ package bootstrap
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/yuqie6/mirror/internal/ai"
 	"github.com/yuqie6/mirror/internal/pkg/config"
@@ -11,8 +14,9 @@ import (
 
 // Core 持有跨二进制共享的核心依赖
 type Core struct {
-	Cfg *config.Config
-	DB  *repository.Database
+	Cfg       *config.Config
+	DB        *repository.Database
+	LogCloser io.Closer
 
 	Repos struct {
 		Diff          *repository.DiffRepository
@@ -44,14 +48,21 @@ func NewCore(cfgPath string) (*Core, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.SetupLogger(cfg.App.LogLevel)
+	logCloser, _ := config.SetupLogger(config.LoggerOptions{
+		Level:     cfg.App.LogLevel,
+		Path:      cfg.App.LogPath,
+		Component: filepath.Base(os.Args[0]),
+	})
 
 	db, err := repository.NewDatabase(cfg.Storage.DBPath)
 	if err != nil {
+		if logCloser != nil {
+			_ = logCloser.Close()
+		}
 		return nil, err
 	}
 
-	c := &Core{Cfg: cfg, DB: db}
+	c := &Core{Cfg: cfg, DB: db, LogCloser: logCloser}
 
 	// Repos
 	c.Repos.Diff = repository.NewDiffRepository(db.DB)
@@ -98,10 +109,17 @@ func NewCore(cfgPath string) (*Core, error) {
 }
 
 func (c *Core) Close() error {
-	if c == nil || c.DB == nil {
+	if c == nil {
 		return nil
 	}
-	return c.DB.Close()
+	var dbErr error
+	if c.DB != nil {
+		dbErr = c.DB.Close()
+	}
+	if c.LogCloser != nil {
+		_ = c.LogCloser.Close()
+	}
+	return dbErr
 }
 
 func (c *Core) RequireAIConfigured() error {

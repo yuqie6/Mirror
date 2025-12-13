@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -27,6 +28,7 @@ type AppConfig struct {
 	Name     string `mapstructure:"name"`
 	Version  string `mapstructure:"version"`
 	LogLevel string `mapstructure:"log_level"`
+	LogPath  string `mapstructure:"log_path"`
 }
 
 // CollectorConfig 采集器配置
@@ -36,7 +38,7 @@ type CollectorConfig struct {
 	BufferSize       int      `mapstructure:"buffer_size"`
 	FlushBatchSize   int      `mapstructure:"flush_batch_size"`
 	FlushIntervalSec int      `mapstructure:"flush_interval_sec"`
-	CodeEditors      []string `mapstructure:"code_editors"` // 代码编辑器进程名列表
+	CodeEditors      []string `mapstructure:"code_editors"`     // 代码编辑器进程名列表
 	SessionIdleMin   int      `mapstructure:"session_idle_min"` // 会话 idle 切分阈值（分钟）
 }
 
@@ -134,6 +136,7 @@ func Load(configPath string) (*Config, error) {
 
 	// 处理相对路径
 	cfg.Storage.DBPath = resolvePath(cfg.Storage.DBPath)
+	cfg.App.LogPath = resolvePath(cfg.App.LogPath)
 
 	return &cfg, nil
 }
@@ -144,6 +147,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.name", "mirror-agent")
 	v.SetDefault("app.version", "0.1.0")
 	v.SetDefault("app.log_level", "info")
+	defaultLogPath := "./logs/mirror.log"
+	if userConfigDir, err := os.UserConfigDir(); err == nil && userConfigDir != "" {
+		defaultLogPath = filepath.Join(userConfigDir, "Mirror", "logs", "mirror.log")
+	}
+	v.SetDefault("app.log_path", defaultLogPath)
 
 	// Collector
 	v.SetDefault("collector.poll_interval_ms", 500)
@@ -212,10 +220,17 @@ func resolvePath(path string) string {
 	return filepath.Join(exeDir, path)
 }
 
-// SetupLogger 根据配置设置日志级别
-func SetupLogger(level string) {
+type LoggerOptions struct {
+	Level     string
+	Path      string
+	Component string
+}
+
+// SetupLogger 初始化默认日志（stdout + 可选落盘）
+// 返回的 closer 由调用方在进程退出时关闭（通常随 Core.Close 一起）。
+func SetupLogger(opts LoggerOptions) (io.Closer, error) {
 	var logLevel slog.Level
-	switch strings.ToLower(level) {
+	switch strings.ToLower(opts.Level) {
 	case "debug":
 		logLevel = slog.LevelDebug
 	case "info":
@@ -228,8 +243,34 @@ func SetupLogger(level string) {
 		logLevel = slog.LevelInfo
 	}
 
-	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	var file *os.File
+	var setupErr error
+	writer := io.Writer(os.Stdout)
+	if strings.TrimSpace(opts.Path) != "" {
+		if err := os.MkdirAll(filepath.Dir(opts.Path), 0o755); err != nil {
+			setupErr = fmt.Errorf("创建日志目录失败: %w", err)
+		} else if f, err := os.OpenFile(opts.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err != nil {
+			setupErr = fmt.Errorf("打开日志文件失败: %w", err)
+		} else {
+			file = f
+			writer = io.MultiWriter(os.Stdout, file)
+		}
+	}
+
+	handler := slog.NewTextHandler(writer, &slog.HandlerOptions{
 		Level: logLevel,
+		// debug 下默认带源码位置，方便定位问题；非 debug 避免噪音。
+		AddSource: logLevel == slog.LevelDebug,
 	})
-	slog.SetDefault(slog.New(handler))
+	logger := slog.New(handler)
+	if strings.TrimSpace(opts.Component) != "" {
+		logger = logger.With("component", opts.Component, "pid", os.Getpid())
+	}
+	slog.SetDefault(logger)
+
+	if setupErr != nil {
+		// 避免在 logger 尚未稳定时递归使用 slog；stderr 提示即可，日志仍会输出到 stdout。
+		_, _ = fmt.Fprintf(os.Stderr, "logger setup warning: %v\n", setupErr)
+	}
+	return file, setupErr
 }
