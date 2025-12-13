@@ -15,8 +15,8 @@ type AgentRuntime struct {
 	*Core
 
 	Collectors struct {
-		Window handler.Collector
-		Diff   *handler.DiffCollector
+		Window  handler.Collector
+		Diff    *handler.DiffCollector
 		Browser *handler.BrowserCollector
 	}
 
@@ -41,6 +41,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 	rt.Collectors.Window = handler.NewWindowCollector(&handler.CollectorConfig{
 		PollIntervalMs: core.Cfg.Collector.PollIntervalMs,
 		MinDurationSec: core.Cfg.Collector.MinDurationSec,
+		MaxDurationSec: 60,
 		BufferSize:     core.Cfg.Collector.BufferSize,
 	})
 	rt.Services.Tracker = service.NewTrackerService(rt.Collectors.Window, core.Repos.Event, &service.TrackerConfig{

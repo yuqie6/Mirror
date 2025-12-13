@@ -30,6 +30,7 @@ export interface AppStat {
     app_name: string;
     total_duration: number;
     event_count: number;
+    is_code_editor: boolean;
 }
 
 export interface SkillNode {
@@ -58,11 +59,6 @@ export interface SummaryViewProps {
     onSelectDate?: (date: string) => void;
     onReloadIndex?: () => void;
 }
-
-const isCodeEditor = (appName: string): boolean => {
-    const codeEditors = ['code', 'cursor', 'goland', 'idea', 'pycharm', 'webstorm', 'vim', 'nvim', 'sublime', 'atom', 'vscode', 'android studio'];
-    return codeEditors.some(editor => appName.toLowerCase().includes(editor));
-};
 
 const sessionCategoryLabel = (cat: string): string => {
     switch ((cat || '').toLowerCase()) {
@@ -345,7 +341,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         let codingTime = 0, totalTime = 0;
         for (const stat of appStats) {
             totalTime += stat.total_duration;
-            if (isCodeEditor(stat.app_name)) codingTime += stat.total_duration;
+            if (stat.is_code_editor) codingTime += stat.total_duration;
         }
         return { focusPercent: totalTime > 0 ? Math.round((codingTime / totalTime) * 100) : 0, codingTime, totalTime };
     }, [appStats]);

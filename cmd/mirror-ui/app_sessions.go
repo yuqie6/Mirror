@@ -122,12 +122,16 @@ func (a *App) GetSessionsByDate(date string) ([]SessionDTO, error) {
 	for _, s := range sessions {
 		diffIDs := toInt64Slice(s.Metadata, "diff_ids")
 		browserIDs := toInt64Slice(s.Metadata, "browser_event_ids")
+		timeRange := s.TimeRange
+		if strings.TrimSpace(timeRange) == "" {
+			timeRange = formatTimeRangeMs(s.StartTime, s.EndTime)
+		}
 		dto := SessionDTO{
 			ID:             s.ID,
 			Date:           s.Date,
 			StartTime:      s.StartTime,
 			EndTime:        s.EndTime,
-			TimeRange:      s.TimeRange,
+			TimeRange:      timeRange,
 			PrimaryApp:     s.PrimaryApp,
 			Category:       s.Category,
 			Summary:        s.Summary,
@@ -219,7 +223,7 @@ func (a *App) GetSessionDetail(id int64) (*SessionDetailDTO, error) {
 			Date:           sess.Date,
 			StartTime:      sess.StartTime,
 			EndTime:        sess.EndTime,
-			TimeRange:      sess.TimeRange,
+			TimeRange:      formatTimeRangeForSession(sess),
 			PrimaryApp:     sess.PrimaryApp,
 			Category:       sess.Category,
 			Summary:        sess.Summary,
@@ -234,6 +238,17 @@ func (a *App) GetSessionDetail(id int64) (*SessionDetailDTO, error) {
 		Browser:  browserDTOs,
 	}
 	return dto, nil
+}
+
+func formatTimeRangeForSession(sess *model.Session) string {
+	if sess == nil {
+		return ""
+	}
+	tr := strings.TrimSpace(sess.TimeRange)
+	if tr != "" {
+		return tr
+	}
+	return formatTimeRangeMs(sess.StartTime, sess.EndTime)
 }
 
 // GetSkillSessions 获取技能相关会话（用于 skill→session 追溯）
@@ -254,12 +269,16 @@ func (a *App) GetSkillSessions(skillKey string) ([]SessionDTO, error) {
 	for _, s := range sessions {
 		diffIDs := toInt64Slice(s.Metadata, "diff_ids")
 		browserIDs := toInt64Slice(s.Metadata, "browser_event_ids")
+		timeRange := s.TimeRange
+		if strings.TrimSpace(timeRange) == "" {
+			timeRange = formatTimeRangeMs(s.StartTime, s.EndTime)
+		}
 		result = append(result, SessionDTO{
 			ID:             s.ID,
 			Date:           s.Date,
 			StartTime:      s.StartTime,
 			EndTime:        s.EndTime,
-			TimeRange:      s.TimeRange,
+			TimeRange:      timeRange,
 			PrimaryApp:     s.PrimaryApp,
 			Category:       s.Category,
 			Summary:        s.Summary,

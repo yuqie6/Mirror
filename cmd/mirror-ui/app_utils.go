@@ -2,9 +2,19 @@ package main
 
 import (
 	"strings"
+	"time"
 
 	"github.com/yuqie6/mirror/internal/model"
 )
+
+func formatTimeRangeMs(startMs, endMs int64) string {
+	if startMs <= 0 || endMs <= 0 || endMs <= startMs {
+		return ""
+	}
+	start := time.UnixMilli(startMs).Format("15:04")
+	end := time.UnixMilli(endMs).Format("15:04")
+	return start + "-" + end
+}
 
 func toInt64Slice(meta model.JSONMap, key string) []int64 {
 	if meta == nil {

@@ -25,6 +25,7 @@ type Collector interface {
 type WindowCollector struct {
 	pollInterval time.Duration // 轮询间隔
 	minDuration  time.Duration // 最小记录时长
+	maxDuration  time.Duration // 单段最大时长（用于持续窗口的心跳落库）
 	eventChan    chan *model.Event
 	stopChan     chan struct{}
 	lastWindow   *WindowInfo
@@ -39,6 +40,7 @@ type WindowCollector struct {
 type CollectorConfig struct {
 	PollIntervalMs int // 轮询间隔（毫秒）
 	MinDurationSec int // 最小记录时长（秒）
+	MaxDurationSec int // 单段最大时长（秒），超过则强制落库并重新计时（0=默认60）
 	BufferSize     int // 事件缓冲区大小
 }
 
@@ -47,6 +49,7 @@ func DefaultCollectorConfig() *CollectorConfig {
 	return &CollectorConfig{
 		PollIntervalMs: 500,
 		MinDurationSec: 3,
+		MaxDurationSec: 60,
 		BufferSize:     2048,
 	}
 }
@@ -56,10 +59,14 @@ func NewWindowCollector(cfg *CollectorConfig) *WindowCollector {
 	if cfg == nil {
 		cfg = DefaultCollectorConfig()
 	}
+	if cfg.MaxDurationSec <= 0 {
+		cfg.MaxDurationSec = 60
+	}
 
 	return &WindowCollector{
 		pollInterval: time.Duration(cfg.PollIntervalMs) * time.Millisecond,
 		minDuration:  time.Duration(cfg.MinDurationSec) * time.Second,
+		maxDuration:  time.Duration(cfg.MaxDurationSec) * time.Second,
 		eventChan:    make(chan *model.Event, cfg.BufferSize),
 		stopChan:     make(chan struct{}),
 	}
@@ -152,6 +159,12 @@ func (c *WindowCollector) poll() {
 
 	// 窗口未变化，继续累计时长
 	if current.IsSameWindow(c.lastWindow) {
+		// 心跳：持续停留同一窗口时也定期落库，避免会话切分看不到“正在进行”的长事件
+		duration := now.Sub(c.currentStart)
+		if c.maxDuration > 0 && duration >= c.maxDuration && duration >= c.minDuration {
+			c.emitEvent(c.lastWindow, duration)
+			c.currentStart = now
+		}
 		return
 	}
 

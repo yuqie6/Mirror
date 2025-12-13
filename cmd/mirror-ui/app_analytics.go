@@ -89,6 +89,7 @@ type AppStatsDTO struct {
 	AppName       string `json:"app_name"`
 	TotalDuration int    `json:"total_duration"`
 	EventCount    int64  `json:"event_count"`
+	IsCodeEditor  bool   `json:"is_code_editor"`
 }
 
 // GetAppStats 获取应用统计
@@ -115,6 +116,7 @@ func (a *App) GetAppStats() ([]AppStatsDTO, error) {
 			AppName:       s.AppName,
 			TotalDuration: s.TotalDuration,
 			EventCount:    s.EventCount,
+			IsCodeEditor:  service.IsCodeEditor(s.AppName),
 		}
 	}
 	return result, nil

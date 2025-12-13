@@ -4,6 +4,7 @@ export namespace main {
 	    app_name: string;
 	    total_duration: number;
 	    event_count: number;
+	    is_code_editor: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppStatsDTO(source);
@@ -14,6 +15,7 @@ export namespace main {
 	        this.app_name = source["app_name"];
 	        this.total_duration = source["total_duration"];
 	        this.event_count = source["event_count"];
+	        this.is_code_editor = source["is_code_editor"];
 	    }
 	}
 	export class DailySummaryDTO {
