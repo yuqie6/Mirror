@@ -1,7 +1,5 @@
 package service
 
-import "context"
-
 // SkillContribution 技能贡献统一表示
 // Diff/Browser/Session 只需要输出贡献列表，SkillService 不关心来源细节。
 type SkillContribution struct {
@@ -14,9 +12,4 @@ type SkillContribution struct {
 	EvidenceID          int64   `json:"evidence_id"`
 	ContributionContext string  `json:"contribution_context"`
 	Timestamp           int64   `json:"timestamp"`
-}
-
-// Contributor 贡献者接口
-type Contributor interface {
-	Contribute(ctx context.Context, startTime, endTime int64) ([]SkillContribution, error)
 }

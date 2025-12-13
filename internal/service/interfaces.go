@@ -39,7 +39,6 @@ type BrowserEventRepository interface {
 
 type SessionRepository interface {
 	Create(ctx context.Context, session *model.Session) (bool, error)
-	UpdateSummaryOnly(ctx context.Context, id int64, summary string, metadata model.JSONMap) error
 	UpdateSemantic(ctx context.Context, id int64, update model.SessionSemanticUpdate) error
 	GetByDate(ctx context.Context, date string) ([]model.Session, error)
 	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Session, error)

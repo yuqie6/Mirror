@@ -68,164 +68,6 @@ export namespace main {
 	        this.timestamp = source["timestamp"];
 	    }
 	}
-	export class SessionAppUsageDTO {
-	    app_name: string;
-	    total_duration: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionAppUsageDTO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.app_name = source["app_name"];
-	        this.total_duration = source["total_duration"];
-	    }
-	}
-	export class SessionBrowserEventDTO {
-	    id: number;
-	    timestamp: number;
-	    domain: string;
-	    title: string;
-	    url: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionBrowserEventDTO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.timestamp = source["timestamp"];
-	        this.domain = source["domain"];
-	        this.title = source["title"];
-	        this.url = source["url"];
-	    }
-	}
-	export class SessionBuildResultDTO {
-	    created: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionBuildResultDTO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.created = source["created"];
-	    }
-	}
-	export class SessionDiffDTO {
-	    id: number;
-	    file_name: string;
-	    language: string;
-	    insight: string;
-	    skills: string[];
-	    lines_added: number;
-	    lines_deleted: number;
-	    timestamp: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionDiffDTO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.file_name = source["file_name"];
-	        this.language = source["language"];
-	        this.insight = source["insight"];
-	        this.skills = source["skills"];
-	        this.lines_added = source["lines_added"];
-	        this.lines_deleted = source["lines_deleted"];
-	        this.timestamp = source["timestamp"];
-	    }
-	}
-	export class SessionDTO {
-	    id: number;
-	    date: string;
-	    start_time: number;
-	    end_time: number;
-	    time_range: string;
-	    primary_app: string;
-	    category: string;
-	    summary: string;
-	    skills_involved: string[];
-	    diff_count: number;
-	    browser_count: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionDTO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.date = source["date"];
-	        this.start_time = source["start_time"];
-	        this.end_time = source["end_time"];
-	        this.time_range = source["time_range"];
-	        this.primary_app = source["primary_app"];
-	        this.category = source["category"];
-	        this.summary = source["summary"];
-	        this.skills_involved = source["skills_involved"];
-	        this.diff_count = source["diff_count"];
-	        this.browser_count = source["browser_count"];
-	    }
-	}
-	export class SessionDetailDTO {
-	    id: number;
-	    date: string;
-	    start_time: number;
-	    end_time: number;
-	    time_range: string;
-	    primary_app: string;
-	    category: string;
-	    summary: string;
-	    skills_involved: string[];
-	    diff_count: number;
-	    browser_count: number;
-	    tags: string[];
-	    rag_refs: Array<{[key: string]: any}>;
-	    app_usage: SessionAppUsageDTO[];
-	    diffs: SessionDiffDTO[];
-	    browser: SessionBrowserEventDTO[];
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionDetailDTO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.date = source["date"];
-	        this.start_time = source["start_time"];
-	        this.end_time = source["end_time"];
-	        this.time_range = source["time_range"];
-	        this.primary_app = source["primary_app"];
-	        this.category = source["category"];
-	        this.summary = source["summary"];
-	        this.skills_involved = source["skills_involved"];
-	        this.diff_count = source["diff_count"];
-	        this.browser_count = source["browser_count"];
-	        this.tags = source["tags"];
-	        this.rag_refs = source["rag_refs"];
-	        this.app_usage = (source["app_usage"] || []).map((e: any) => SessionAppUsageDTO.createFrom(e));
-	        this.diffs = (source["diffs"] || []).map((e: any) => SessionDiffDTO.createFrom(e));
-	        this.browser = (source["browser"] || []).map((e: any) => SessionBrowserEventDTO.createFrom(e));
-	    }
-	}
-	export class SessionEnrichResultDTO {
-	    enriched: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new SessionEnrichResultDTO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.enriched = source["enriched"];
-	    }
-	}
 	export class LanguageTrendDTO {
 	    language: string;
 	    diff_count: number;
@@ -316,6 +158,183 @@ export namespace main {
 	        this.db_path = source["db_path"];
 	        this.diff_watch_paths = source["diff_watch_paths"];
 	        this.browser_history_path = source["browser_history_path"];
+	    }
+	}
+	export class SessionAppUsageDTO {
+	    app_name: string;
+	    total_duration: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionAppUsageDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.app_name = source["app_name"];
+	        this.total_duration = source["total_duration"];
+	    }
+	}
+	export class SessionBrowserEventDTO {
+	    id: number;
+	    timestamp: number;
+	    domain: string;
+	    title: string;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionBrowserEventDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.timestamp = source["timestamp"];
+	        this.domain = source["domain"];
+	        this.title = source["title"];
+	        this.url = source["url"];
+	    }
+	}
+	export class SessionBuildResultDTO {
+	    created: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionBuildResultDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.created = source["created"];
+	    }
+	}
+	export class SessionDTO {
+	    id: number;
+	    date: string;
+	    start_time: number;
+	    end_time: number;
+	    time_range: string;
+	    primary_app: string;
+	    category: string;
+	    summary: string;
+	    skills_involved: string[];
+	    diff_count: number;
+	    browser_count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.date = source["date"];
+	        this.start_time = source["start_time"];
+	        this.end_time = source["end_time"];
+	        this.time_range = source["time_range"];
+	        this.primary_app = source["primary_app"];
+	        this.category = source["category"];
+	        this.summary = source["summary"];
+	        this.skills_involved = source["skills_involved"];
+	        this.diff_count = source["diff_count"];
+	        this.browser_count = source["browser_count"];
+	    }
+	}
+	export class SessionDiffDTO {
+	    id: number;
+	    file_name: string;
+	    language: string;
+	    insight: string;
+	    skills: string[];
+	    lines_added: number;
+	    lines_deleted: number;
+	    timestamp: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionDiffDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.file_name = source["file_name"];
+	        this.language = source["language"];
+	        this.insight = source["insight"];
+	        this.skills = source["skills"];
+	        this.lines_added = source["lines_added"];
+	        this.lines_deleted = source["lines_deleted"];
+	        this.timestamp = source["timestamp"];
+	    }
+	}
+	export class SessionDetailDTO {
+	    id: number;
+	    date: string;
+	    start_time: number;
+	    end_time: number;
+	    time_range: string;
+	    primary_app: string;
+	    category: string;
+	    summary: string;
+	    skills_involved: string[];
+	    diff_count: number;
+	    browser_count: number;
+	    tags: string[];
+	    rag_refs: any[];
+	    app_usage: SessionAppUsageDTO[];
+	    diffs: SessionDiffDTO[];
+	    browser: SessionBrowserEventDTO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionDetailDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.date = source["date"];
+	        this.start_time = source["start_time"];
+	        this.end_time = source["end_time"];
+	        this.time_range = source["time_range"];
+	        this.primary_app = source["primary_app"];
+	        this.category = source["category"];
+	        this.summary = source["summary"];
+	        this.skills_involved = source["skills_involved"];
+	        this.diff_count = source["diff_count"];
+	        this.browser_count = source["browser_count"];
+	        this.tags = source["tags"];
+	        this.rag_refs = source["rag_refs"];
+	        this.app_usage = this.convertValues(source["app_usage"], SessionAppUsageDTO);
+	        this.diffs = this.convertValues(source["diffs"], SessionDiffDTO);
+	        this.browser = this.convertValues(source["browser"], SessionBrowserEventDTO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class SessionEnrichResultDTO {
+	    enriched: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionEnrichResultDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enriched = source["enriched"];
 	    }
 	}
 	export class SettingsDTO {
@@ -478,3 +497,4 @@ export namespace main {
 	}
 
 }
+

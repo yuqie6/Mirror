@@ -30,6 +30,10 @@ export function GetSessionDetail(arg1) {
   return window['go']['main']['App']['GetSessionDetail'](arg1);
 }
 
+export function GetSessionsByDate(arg1) {
+  return window['go']['main']['App']['GetSessionsByDate'](arg1);
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -44,10 +48,6 @@ export function GetSkillSessions(arg1) {
 
 export function GetSkillTree() {
   return window['go']['main']['App']['GetSkillTree']();
-}
-
-export function GetSessionsByDate(arg1) {
-  return window['go']['main']['App']['GetSessionsByDate'](arg1);
 }
 
 export function GetTodaySummary() {

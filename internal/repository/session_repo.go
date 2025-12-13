@@ -47,24 +47,6 @@ func (r *SessionRepository) Create(ctx context.Context, session *model.Session) 
 	return true, nil
 }
 
-// UpdateSummaryOnly 仅更新 summary/metadata（不修改 start/end）
-func (r *SessionRepository) UpdateSummaryOnly(ctx context.Context, id int64, summary string, metadata model.JSONMap) error {
-	updates := map[string]interface{}{}
-	if summary != "" {
-		updates["summary"] = summary
-	}
-	if metadata != nil {
-		updates["metadata"] = metadata
-	}
-	if len(updates) == 0 {
-		return nil
-	}
-	if err := r.db.WithContext(ctx).Model(&model.Session{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		return fmt.Errorf("更新会话摘要失败: %w", err)
-	}
-	return nil
-}
-
 // UpdateSemantic 更新会话语义字段（允许部分更新）
 func (r *SessionRepository) UpdateSemantic(ctx context.Context, id int64, update model.SessionSemanticUpdate) error {
 	updates := map[string]interface{}{}

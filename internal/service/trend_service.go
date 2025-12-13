@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"math"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -76,6 +79,8 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 	now := time.Now()
 	endTime := now.UnixMilli()
 	startTime := now.AddDate(0, 0, -days).UnixMilli()
+	prevEndTime := startTime - 1
+	prevStartTime := now.AddDate(0, 0, -2*days).UnixMilli()
 
 	// 获取语言统计
 	langStats, err := s.diffRepo.GetLanguageStats(ctx, startTime, endTime)
@@ -111,25 +116,53 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 		return nil, err
 	}
 
+	// 从 Diff 证据统计技能变更（当前期 vs 上期）
+	currentSkillStats, err := s.buildSkillStatsFromDiffs(ctx, startTime, endTime)
+	if err != nil {
+		return nil, err
+	}
+	prevSkillStats, err := s.buildSkillStatsFromDiffs(ctx, prevStartTime, prevEndTime)
+	if err != nil {
+		return nil, err
+	}
+
 	// 构建技能趋势
 	topSkills := make([]SkillTrend, 0, len(skills))
 	for _, skill := range skills {
-		status := "stable"
-		daysInactive := skill.DaysInactive()
-		if daysInactive == 0 {
-			status = "growing"
-		} else if daysInactive > 7 {
-			status = "declining"
+		cur := currentSkillStats[skill.Key]
+		prev := prevSkillStats[skill.Key]
+		growthRate := calcGrowthRate(cur.Changes, prev.Changes)
+
+		status := classifyTrendStatus(cur.Changes, growthRate, skill.DaysInactive())
+
+		daysActive := cur.DaysActive
+		if daysActive <= 0 {
+			daysActive = days - skill.DaysInactive()
+			if daysActive < 0 {
+				daysActive = 0
+			}
 		}
 
 		topSkills = append(topSkills, SkillTrend{
 			SkillKey:   skill.Key,
 			SkillName:  skill.Name,
 			Category:   skill.Category,
+			Changes:    cur.Changes,
+			GrowthRate: growthRate,
 			Status:     status,
-			DaysActive: days - daysInactive,
+			DaysActive: daysActive,
 		})
 	}
+
+	sort.Slice(topSkills, func(i, j int) bool {
+		if topSkills[i].Changes != topSkills[j].Changes {
+			return topSkills[i].Changes > topSkills[j].Changes
+		}
+		if topSkills[i].GrowthRate != topSkills[j].GrowthRate {
+			return topSkills[i].GrowthRate > topSkills[j].GrowthRate
+		}
+		return topSkills[i].SkillName < topSkills[j].SkillName
+	})
 
 	// 获取应用统计计算编码时长
 	appStats, err := s.eventRepo.GetAppStats(ctx, startTime, endTime)
@@ -164,15 +197,109 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 func (s *TrendService) detectBottlenecks(skills []SkillTrend) []string {
 	bottlenecks := []string{}
 
+	if len(skills) == 0 {
+		return []string{"没有检测到技能活动，开始编码吧！"}
+	}
+
+	// 高投入低增长：变更次数显著高于均值，但增长率不高（或为负）
+	avgChanges := float64(0)
+	for _, sk := range skills {
+		avgChanges += float64(sk.Changes)
+	}
+	avgChanges = avgChanges / float64(len(skills))
+
 	for _, skill := range skills {
+		if skill.Changes > 0 && avgChanges > 0 && float64(skill.Changes) >= avgChanges*1.5 && skill.GrowthRate <= 0 {
+			bottlenecks = append(bottlenecks, skill.SkillName+" 高投入但增长放缓，建议复盘方法或补齐知识点")
+			continue
+		}
 		if skill.Status == "declining" {
-			bottlenecks = append(bottlenecks, skill.SkillName+" 技能正在衰退，考虑复习")
+			bottlenecks = append(bottlenecks, skill.SkillName+" 技能活动下降，考虑安排一次刻意练习/复习")
 		}
 	}
 
-	if len(skills) == 0 {
-		bottlenecks = append(bottlenecks, "没有检测到技能活动，开始编码吧！")
+	return bottlenecks
+}
+
+type skillStats struct {
+	Changes    int
+	DaysActive int
+}
+
+func (s *TrendService) buildSkillStatsFromDiffs(ctx context.Context, startTime, endTime int64) (map[string]skillStats, error) {
+	diffs, err := s.diffRepo.GetByTimeRange(ctx, startTime, endTime)
+	if err != nil {
+		return nil, err
 	}
 
-	return bottlenecks
+	byKey := make(map[string]skillStats)
+	byKeyDays := make(map[string]map[string]struct{})
+
+	for _, d := range diffs {
+		if strings.TrimSpace(d.AIInsight) == "" && len(d.SkillsDetected) == 0 {
+			continue
+		}
+		day := time.UnixMilli(d.Timestamp).Format("2006-01-02")
+
+		seen := make(map[string]struct{}, len(d.SkillsDetected))
+		for _, name := range d.SkillsDetected {
+			key := normalizeKey(name)
+			if key == "" {
+				continue
+			}
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+
+			st := byKey[key]
+			st.Changes++
+			byKey[key] = st
+
+			if _, ok := byKeyDays[key]; !ok {
+				byKeyDays[key] = make(map[string]struct{})
+			}
+			byKeyDays[key][day] = struct{}{}
+		}
+	}
+
+	for key, days := range byKeyDays {
+		st := byKey[key]
+		st.DaysActive = len(days)
+		byKey[key] = st
+	}
+
+	return byKey, nil
+}
+
+func calcGrowthRate(current, prev int) float64 {
+	if current <= 0 && prev <= 0 {
+		return 0
+	}
+	denom := float64(prev)
+	if denom < 1 {
+		denom = 1
+	}
+	return float64(current-prev) / denom
+}
+
+func classifyTrendStatus(changes int, growthRate float64, daysInactive int) string {
+	if daysInactive > 7 {
+		return "declining"
+	}
+	if changes <= 0 {
+		return "stable"
+	}
+	// 使用轻微阈值避免噪声（相对变化 >= 20%）
+	if growthRate >= 0.2 {
+		return "growing"
+	}
+	if growthRate <= -0.2 {
+		return "declining"
+	}
+	// 没有明显上/下，保持 stable
+	if math.Abs(growthRate) < 0.2 {
+		return "stable"
+	}
+	return "stable"
 }

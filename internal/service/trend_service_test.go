@@ -11,6 +11,7 @@ import (
 
 type fakeDiffRepoForTrend struct {
 	langStats []repository.LanguageStat
+	diffs     []model.Diff
 }
 
 func (f fakeDiffRepoForTrend) Create(ctx context.Context, diff *model.Diff) error { return nil }
@@ -24,7 +25,13 @@ func (f fakeDiffRepoForTrend) GetByDate(ctx context.Context, date string) ([]mod
 	return nil, nil
 }
 func (f fakeDiffRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
-	return nil, nil
+	out := make([]model.Diff, 0)
+	for _, d := range f.diffs {
+		if d.Timestamp >= startTime && d.Timestamp <= endTime {
+			out = append(out, d)
+		}
+	}
+	return out, nil
 }
 func (f fakeDiffRepoForTrend) GetByIDs(ctx context.Context, ids []int64) ([]model.Diff, error) {
 	return nil, nil
@@ -100,9 +107,17 @@ func TestGetTrendReport(t *testing.T) {
 		{AppName: "chrome.exe", TotalDuration: 7200},
 	}
 
+	diffs := []model.Diff{
+		{
+			Timestamp:      now.Add(-24 * time.Hour).UnixMilli(),
+			AIInsight:      "use channels",
+			SkillsDetected: model.JSONArray{"Go"},
+		},
+	}
+
 	svc := NewTrendService(
 		fakeSkillRepoForTrend{active: activeSkills},
-		fakeDiffRepoForTrend{langStats: langStats},
+		fakeDiffRepoForTrend{langStats: langStats, diffs: diffs},
 		fakeEventRepoForTrend{stats: appStats},
 	)
 

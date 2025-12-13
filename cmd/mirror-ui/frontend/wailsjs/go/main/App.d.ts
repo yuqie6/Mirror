@@ -16,6 +16,8 @@ export function GetPeriodSummary(arg1:string,arg2:string):Promise<main.PeriodSum
 
 export function GetSessionDetail(arg1:number):Promise<main.SessionDetailDTO>;
 
+export function GetSessionsByDate(arg1:string):Promise<Array<main.SessionDTO>>;
+
 export function GetSettings():Promise<main.SettingsDTO>;
 
 export function GetSkillEvidence(arg1:string):Promise<Array<main.SkillEvidenceDTO>>;
@@ -23,8 +25,6 @@ export function GetSkillEvidence(arg1:string):Promise<Array<main.SkillEvidenceDT
 export function GetSkillSessions(arg1:string):Promise<Array<main.SessionDTO>>;
 
 export function GetSkillTree():Promise<Array<main.SkillNodeDTO>>;
-
-export function GetSessionsByDate(arg1:string):Promise<Array<main.SessionDTO>>;
 
 export function GetTodaySummary():Promise<main.DailySummaryDTO>;
 
