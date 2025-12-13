@@ -7,13 +7,13 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/yuqie6/mirror/internal/handler"
+	"github.com/yuqie6/mirror/internal/collector"
 	"github.com/yuqie6/mirror/internal/model"
 )
 
 // DiffService Diff 处理服务
 type DiffService struct {
-	collector   *handler.DiffCollector
+	collector   *collector.DiffCollector
 	diffRepo    DiffRepository
 	stopChan    chan struct{}
 	wg          sync.WaitGroup
@@ -23,7 +23,7 @@ type DiffService struct {
 
 // NewDiffService 创建 Diff 服务
 func NewDiffService(
-	collector *handler.DiffCollector,
+	collector *collector.DiffCollector,
 	diffRepo DiffRepository,
 ) *DiffService {
 	return &DiffService{

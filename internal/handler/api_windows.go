@@ -1,6 +1,6 @@
 //go:build windows
 
-package httpapi
+package handler
 
 import (
 	"context"
@@ -12,277 +12,32 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/bootstrap"
+	"github.com/yuqie6/mirror/internal/dto"
 	"github.com/yuqie6/mirror/internal/eventbus"
 	"github.com/yuqie6/mirror/internal/model"
 	"github.com/yuqie6/mirror/internal/pkg/config"
 	"github.com/yuqie6/mirror/internal/service"
 )
 
-// ========== DTOs（与前端契约保持稳定） ==========
-
-type DailySummaryDTO struct {
-	Date         string   `json:"date"`
-	Summary      string   `json:"summary"`
-	Highlights   string   `json:"highlights"`
-	Struggles    string   `json:"struggles"`
-	SkillsGained []string `json:"skills_gained"`
-	TotalCoding  int      `json:"total_coding"`
-	TotalDiffs   int      `json:"total_diffs"`
-}
-
-type SummaryIndexDTO struct {
-	Date       string `json:"date"`
-	HasSummary bool   `json:"has_summary"`
-	Preview    string `json:"preview"`
-}
-
-type PeriodSummaryDTO struct {
-	Type         string   `json:"type"`
-	StartDate    string   `json:"start_date"`
-	EndDate      string   `json:"end_date"`
-	Overview     string   `json:"overview"`
-	Achievements []string `json:"achievements"`
-	Patterns     string   `json:"patterns"`
-	Suggestions  string   `json:"suggestions"`
-	TopSkills    []string `json:"top_skills"`
-	TotalCoding  int      `json:"total_coding"`
-	TotalDiffs   int      `json:"total_diffs"`
-}
-
-type PeriodSummaryIndexDTO struct {
-	Type      string `json:"type"`
-	StartDate string `json:"start_date"`
-	EndDate   string `json:"end_date"`
-}
-
-type SkillNodeDTO struct {
-	Key        string `json:"key"`
-	Name       string `json:"name"`
-	Category   string `json:"category"`
-	ParentKey  string `json:"parent_key"`
-	Level      int    `json:"level"`
-	Experience int    `json:"experience"`
-	Progress   int    `json:"progress"`
-	Status     string `json:"status"`
-	LastActive int64  `json:"last_active"`
-}
-
-type SkillEvidenceDTO struct {
-	Source              string `json:"source"`
-	EvidenceID          int64  `json:"evidence_id"`
-	Timestamp           int64  `json:"timestamp"`
-	ContributionContext string `json:"contribution_context"`
-	FileName            string `json:"file_name"`
-}
-
-type TrendReportDTO struct {
-	Period          string             `json:"period"`
-	StartDate       string             `json:"start_date"`
-	EndDate         string             `json:"end_date"`
-	TotalDiffs      int64              `json:"total_diffs"`
-	TotalCodingMins int64              `json:"total_coding_mins"`
-	AvgDiffsPerDay  float64            `json:"avg_diffs_per_day"`
-	TopLanguages    []LanguageTrendDTO `json:"top_languages"`
-	TopSkills       []SkillTrendDTO    `json:"top_skills"`
-	Bottlenecks     []string           `json:"bottlenecks"`
-}
-
-type LanguageTrendDTO struct {
-	Language   string  `json:"language"`
-	DiffCount  int64   `json:"diff_count"`
-	Percentage float64 `json:"percentage"`
-}
-
-type SkillTrendDTO struct {
-	SkillName   string  `json:"skill_name"`
-	Status      string  `json:"status"`
-	DaysActive  int     `json:"days_active"`
-	Changes     int     `json:"changes"`
-	ExpGain     float64 `json:"exp_gain"`
-	PrevExpGain float64 `json:"prev_exp_gain"`
-	GrowthRate  float64 `json:"growth_rate"`
-}
-
-type AppStatsDTO struct {
-	AppName       string `json:"app_name"`
-	TotalDuration int    `json:"total_duration"`
-	EventCount    int64  `json:"event_count"`
-	IsCodeEditor  bool   `json:"is_code_editor"`
-}
-
-type DiffDetailDTO struct {
-	ID           int64    `json:"id"`
-	FileName     string   `json:"file_name"`
-	Language     string   `json:"language"`
-	DiffContent  string   `json:"diff_content"`
-	Insight      string   `json:"insight"`
-	Skills       []string `json:"skills"`
-	LinesAdded   int      `json:"lines_added"`
-	LinesDeleted int      `json:"lines_deleted"`
-	Timestamp    int64    `json:"timestamp"`
-}
-
-type SettingsDTO struct {
-	ConfigPath string `json:"config_path"`
-
-	DeepSeekAPIKeySet bool   `json:"deepseek_api_key_set"`
-	DeepSeekBaseURL   string `json:"deepseek_base_url"`
-	DeepSeekModel     string `json:"deepseek_model"`
-
-	SiliconFlowAPIKeySet      bool   `json:"siliconflow_api_key_set"`
-	SiliconFlowBaseURL        string `json:"siliconflow_base_url"`
-	SiliconFlowEmbeddingModel string `json:"siliconflow_embedding_model"`
-	SiliconFlowRerankerModel  string `json:"siliconflow_reranker_model"`
-
-	DBPath             string   `json:"db_path"`
-	DiffWatchPaths     []string `json:"diff_watch_paths"`
-	BrowserHistoryPath string   `json:"browser_history_path"`
-}
-
-type SaveSettingsRequestDTO struct {
-	DeepSeekAPIKey  *string `json:"deepseek_api_key"`
-	DeepSeekBaseURL *string `json:"deepseek_base_url"`
-	DeepSeekModel   *string `json:"deepseek_model"`
-
-	SiliconFlowAPIKey         *string `json:"siliconflow_api_key"`
-	SiliconFlowBaseURL        *string `json:"siliconflow_base_url"`
-	SiliconFlowEmbeddingModel *string `json:"siliconflow_embedding_model"`
-	SiliconFlowRerankerModel  *string `json:"siliconflow_reranker_model"`
-
-	DBPath             *string   `json:"db_path"`
-	DiffWatchPaths     *[]string `json:"diff_watch_paths"`
-	BrowserHistoryPath *string   `json:"browser_history_path"`
-}
-
-type SaveSettingsResponseDTO struct {
-	RestartRequired bool `json:"restart_required"`
-}
-
-type SessionDTO struct {
-	ID             int64    `json:"id"`
-	Date           string   `json:"date"`
-	StartTime      int64    `json:"start_time"`
-	EndTime        int64    `json:"end_time"`
-	TimeRange      string   `json:"time_range"`
-	PrimaryApp     string   `json:"primary_app"`
-	Category       string   `json:"category"`
-	Summary        string   `json:"summary"`
-	SkillsInvolved []string `json:"skills_involved"`
-	DiffCount      int      `json:"diff_count"`
-	BrowserCount   int      `json:"browser_count"`
-}
-
-type SessionAppUsageDTO struct {
-	AppName       string `json:"app_name"`
-	TotalDuration int    `json:"total_duration"`
-}
-
-type SessionDiffDTO struct {
-	ID           int64    `json:"id"`
-	FileName     string   `json:"file_name"`
-	Language     string   `json:"language"`
-	Insight      string   `json:"insight"`
-	Skills       []string `json:"skills"`
-	LinesAdded   int      `json:"lines_added"`
-	LinesDeleted int      `json:"lines_deleted"`
-	Timestamp    int64    `json:"timestamp"`
-}
-
-type SessionBrowserEventDTO struct {
-	ID        int64  `json:"id"`
-	Timestamp int64  `json:"timestamp"`
-	Domain    string `json:"domain"`
-	Title     string `json:"title"`
-	URL       string `json:"url"`
-}
-
-type SessionDetailDTO struct {
-	SessionDTO
-	Tags     []string                 `json:"tags"`
-	RAGRefs  []map[string]any         `json:"rag_refs"`
-	AppUsage []SessionAppUsageDTO     `json:"app_usage"`
-	Diffs    []SessionDiffDTO         `json:"diffs"`
-	Browser  []SessionBrowserEventDTO `json:"browser"`
-}
-
-type SessionBuildResultDTO struct {
-	Created int `json:"created"`
-}
-
-type SessionEnrichResultDTO struct {
-	Enriched int `json:"enriched"`
-}
-
-// ========== routes ==========
-
-func (a *apiServer) registerJSONRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/summary/today", a.wrapGET(a.getTodaySummary))
-	mux.HandleFunc("/api/summary/daily", a.wrapGET(a.getDailySummary))
-	mux.HandleFunc("/api/summary/index", a.wrapGET(a.listSummaryIndex))
-	mux.HandleFunc("/api/summary/period", a.wrapGET(a.getPeriodSummary))
-	mux.HandleFunc("/api/summary/period/index", a.wrapGET(a.listPeriodSummaryIndex))
-
-	mux.HandleFunc("/api/skills/tree", a.wrapGET(a.getSkillTree))
-	mux.HandleFunc("/api/skills/evidence", a.wrapGET(a.getSkillEvidence))
-	mux.HandleFunc("/api/skills/sessions", a.wrapGET(a.getSkillSessions))
-
-	mux.HandleFunc("/api/trends", a.wrapGET(a.getTrends))
-	mux.HandleFunc("/api/app-stats", a.wrapGET(a.getAppStats))
-
-	mux.HandleFunc("/api/diffs/detail", a.wrapGET(a.getDiffDetail))
-
-	mux.HandleFunc("/api/sessions/by-date", a.wrapGET(a.getSessionsByDate))
-	mux.HandleFunc("/api/sessions/detail", a.wrapGET(a.getSessionDetail))
-	mux.HandleFunc("/api/sessions/build", a.wrapPOST(a.buildSessionsForDate))
-	mux.HandleFunc("/api/sessions/rebuild", a.wrapPOST(a.rebuildSessionsForDate))
-	mux.HandleFunc("/api/sessions/enrich", a.wrapPOST(a.enrichSessionsForDate))
-
-	mux.HandleFunc("/api/settings", a.wrapAny(a.settings))
-}
-
-func (a *apiServer) wrapGET(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-		fn(w, r)
-	}
-}
-
-func (a *apiServer) wrapPOST(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-		fn(w, r)
-	}
-}
-
-func (a *apiServer) wrapAny(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) { fn(w, r) }
-}
-
 // ========== handlers ==========
 
-func (a *apiServer) getTodaySummary(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleTodaySummary(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.AI == nil {
-		writeError(w, http.StatusBadRequest, "AI 服务未初始化，请检查配置与数据库")
+		WriteError(w, http.StatusBadRequest, "AI 服务未初始化，请检查配置与数据库")
 		return
 	}
 
 	today := time.Now().Format("2006-01-02")
 	summary, err := a.rt.Core.Services.AI.GenerateDailySummary(ctx, today)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, &DailySummaryDTO{
+	WriteJSON(w, http.StatusOK, &dto.DailySummaryDTO{
 		Date:         summary.Date,
 		Summary:      summary.Summary,
 		Highlights:   summary.Highlights,
@@ -293,7 +48,7 @@ func (a *apiServer) getTodaySummary(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *apiServer) listSummaryIndex(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleSummaryIndex(w http.ResponseWriter, r *http.Request) {
 	limit := 365
 	if s := strings.TrimSpace(r.URL.Query().Get("limit")); s != "" {
 		if n, err := strconvAtoiSafe(s); err == nil && n > 0 {
@@ -302,7 +57,7 @@ func (a *apiServer) listSummaryIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if a.rt == nil || a.rt.Repos.Summary == nil {
-		writeError(w, http.StatusBadRequest, "总结仓储未初始化")
+		WriteError(w, http.StatusBadRequest, "总结仓储未初始化")
 		return
 	}
 
@@ -311,42 +66,42 @@ func (a *apiServer) listSummaryIndex(w http.ResponseWriter, r *http.Request) {
 
 	previews, err := a.rt.Repos.Summary.ListSummaryPreviews(ctx, limit)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	result := make([]SummaryIndexDTO, 0, len(previews))
+	result := make([]dto.SummaryIndexDTO, 0, len(previews))
 	for _, p := range previews {
-		result = append(result, SummaryIndexDTO{
+		result = append(result, dto.SummaryIndexDTO{
 			Date:       p.Date,
 			HasSummary: true,
 			Preview:    p.Preview,
 		})
 	}
-	writeJSON(w, http.StatusOK, result)
+	WriteJSON(w, http.StatusOK, result)
 }
 
-func (a *apiServer) getDailySummary(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleDailySummary(w http.ResponseWriter, r *http.Request) {
 	date := strings.TrimSpace(r.URL.Query().Get("date"))
 	if date == "" {
-		writeError(w, http.StatusBadRequest, "date 不能为空")
+		WriteError(w, http.StatusBadRequest, "date 不能为空")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.AI == nil {
-		writeError(w, http.StatusBadRequest, "AI 服务未初始化，请检查配置与数据库")
+		WriteError(w, http.StatusBadRequest, "AI 服务未初始化，请检查配置与数据库")
 		return
 	}
 
 	summary, err := a.rt.Core.Services.AI.GenerateDailySummary(ctx, date)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, &DailySummaryDTO{
+	WriteJSON(w, http.StatusOK, &dto.DailySummaryDTO{
 		Date:         summary.Date,
 		Summary:      summary.Summary,
 		Highlights:   summary.Highlights,
@@ -370,16 +125,16 @@ func normalizeToMonthStart(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
 }
 
-func (a *apiServer) getPeriodSummary(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandlePeriodSummary(w http.ResponseWriter, r *http.Request) {
 	periodType := strings.TrimSpace(r.URL.Query().Get("type"))
 	startDateStr := strings.TrimSpace(r.URL.Query().Get("start_date"))
 	if periodType == "" {
-		writeError(w, http.StatusBadRequest, "type 不能为空")
+		WriteError(w, http.StatusBadRequest, "type 不能为空")
 		return
 	}
 
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.AI == nil {
-		writeError(w, http.StatusBadRequest, "AI 服务未初始化")
+		WriteError(w, http.StatusBadRequest, "AI 服务未初始化")
 		return
 	}
 
@@ -392,7 +147,7 @@ func (a *apiServer) getPeriodSummary(w http.ResponseWriter, r *http.Request) {
 	if startDateStr != "" {
 		parsed, err := time.ParseInLocation("2006-01-02", startDateStr, now.Location())
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "日期格式错误，请使用 YYYY-MM-DD")
+			WriteError(w, http.StatusBadRequest, "日期格式错误，请使用 YYYY-MM-DD")
 			return
 		}
 		startDate = parsed
@@ -405,7 +160,7 @@ func (a *apiServer) getPeriodSummary(w http.ResponseWriter, r *http.Request) {
 		}
 		startDate = normalizeToMonday(startDate)
 		if startDate.After(now) {
-			writeError(w, http.StatusBadRequest, "startDate 不能是未来日期")
+			WriteError(w, http.StatusBadRequest, "startDate 不能是未来日期")
 			return
 		}
 		endDate = startDate.AddDate(0, 0, 6)
@@ -415,12 +170,12 @@ func (a *apiServer) getPeriodSummary(w http.ResponseWriter, r *http.Request) {
 		}
 		startDate = normalizeToMonthStart(startDate)
 		if startDate.After(now) {
-			writeError(w, http.StatusBadRequest, "startDate 不能是未来日期")
+			WriteError(w, http.StatusBadRequest, "startDate 不能是未来日期")
 			return
 		}
 		endDate = startDate.AddDate(0, 1, -1)
 	default:
-		writeError(w, http.StatusBadRequest, "不支持的周期类型，请使用 week 或 month")
+		WriteError(w, http.StatusBadRequest, "不支持的周期类型，请使用 week 或 month")
 		return
 	}
 
@@ -436,18 +191,18 @@ func (a *apiServer) getPeriodSummary(w http.ResponseWriter, r *http.Request) {
 	if a.rt.Repos.PeriodSummary != nil {
 		cached, err := a.rt.Repos.PeriodSummary.GetByTypeAndRange(ctx, periodType, startStr, endStr, 365*24*time.Hour)
 		if err == nil && cached != nil {
-			writeJSON(w, http.StatusOK, periodSummaryToDTO(cached))
+			WriteJSON(w, http.StatusOK, periodSummaryToDTO(cached))
 			return
 		}
 	}
 
 	summaries, err := a.rt.Repos.Summary.GetByDateRange(ctx, startStr, dataEndStr)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if len(summaries) == 0 {
-		writeError(w, http.StatusBadRequest, "该周期内没有日报数据")
+		WriteError(w, http.StatusBadRequest, "该周期内没有日报数据")
 		return
 	}
 
@@ -459,7 +214,7 @@ func (a *apiServer) getPeriodSummary(w http.ResponseWriter, r *http.Request) {
 
 	aiResult, err := a.rt.Core.Services.AI.GeneratePeriodSummary(ctx, periodType, startStr, dataEndStr, summaries)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -468,7 +223,7 @@ func (a *apiServer) getPeriodSummary(w http.ResponseWriter, r *http.Request) {
 		overview = "（截至 " + dataEndStr + "）" + overview
 	}
 
-	result := &PeriodSummaryDTO{
+	result := &dto.PeriodSummaryDTO{
 		Type:         periodType,
 		StartDate:    startStr,
 		EndDate:      endStr,
@@ -483,7 +238,7 @@ func (a *apiServer) getPeriodSummary(w http.ResponseWriter, r *http.Request) {
 
 	savePeriodSummary(ctx, a.rt, result)
 
-	writeJSON(w, http.StatusOK, result)
+	WriteJSON(w, http.StatusOK, result)
 }
 
 func normalizePeriodWording(periodType string, text string) string {
@@ -519,11 +274,11 @@ func normalizePeriodWordingList(periodType string, items []string) []string {
 	return out
 }
 
-func periodSummaryToDTO(ps *model.PeriodSummary) *PeriodSummaryDTO {
+func periodSummaryToDTO(ps *model.PeriodSummary) *dto.PeriodSummaryDTO {
 	if ps == nil {
 		return nil
 	}
-	return &PeriodSummaryDTO{
+	return &dto.PeriodSummaryDTO{
 		Type:         ps.Type,
 		StartDate:    ps.StartDate,
 		EndDate:      ps.EndDate,
@@ -537,28 +292,28 @@ func periodSummaryToDTO(ps *model.PeriodSummary) *PeriodSummaryDTO {
 	}
 }
 
-func savePeriodSummary(ctx context.Context, rt *bootstrap.AgentRuntime, dto *PeriodSummaryDTO) {
-	if rt == nil || rt.Repos.PeriodSummary == nil || dto == nil {
+func savePeriodSummary(ctx context.Context, rt *bootstrap.AgentRuntime, psDTO *dto.PeriodSummaryDTO) {
+	if rt == nil || rt.Repos.PeriodSummary == nil || psDTO == nil {
 		return
 	}
 	_ = rt.Repos.PeriodSummary.Upsert(ctx, &model.PeriodSummary{
-		Type:         dto.Type,
-		StartDate:    dto.StartDate,
-		EndDate:      dto.EndDate,
-		Overview:     dto.Overview,
-		Achievements: model.JSONArray(dto.Achievements),
-		Patterns:     dto.Patterns,
-		Suggestions:  dto.Suggestions,
-		TopSkills:    model.JSONArray(dto.TopSkills),
-		TotalCoding:  dto.TotalCoding,
-		TotalDiffs:   dto.TotalDiffs,
+		Type:         psDTO.Type,
+		StartDate:    psDTO.StartDate,
+		EndDate:      psDTO.EndDate,
+		Overview:     psDTO.Overview,
+		Achievements: model.JSONArray(psDTO.Achievements),
+		Patterns:     psDTO.Patterns,
+		Suggestions:  psDTO.Suggestions,
+		TopSkills:    model.JSONArray(psDTO.TopSkills),
+		TotalCoding:  psDTO.TotalCoding,
+		TotalDiffs:   psDTO.TotalDiffs,
 	})
 }
 
-func (a *apiServer) listPeriodSummaryIndex(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandlePeriodSummaryIndex(w http.ResponseWriter, r *http.Request) {
 	periodType := strings.TrimSpace(r.URL.Query().Get("type"))
 	if periodType == "" {
-		writeError(w, http.StatusBadRequest, "type 不能为空")
+		WriteError(w, http.StatusBadRequest, "type 不能为空")
 		return
 	}
 	limit := 20
@@ -569,7 +324,7 @@ func (a *apiServer) listPeriodSummaryIndex(w http.ResponseWriter, r *http.Reques
 	}
 
 	if a.rt == nil || a.rt.Repos.PeriodSummary == nil {
-		writeError(w, http.StatusBadRequest, "仓储未初始化")
+		WriteError(w, http.StatusBadRequest, "仓储未初始化")
 		return
 	}
 
@@ -578,35 +333,35 @@ func (a *apiServer) listPeriodSummaryIndex(w http.ResponseWriter, r *http.Reques
 
 	summaries, err := a.rt.Repos.PeriodSummary.ListByType(ctx, periodType, limit)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	result := make([]PeriodSummaryIndexDTO, 0, len(summaries))
+	result := make([]dto.PeriodSummaryIndexDTO, 0, len(summaries))
 	for _, s := range summaries {
-		result = append(result, PeriodSummaryIndexDTO{
+		result = append(result, dto.PeriodSummaryIndexDTO{
 			Type:      s.Type,
 			StartDate: s.StartDate,
 			EndDate:   s.EndDate,
 		})
 	}
-	writeJSON(w, http.StatusOK, result)
+	WriteJSON(w, http.StatusOK, result)
 }
 
-func (a *apiServer) getSkillTree(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleSkillTree(w http.ResponseWriter, r *http.Request) {
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.Skills == nil {
-		writeError(w, http.StatusBadRequest, "技能服务未初始化")
+		WriteError(w, http.StatusBadRequest, "技能服务未初始化")
 		return
 	}
 	skillTree, err := a.rt.Core.Services.Skills.GetSkillTree(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	var result []SkillNodeDTO
+	var result []dto.SkillNodeDTO
 	for category, skills := range skillTree.Categories {
 		for _, skill := range skills {
-			result = append(result, SkillNodeDTO{
+			result = append(result, dto.SkillNodeDTO{
 				Key:        skill.Key,
 				Name:       skill.Name,
 				Category:   category,
@@ -619,27 +374,27 @@ func (a *apiServer) getSkillTree(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	writeJSON(w, http.StatusOK, result)
+	WriteJSON(w, http.StatusOK, result)
 }
 
-func (a *apiServer) getSkillEvidence(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleSkillEvidence(w http.ResponseWriter, r *http.Request) {
 	skillKey := strings.TrimSpace(r.URL.Query().Get("skill_key"))
 	if skillKey == "" {
-		writeError(w, http.StatusBadRequest, "skill_key 不能为空")
+		WriteError(w, http.StatusBadRequest, "skill_key 不能为空")
 		return
 	}
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.Skills == nil {
-		writeError(w, http.StatusBadRequest, "技能服务未初始化")
+		WriteError(w, http.StatusBadRequest, "技能服务未初始化")
 		return
 	}
 	evs, err := a.rt.Core.Services.Skills.GetSkillEvidence(r.Context(), skillKey, 3)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	result := make([]SkillEvidenceDTO, len(evs))
+	result := make([]dto.SkillEvidenceDTO, len(evs))
 	for i, e := range evs {
-		result[i] = SkillEvidenceDTO{
+		result[i] = dto.SkillEvidenceDTO{
 			Source:              e.Source,
 			EvidenceID:          e.EvidenceID,
 			Timestamp:           e.Timestamp,
@@ -647,27 +402,27 @@ func (a *apiServer) getSkillEvidence(w http.ResponseWriter, r *http.Request) {
 			FileName:            e.FileName,
 		}
 	}
-	writeJSON(w, http.StatusOK, result)
+	WriteJSON(w, http.StatusOK, result)
 }
 
-func (a *apiServer) getSkillSessions(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleSkillSessions(w http.ResponseWriter, r *http.Request) {
 	skillKey := strings.TrimSpace(r.URL.Query().Get("skill_key"))
 	if skillKey == "" {
-		writeError(w, http.StatusBadRequest, "skill_key 不能为空")
+		WriteError(w, http.StatusBadRequest, "skill_key 不能为空")
 		return
 	}
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.SessionSemantic == nil {
-		writeError(w, http.StatusBadRequest, "会话语义服务未初始化")
+		WriteError(w, http.StatusBadRequest, "会话语义服务未初始化")
 		return
 	}
 
 	sessions, err := a.rt.Core.Services.SessionSemantic.GetSessionsBySkill(r.Context(), skillKey, 30*24*time.Hour, 10)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	result := make([]SessionDTO, 0, len(sessions))
+	result := make([]dto.SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
 		diffIDs := model.GetInt64Slice(s.Metadata, "diff_ids")
 		browserIDs := model.GetInt64Slice(s.Metadata, "browser_event_ids")
@@ -675,7 +430,7 @@ func (a *apiServer) getSkillSessions(w http.ResponseWriter, r *http.Request) {
 		if timeRange == "" {
 			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
 		}
-		result = append(result, SessionDTO{
+		result = append(result, dto.SessionDTO{
 			ID:             s.ID,
 			Date:           s.Date,
 			StartTime:      s.StartTime,
@@ -690,10 +445,10 @@ func (a *apiServer) getSkillSessions(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].StartTime > result[j].StartTime })
-	writeJSON(w, http.StatusOK, result)
+	WriteJSON(w, http.StatusOK, result)
 }
 
-func (a *apiServer) getTrends(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleTrends(w http.ResponseWriter, r *http.Request) {
 	days := 7
 	if s := strings.TrimSpace(r.URL.Query().Get("days")); s != "" {
 		if n, err := strconvAtoiSafe(s); err == nil && (n == 7 || n == 30) {
@@ -702,7 +457,7 @@ func (a *apiServer) getTrends(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.Trends == nil {
-		writeError(w, http.StatusBadRequest, "趋势服务未初始化")
+		WriteError(w, http.StatusBadRequest, "趋势服务未初始化")
 		return
 	}
 
@@ -712,22 +467,22 @@ func (a *apiServer) getTrends(w http.ResponseWriter, r *http.Request) {
 	}
 	report, err := a.rt.Core.Services.Trends.GetTrendReport(r.Context(), period)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	languages := make([]LanguageTrendDTO, len(report.TopLanguages))
+	languages := make([]dto.LanguageTrendDTO, len(report.TopLanguages))
 	for i, l := range report.TopLanguages {
-		languages[i] = LanguageTrendDTO{
+		languages[i] = dto.LanguageTrendDTO{
 			Language:   l.Language,
 			DiffCount:  l.DiffCount,
 			Percentage: l.Percentage,
 		}
 	}
 
-	skills := make([]SkillTrendDTO, len(report.TopSkills))
+	skills := make([]dto.SkillTrendDTO, len(report.TopSkills))
 	for i, s := range report.TopSkills {
-		skills[i] = SkillTrendDTO{
+		skills[i] = dto.SkillTrendDTO{
 			SkillName:   s.SkillName,
 			Status:      s.Status,
 			DaysActive:  s.DaysActive,
@@ -738,7 +493,7 @@ func (a *apiServer) getTrends(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, &TrendReportDTO{
+	WriteJSON(w, http.StatusOK, &dto.TrendReportDTO{
 		Period:          string(report.Period),
 		StartDate:       report.StartDate,
 		EndDate:         report.EndDate,
@@ -751,52 +506,52 @@ func (a *apiServer) getTrends(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *apiServer) getAppStats(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleAppStats(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	startTime := now.AddDate(0, 0, -7).UnixMilli()
 	endTime := now.UnixMilli()
 
 	if a.rt == nil || a.rt.Repos.Event == nil {
-		writeError(w, http.StatusBadRequest, "数据库未初始化")
+		WriteError(w, http.StatusBadRequest, "数据库未初始化")
 		return
 	}
 	stats, err := a.rt.Repos.Event.GetAppStats(r.Context(), startTime, endTime)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	result := make([]AppStatsDTO, len(stats))
+	result := make([]dto.AppStatsDTO, len(stats))
 	for i, s := range stats {
-		result[i] = AppStatsDTO{
+		result[i] = dto.AppStatsDTO{
 			AppName:       s.AppName,
 			TotalDuration: s.TotalDuration,
 			EventCount:    s.EventCount,
 			IsCodeEditor:  service.IsCodeEditor(s.AppName),
 		}
 	}
-	writeJSON(w, http.StatusOK, result)
+	WriteJSON(w, http.StatusOK, result)
 }
 
-func (a *apiServer) getDiffDetail(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleDiffDetail(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimSpace(r.URL.Query().Get("id"))
 	id, err := parseInt64Param(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "id 无效")
+		WriteError(w, http.StatusBadRequest, "id 无效")
 		return
 	}
 
 	if a.rt == nil || a.rt.Repos.Diff == nil {
-		writeError(w, http.StatusBadRequest, "Diff 仓储未初始化")
+		WriteError(w, http.StatusBadRequest, "Diff 仓储未初始化")
 		return
 	}
 
 	diff, err := a.rt.Repos.Diff.GetByID(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if diff == nil {
-		writeError(w, http.StatusNotFound, "Diff not found")
+		WriteError(w, http.StatusNotFound, "Diff not found")
 		return
 	}
 
@@ -805,7 +560,7 @@ func (a *apiServer) getDiffDetail(w http.ResponseWriter, r *http.Request) {
 		skills = []string(diff.SkillsDetected)
 	}
 
-	writeJSON(w, http.StatusOK, &DiffDetailDTO{
+	WriteJSON(w, http.StatusOK, &dto.DiffDetailDTO{
 		ID:           diff.ID,
 		FileName:     diff.FileName,
 		Language:     diff.Language,
@@ -818,103 +573,103 @@ func (a *apiServer) getDiffDetail(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *apiServer) buildSessionsForDate(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleBuildSessionsForDate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Date string `json:"date"`
 	}
 	if err := readJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	date := strings.TrimSpace(req.Date)
 	if date == "" {
-		writeError(w, http.StatusBadRequest, "date 不能为空")
+		WriteError(w, http.StatusBadRequest, "date 不能为空")
 		return
 	}
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.Sessions == nil {
-		writeError(w, http.StatusBadRequest, "会话服务未初始化")
+		WriteError(w, http.StatusBadRequest, "会话服务未初始化")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 	created, err := a.rt.Core.Services.Sessions.BuildSessionsForDate(ctx, date)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, &SessionBuildResultDTO{Created: created})
+	WriteJSON(w, http.StatusOK, &dto.SessionBuildResultDTO{Created: created})
 }
 
-func (a *apiServer) rebuildSessionsForDate(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleRebuildSessionsForDate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Date string `json:"date"`
 	}
 	if err := readJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	date := strings.TrimSpace(req.Date)
 	if date == "" {
-		writeError(w, http.StatusBadRequest, "date 不能为空")
+		WriteError(w, http.StatusBadRequest, "date 不能为空")
 		return
 	}
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.Sessions == nil {
-		writeError(w, http.StatusBadRequest, "会话服务未初始化")
+		WriteError(w, http.StatusBadRequest, "会话服务未初始化")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 	created, err := a.rt.Core.Services.Sessions.RebuildSessionsForDate(ctx, date)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, &SessionBuildResultDTO{Created: created})
+	WriteJSON(w, http.StatusOK, &dto.SessionBuildResultDTO{Created: created})
 }
 
-func (a *apiServer) enrichSessionsForDate(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleEnrichSessionsForDate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Date string `json:"date"`
 	}
 	if err := readJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	date := strings.TrimSpace(req.Date)
 	if date == "" {
-		writeError(w, http.StatusBadRequest, "date 不能为空")
+		WriteError(w, http.StatusBadRequest, "date 不能为空")
 		return
 	}
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.SessionSemantic == nil {
-		writeError(w, http.StatusBadRequest, "会话语义服务未初始化")
+		WriteError(w, http.StatusBadRequest, "会话语义服务未初始化")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 	enriched, err := a.rt.Core.Services.SessionSemantic.EnrichSessionsForDate(ctx, date, 200)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, &SessionEnrichResultDTO{Enriched: enriched})
+	WriteJSON(w, http.StatusOK, &dto.SessionEnrichResultDTO{Enriched: enriched})
 }
 
-func (a *apiServer) getSessionsByDate(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleSessionsByDate(w http.ResponseWriter, r *http.Request) {
 	date := strings.TrimSpace(r.URL.Query().Get("date"))
 	if date == "" {
-		writeError(w, http.StatusBadRequest, "date 不能为空")
+		WriteError(w, http.StatusBadRequest, "date 不能为空")
 		return
 	}
 	if a.rt == nil || a.rt.Repos.Session == nil {
-		writeError(w, http.StatusBadRequest, "会话仓储未初始化")
+		WriteError(w, http.StatusBadRequest, "会话仓储未初始化")
 		return
 	}
 	sessions, err := a.rt.Repos.Session.GetByDate(r.Context(), date)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	result := make([]SessionDTO, 0, len(sessions))
+	result := make([]dto.SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
 		diffIDs := model.GetInt64Slice(s.Metadata, "diff_ids")
 		browserIDs := model.GetInt64Slice(s.Metadata, "browser_event_ids")
@@ -922,7 +677,7 @@ func (a *apiServer) getSessionsByDate(w http.ResponseWriter, r *http.Request) {
 		if timeRange == "" {
 			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
 		}
-		result = append(result, SessionDTO{
+		result = append(result, dto.SessionDTO{
 			ID:             s.ID,
 			Date:           s.Date,
 			StartTime:      s.StartTime,
@@ -937,27 +692,27 @@ func (a *apiServer) getSessionsByDate(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].StartTime < result[j].StartTime })
-	writeJSON(w, http.StatusOK, result)
+	WriteJSON(w, http.StatusOK, result)
 }
 
-func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimSpace(r.URL.Query().Get("id"))
 	id, err := parseInt64Param(idStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "id 无效")
+		WriteError(w, http.StatusBadRequest, "id 无效")
 		return
 	}
 	if a.rt == nil || a.rt.Repos.Session == nil {
-		writeError(w, http.StatusBadRequest, "会话仓储未初始化")
+		WriteError(w, http.StatusBadRequest, "会话仓储未初始化")
 		return
 	}
 	sess, err := a.rt.Repos.Session.GetByID(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if sess == nil {
-		writeError(w, http.StatusNotFound, "session not found")
+		WriteError(w, http.StatusNotFound, "session not found")
 		return
 	}
 
@@ -968,9 +723,9 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 	if len(diffIDs) > 0 {
 		diffs, _ = a.rt.Repos.Diff.GetByIDs(r.Context(), diffIDs)
 	}
-	diffDTOs := make([]SessionDiffDTO, 0, len(diffs))
+	diffDTOs := make([]dto.SessionDiffDTO, 0, len(diffs))
 	for _, d := range diffs {
-		diffDTOs = append(diffDTOs, SessionDiffDTO{
+		diffDTOs = append(diffDTOs, dto.SessionDiffDTO{
 			ID:           d.ID,
 			FileName:     d.FileName,
 			Language:     d.Language,
@@ -986,9 +741,9 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 	if len(browserIDs) > 0 && a.rt.Repos.Browser != nil {
 		browserEvents, _ = a.rt.Repos.Browser.GetByIDs(r.Context(), browserIDs)
 	}
-	browserDTOs := make([]SessionBrowserEventDTO, 0, len(browserEvents))
+	browserDTOs := make([]dto.SessionBrowserEventDTO, 0, len(browserEvents))
 	for _, e := range browserEvents {
-		browserDTOs = append(browserDTOs, SessionBrowserEventDTO{
+		browserDTOs = append(browserDTOs, dto.SessionBrowserEventDTO{
 			ID:        e.ID,
 			Timestamp: e.Timestamp,
 			Domain:    e.Domain,
@@ -998,9 +753,9 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appStats, _ := a.rt.Repos.Event.GetAppStats(r.Context(), sess.StartTime, sess.EndTime)
-	appUsage := make([]SessionAppUsageDTO, 0, len(appStats))
+	appUsage := make([]dto.SessionAppUsageDTO, 0, len(appStats))
 	for _, st := range service.TopAppStats(appStats, service.DefaultTopAppsLimit) {
-		appUsage = append(appUsage, SessionAppUsageDTO{
+		appUsage = append(appUsage, dto.SessionAppUsageDTO{
 			AppName:       st.AppName,
 			TotalDuration: st.TotalDuration,
 		})
@@ -1011,8 +766,8 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 		timeRange = service.FormatTimeRangeMs(sess.StartTime, sess.EndTime)
 	}
 
-	dto := &SessionDetailDTO{
-		SessionDTO: SessionDTO{
+	resp := &dto.SessionDetailDTO{
+		SessionDTO: dto.SessionDTO{
 			ID:             sess.ID,
 			Date:           sess.Date,
 			StartTime:      sess.StartTime,
@@ -1031,33 +786,33 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 		Diffs:    diffDTOs,
 		Browser:  browserDTOs,
 	}
-	writeJSON(w, http.StatusOK, dto)
+	WriteJSON(w, http.StatusOK, resp)
 }
 
-func (a *apiServer) settings(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleSettings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		a.getSettings(w, r)
 	case http.MethodPost:
 		a.saveSettings(w, r)
 	default:
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
 
-func (a *apiServer) getSettings(w http.ResponseWriter, r *http.Request) {
+func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
 	path, err := config.DefaultConfigPath()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	cfg, err := config.Load(path)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, &SettingsDTO{
+	WriteJSON(w, http.StatusOK, &dto.SettingsDTO{
 		ConfigPath: path,
 
 		DeepSeekAPIKeySet: cfg.AI.DeepSeek.APIKey != "",
@@ -1075,22 +830,22 @@ func (a *apiServer) getSettings(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *apiServer) saveSettings(w http.ResponseWriter, r *http.Request) {
-	var req SaveSettingsRequestDTO
+func (a *API) saveSettings(w http.ResponseWriter, r *http.Request) {
+	var req dto.SaveSettingsRequestDTO
 	if err := readJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	path, err := config.DefaultConfigPath()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	cur, err := config.Load(path)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	next := *cur
@@ -1128,12 +883,12 @@ func (a *apiServer) saveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := config.WriteFile(path, &next); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	a.hub.Publish(eventbus.Event{Type: "settings_updated"})
-	writeJSON(w, http.StatusOK, &SaveSettingsResponseDTO{RestartRequired: true})
+	WriteJSON(w, http.StatusOK, &dto.SaveSettingsResponseDTO{RestartRequired: true})
 }
 
 func strconvAtoiSafe(s string) (int, error) {

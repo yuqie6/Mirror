@@ -1,11 +1,10 @@
 //go:build windows
 
-package httpapi
+package server
 
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,13 +16,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/bootstrap"
 	"github.com/yuqie6/mirror/internal/eventbus"
-	"github.com/yuqie6/mirror/internal/pkg/config"
+	"github.com/yuqie6/mirror/internal/handler"
 	"github.com/yuqie6/mirror/internal/uiassets"
 )
 
@@ -64,12 +62,10 @@ func Start(ctx context.Context, rt *bootstrap.AgentRuntime, opts Options) (*Loca
 		hub = eventbus.NewHub()
 	}
 
-	api := newAPI(rt, hub)
+	api := handler.NewAPI(rt, hub)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", api.handleHealth)
-	mux.HandleFunc("/api/events", api.handleSSE)
-	api.registerJSONRoutes(mux)
+	registerRoutes(mux, api)
 
 	uiFS, uiSource := pickUIFS()
 	mux.Handle("/", spaHandler(uiFS, "index.html"))
@@ -104,6 +100,44 @@ func Start(ctx context.Context, rt *bootstrap.AgentRuntime, opts Options) (*Loca
 	return ls, nil
 }
 
+func registerRoutes(mux *http.ServeMux, api *handler.API) {
+	mux.HandleFunc("/health", api.HandleHealth)
+	mux.HandleFunc("/api/events", api.HandleSSE)
+
+	mux.HandleFunc("/api/summary/today", requireMethod(http.MethodGet, api.HandleTodaySummary))
+	mux.HandleFunc("/api/summary/daily", requireMethod(http.MethodGet, api.HandleDailySummary))
+	mux.HandleFunc("/api/summary/index", requireMethod(http.MethodGet, api.HandleSummaryIndex))
+	mux.HandleFunc("/api/summary/period", requireMethod(http.MethodGet, api.HandlePeriodSummary))
+	mux.HandleFunc("/api/summary/period/index", requireMethod(http.MethodGet, api.HandlePeriodSummaryIndex))
+
+	mux.HandleFunc("/api/skills/tree", requireMethod(http.MethodGet, api.HandleSkillTree))
+	mux.HandleFunc("/api/skills/evidence", requireMethod(http.MethodGet, api.HandleSkillEvidence))
+	mux.HandleFunc("/api/skills/sessions", requireMethod(http.MethodGet, api.HandleSkillSessions))
+
+	mux.HandleFunc("/api/trends", requireMethod(http.MethodGet, api.HandleTrends))
+	mux.HandleFunc("/api/app-stats", requireMethod(http.MethodGet, api.HandleAppStats))
+
+	mux.HandleFunc("/api/diffs/detail", requireMethod(http.MethodGet, api.HandleDiffDetail))
+
+	mux.HandleFunc("/api/sessions/by-date", requireMethod(http.MethodGet, api.HandleSessionsByDate))
+	mux.HandleFunc("/api/sessions/detail", requireMethod(http.MethodGet, api.HandleSessionDetail))
+	mux.HandleFunc("/api/sessions/build", requireMethod(http.MethodPost, api.HandleBuildSessionsForDate))
+	mux.HandleFunc("/api/sessions/rebuild", requireMethod(http.MethodPost, api.HandleRebuildSessionsForDate))
+	mux.HandleFunc("/api/sessions/enrich", requireMethod(http.MethodPost, api.HandleEnrichSessionsForDate))
+
+	mux.HandleFunc("/api/settings", api.HandleSettings)
+}
+
+func requireMethod(method string, fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != method {
+			handler.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		fn(w, r)
+	}
+}
+
 func (s *LocalServer) BaseURL() string {
 	if s == nil {
 		return ""
@@ -129,86 +163,6 @@ func writeBaseURLFile(baseURL string) {
 		return
 	}
 	_ = os.WriteFile(filepath.Join(dataDir, "http_base_url.txt"), []byte(baseURL), 0o644)
-}
-
-type apiServer struct {
-	rt        *bootstrap.AgentRuntime
-	hub       *eventbus.Hub
-	cfgPath   string
-	startTime time.Time
-}
-
-func newAPI(rt *bootstrap.AgentRuntime, hub *eventbus.Hub) *apiServer {
-	cfgPath, _ := config.DefaultConfigPath()
-	return &apiServer{
-		rt:        rt,
-		hub:       hub,
-		cfgPath:   cfgPath,
-		startTime: time.Now(),
-	}
-}
-
-func (a *apiServer) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":         true,
-		"name":       a.rt.Cfg.App.Name,
-		"version":    a.rt.Cfg.App.Version,
-		"started_at": a.startTime.Format(time.RFC3339),
-	})
-}
-
-func (a *apiServer) handleSSE(w http.ResponseWriter, r *http.Request) {
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		writeError(w, http.StatusInternalServerError, "stream not supported")
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-
-	ctx := r.Context()
-	sub := a.hub.Subscribe(ctx, 32)
-
-	// initial event
-	_, _ = io.WriteString(w, "event: ready\n")
-	_, _ = io.WriteString(w, "data: {}\n\n")
-	flusher.Flush()
-
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			_, _ = io.WriteString(w, "event: ping\n")
-			_, _ = io.WriteString(w, "data: {}\n\n")
-			flusher.Flush()
-		case evt, ok := <-sub:
-			if !ok {
-				return
-			}
-			b, _ := json.Marshal(evt)
-			_, _ = io.WriteString(w, "event: "+sanitizeSSEName(evt.Type)+"\n")
-			_, _ = io.WriteString(w, "data: ")
-			_, _ = w.Write(b)
-			_, _ = io.WriteString(w, "\n\n")
-			flusher.Flush()
-		}
-	}
-}
-
-func sanitizeSSEName(name string) string {
-	n := strings.TrimSpace(name)
-	if n == "" {
-		return "message"
-	}
-	n = strings.ReplaceAll(n, "\n", "")
-	n = strings.ReplaceAll(n, "\r", "")
-	return n
 }
 
 func spaHandler(assetFS fs.FS, index string) http.Handler {
@@ -291,29 +245,4 @@ func serveAsset(w http.ResponseWriter, r *http.Request, assetFS fs.FS, name stri
 		return
 	}
 	http.ServeContent(w, r, name, stat.ModTime(), bytes.NewReader(payload))
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]any{"error": msg})
-}
-
-func readJSON(r *http.Request, out any) error {
-	defer r.Body.Close()
-	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
-	dec.DisallowUnknownFields()
-	return dec.Decode(out)
-}
-
-func parseInt64Param(value string) (int64, error) {
-	v := strings.TrimSpace(value)
-	if v == "" {
-		return 0, fmt.Errorf("参数为空")
-	}
-	return strconv.ParseInt(v, 10, 64)
 }

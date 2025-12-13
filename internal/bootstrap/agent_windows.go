@@ -6,8 +6,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/yuqie6/mirror/internal/collector"
 	"github.com/yuqie6/mirror/internal/eventbus"
-	"github.com/yuqie6/mirror/internal/handler"
 	"github.com/yuqie6/mirror/internal/service"
 )
 
@@ -17,9 +17,9 @@ type AgentRuntime struct {
 	Hub *eventbus.Hub
 
 	Collectors struct {
-		Window  handler.Collector
-		Diff    *handler.DiffCollector
-		Browser *handler.BrowserCollector
+		Window  collector.Collector
+		Diff    *collector.DiffCollector
+		Browser *collector.BrowserCollector
 	}
 
 	Services struct {
@@ -40,7 +40,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 	rt := &AgentRuntime{Core: core, Hub: eventbus.NewHub()}
 
 	// Window collector + tracker
-	rt.Collectors.Window = handler.NewWindowCollector(&handler.CollectorConfig{
+	rt.Collectors.Window = collector.NewWindowCollector(&collector.CollectorConfig{
 		PollIntervalMs: core.Cfg.Collector.PollIntervalMs,
 		MinDurationSec: core.Cfg.Collector.MinDurationSec,
 		MaxDurationSec: 60,
@@ -63,7 +63,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 
 	// Diff collector + service (optional)
 	if core.Cfg.Diff.Enabled && len(core.Cfg.Diff.WatchPaths) > 0 {
-		diffCollector, err := handler.NewDiffCollector(&handler.DiffCollectorConfig{
+		diffCollector, err := collector.NewDiffCollector(&collector.DiffCollectorConfig{
 			WatchPaths:  core.Cfg.Diff.WatchPaths,
 			Extensions:  core.Cfg.Diff.Extensions,
 			BufferSize:  core.Cfg.Diff.BufferSize,
@@ -104,7 +104,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 
 	// Browser collector + service (optional)
 	if core.Cfg.Browser.Enabled {
-		bc, err := handler.NewBrowserCollector(&handler.BrowserCollectorConfig{
+		bc, err := collector.NewBrowserCollector(&collector.BrowserCollectorConfig{
 			HistoryPath:  core.Cfg.Browser.HistoryPath,
 			PollInterval: time.Duration(core.Cfg.Browser.PollIntervalSec) * time.Second,
 		})

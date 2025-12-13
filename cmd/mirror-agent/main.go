@@ -14,9 +14,9 @@ import (
 	"golang.org/x/sys/windows"
 
 	"github.com/yuqie6/mirror/internal/bootstrap"
-	"github.com/yuqie6/mirror/internal/handler"
-	"github.com/yuqie6/mirror/internal/httpapi"
+	"github.com/yuqie6/mirror/internal/collector"
 	"github.com/yuqie6/mirror/internal/pkg/config"
+	"github.com/yuqie6/mirror/internal/server"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func main() {
 	slog.Info("Mirror Agent 启动中...", "name", rt.Cfg.App.Name, "version", rt.Cfg.App.Version)
 	slog.Info("Mirror Agent 已启动")
 
-	uiServer, err := httpapi.Start(ctx, rt, httpapi.Options{ListenAddr: "127.0.0.1:0"})
+	uiServer, err := server.Start(ctx, rt, server.Options{ListenAddr: "127.0.0.1:0"})
 	if err != nil {
 		slog.Error("启动本地 UI/API 失败", "error", err)
 	}
@@ -59,12 +59,12 @@ func main() {
 	// ========== 系统托盘 ==========
 	quitChan := make(chan struct{})
 
-	tray := handler.NewTrayHandler(&handler.TrayConfig{
+	tray := collector.NewTrayHandler(&collector.TrayConfig{
 		AppName: rt.Cfg.App.Name,
 		OnOpen: func() {
 			slog.Info("打开 UI 面板")
 			if uiServer != nil {
-				handler.OpenUI(uiServer.BaseURL() + "/")
+				collector.OpenUI(uiServer.BaseURL() + "/")
 			}
 		},
 		OnQuit: func() {
