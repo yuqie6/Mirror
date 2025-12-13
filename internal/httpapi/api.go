@@ -999,10 +999,7 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 
 	appStats, _ := a.rt.Repos.Event.GetAppStats(r.Context(), sess.StartTime, sess.EndTime)
 	appUsage := make([]SessionAppUsageDTO, 0, len(appStats))
-	for i, st := range appStats {
-		if i >= 8 {
-			break
-		}
+	for _, st := range service.TopAppStats(appStats, service.DefaultTopAppsLimit) {
 		appUsage = append(appUsage, SessionAppUsageDTO{
 			AppName:       st.AppName,
 			TotalDuration: st.TotalDuration,

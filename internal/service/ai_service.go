@@ -236,13 +236,8 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 		HistoryMemories: historyMemories,
 	}
 
-	// 添加窗口事件
-	for _, stat := range appStats {
-		req.WindowEvents = append(req.WindowEvents, ai.WindowEventInfo{
-			AppName:  stat.AppName,
-			Duration: int(stat.TotalDuration / 60), // 转换为分钟
-		})
-	}
+	// 添加窗口事件（分钟）
+	req.WindowEvents = WindowEventInfosFromAppStats(appStats, 0)
 
 	// 添加 Diff 信息
 	for _, diff := range diffs {

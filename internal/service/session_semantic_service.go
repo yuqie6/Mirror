@@ -200,17 +200,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 	if err != nil {
 		return err
 	}
-
-	topApps := make([]ai.WindowEventInfo, 0, 8)
-	for i, stat := range appStats {
-		if i >= 8 {
-			break
-		}
-		topApps = append(topApps, ai.WindowEventInfo{
-			AppName:  stat.AppName,
-			Duration: int(stat.TotalDuration / 60),
-		})
-	}
+	topApps := WindowEventInfosFromAppStats(appStats, DefaultTopAppsLimit)
 
 	// 浏览事件（优先用索引 ID，否则按时间窗补全）
 	browserIDs := model.GetInt64Slice(meta, "browser_event_ids")

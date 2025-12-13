@@ -256,12 +256,7 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 		return nil, err
 	}
 
-	var totalCodingMins int64
-	for _, stat := range appStats {
-		if IsCodeEditor(stat.AppName) {
-			totalCodingMins += int64(stat.TotalDuration / 60)
-		}
-	}
+	totalCodingMins := SumCodingMinutesFromAppStats(appStats)
 
 	// 检测瓶颈
 	bottlenecks := s.detectBottlenecks(topSkills, totalCodingMins)
