@@ -9,12 +9,14 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// SkillActivityKey 技能活动唯一键（用于幂等检查）
 type SkillActivityKey struct {
 	Source     string
 	EvidenceID int64
 	SkillKey   string
 }
 
+// SkillActivityStat 技能活动统计
 type SkillActivityStat struct {
 	SkillKey    string
 	ExpSum      float64
@@ -23,14 +25,17 @@ type SkillActivityStat struct {
 	LastTsMilli int64
 }
 
+// SkillActivityRepository 技能活动仓储
 type SkillActivityRepository struct {
 	db *gorm.DB
 }
 
+// NewSkillActivityRepository 创建技能活动仓储
 func NewSkillActivityRepository(db *gorm.DB) *SkillActivityRepository {
 	return &SkillActivityRepository{db: db}
 }
 
+// BatchInsert 批量插入技能活动记录
 func (r *SkillActivityRepository) BatchInsert(ctx context.Context, activities []schema.SkillActivity) (int64, error) {
 	if len(activities) == 0 {
 		return 0, nil
@@ -44,6 +49,7 @@ func (r *SkillActivityRepository) BatchInsert(ctx context.Context, activities []
 	return res.RowsAffected, nil
 }
 
+// ListExistingKeys 查询已存在的活动键
 func (r *SkillActivityRepository) ListExistingKeys(ctx context.Context, keys []SkillActivityKey) (map[SkillActivityKey]struct{}, error) {
 	existing := make(map[SkillActivityKey]struct{})
 	if len(keys) == 0 {
@@ -74,6 +80,7 @@ func (r *SkillActivityRepository) ListExistingKeys(ctx context.Context, keys []S
 	return existing, nil
 }
 
+// GetStatsByTimeRange 按时间范围统计技能活动
 func (r *SkillActivityRepository) GetStatsByTimeRange(ctx context.Context, startTime, endTime int64) ([]SkillActivityStat, error) {
 	// timestamp 存的是 ms，需要 /1000 转秒；localtime 让“天”对齐本地时区。
 	const sql = `

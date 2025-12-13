@@ -25,6 +25,7 @@ import (
 	"github.com/yuqie6/mirror/internal/uiassets"
 )
 
+// LocalServer 本地 HTTP 服务器
 type LocalServer struct {
 	rt      *bootstrap.AgentRuntime
 	hub     *eventbus.Hub
@@ -33,10 +34,12 @@ type LocalServer struct {
 	baseURL string
 }
 
+// Options 服务器启动配置
 type Options struct {
 	ListenAddr string // e.g. "127.0.0.1:0"
 }
 
+// Start 启动本地 HTTP 服务器
 func Start(ctx context.Context, rt *bootstrap.AgentRuntime, opts Options) (*LocalServer, error) {
 	if rt == nil {
 		return nil, fmt.Errorf("rt 不能为空")
@@ -100,6 +103,7 @@ func Start(ctx context.Context, rt *bootstrap.AgentRuntime, opts Options) (*Loca
 	return ls, nil
 }
 
+// registerRoutes 注册所有 API 路由
 func registerRoutes(mux *http.ServeMux, api *handler.API) {
 	mux.HandleFunc("/health", api.HandleHealth)
 	mux.HandleFunc("/api/events", api.HandleSSE)
@@ -128,6 +132,7 @@ func registerRoutes(mux *http.ServeMux, api *handler.API) {
 	mux.HandleFunc("/api/settings", api.HandleSettings)
 }
 
+// requireMethod 创建要求特定 HTTP 方法的中间件
 func requireMethod(method string, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != method {
@@ -138,6 +143,7 @@ func requireMethod(method string, fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// BaseURL 返回服务器的基础 URL
 func (s *LocalServer) BaseURL() string {
 	if s == nil {
 		return ""
@@ -145,6 +151,7 @@ func (s *LocalServer) BaseURL() string {
 	return s.baseURL
 }
 
+// Shutdown 优雅关闭服务器
 func (s *LocalServer) Shutdown(ctx context.Context) error {
 	if s == nil || s.srv == nil {
 		return nil
@@ -152,6 +159,7 @@ func (s *LocalServer) Shutdown(ctx context.Context) error {
 	return s.srv.Shutdown(ctx)
 }
 
+// writeBaseURLFile 将服务地址写入文件供外部读取
 func writeBaseURLFile(baseURL string) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -165,6 +173,8 @@ func writeBaseURLFile(baseURL string) {
 	_ = os.WriteFile(filepath.Join(dataDir, "http_base_url.txt"), []byte(baseURL), 0o644)
 }
 
+// spaHandler 创建 SPA 静态资源处理器
+// 支持前端路由回退到 index.html
 func spaHandler(assetFS fs.FS, index string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		upath := r.URL.Path
@@ -191,6 +201,8 @@ func spaHandler(assetFS fs.FS, index string) http.Handler {
 	})
 }
 
+// pickUIFS 选择 UI 静态资源来源
+// 优先使用本地 frontend/dist 目录，否则回退到内嵌资源
 func pickUIFS() (fs.FS, string) {
 	exe, err := os.Executable()
 	if err == nil {
@@ -218,6 +230,7 @@ func pickUIFS() (fs.FS, string) {
 	return uiassets.FS(), "embedded"
 }
 
+// serveAsset 提供静态资源文件
 func serveAsset(w http.ResponseWriter, r *http.Request, assetFS fs.FS, name string) {
 	f, err := assetFS.Open(name)
 	if err != nil {

@@ -21,10 +21,12 @@ type SessionService struct {
 	cfg             *SessionServiceConfig
 }
 
+// SessionServiceConfig 会话服务配置
 type SessionServiceConfig struct {
-	IdleGapMinutes int
+	IdleGapMinutes int // 空闲间隔分钟数，超过则切分会话
 }
 
+// NewSessionService 创建会话服务
 func NewSessionService(
 	eventRepo EventRepository,
 	diffRepo DiffRepository,
@@ -108,6 +110,7 @@ func (s *SessionService) BuildSessionsForRange(ctx context.Context, startTime, e
 	return s.buildSessionsForRange(ctx, startTime, endTime, nil)
 }
 
+// buildSessionsForRange 内部方法：按时间范围切分会话并写入
 func (s *SessionService) buildSessionsForRange(
 	ctx context.Context,
 	startTime, endTime int64,
@@ -166,6 +169,7 @@ func (s *SessionService) buildSessionsForRange(
 	return created, nil
 }
 
+// assignSessionVersions 为会话分配切分版本号
 func (s *SessionService) assignSessionVersions(
 	ctx context.Context,
 	sessions []*schema.Session,
@@ -222,6 +226,7 @@ func (s *SessionService) assignSessionVersions(
 	return nil
 }
 
+// splitSessions 根据空闲间隔切分会话
 func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Diff, startTime, endTime int64) []*schema.Session {
 	idleMs := int64(s.cfg.IdleGapMinutes) * 60 * 1000
 
@@ -359,6 +364,7 @@ func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Dif
 	return filtered
 }
 
+// attachBrowserEvents 将浏览器事件绑定到对应的会话
 func (s *SessionService) attachBrowserEvents(sessions []*schema.Session, events []schema.BrowserEvent) {
 	if len(sessions) == 0 || len(events) == 0 {
 		return
@@ -389,6 +395,7 @@ func (s *SessionService) attachBrowserEvents(sessions []*schema.Session, events 
 	}
 }
 
+// formatDate 将时间戳格式化为日期字符串
 func formatDate(ts int64) string {
 	return time.UnixMilli(ts).Format("2006-01-02")
 }

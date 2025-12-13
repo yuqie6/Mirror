@@ -2,6 +2,7 @@ package service
 
 import "time"
 
+// FormatTimeRangeMs 将毫秒时间戳格式化为时间范围字符串
 func FormatTimeRangeMs(startMs, endMs int64) string {
 	if startMs <= 0 || endMs <= 0 || endMs <= startMs {
 		return ""

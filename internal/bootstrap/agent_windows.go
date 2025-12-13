@@ -139,6 +139,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 	return rt, nil
 }
 
+// Close 关闭 Agent 运行时资源
 func (rt *AgentRuntime) Close() error {
 	if rt == nil {
 		return nil
@@ -158,6 +159,7 @@ func (rt *AgentRuntime) Close() error {
 	return rt.Core.Close()
 }
 
+// runPeriodic 定时执行函数
 func runPeriodic(ctx context.Context, interval time.Duration, fn func()) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -174,6 +176,7 @@ func runPeriodic(ctx context.Context, interval time.Duration, fn func()) {
 	}
 }
 
+// analyzeWithRetry 带重试的 Diff 分析
 func analyzeWithRetry(ctx context.Context, aiService *service.AIService) {
 	if aiService == nil {
 		return
@@ -181,6 +184,7 @@ func analyzeWithRetry(ctx context.Context, aiService *service.AIService) {
 	_, _ = aiService.AnalyzePendingDiffs(ctx, 10)
 }
 
+// splitWithRetry 带重试的会话切分
 func splitWithRetry(ctx context.Context, sessionService *service.SessionService) {
 	if sessionService == nil {
 		return
@@ -188,6 +192,7 @@ func splitWithRetry(ctx context.Context, sessionService *service.SessionService)
 	_, _ = sessionService.BuildSessionsIncremental(ctx)
 }
 
+// enrichWithRetry 带重试的会话语义补全
 func enrichWithRetry(ctx context.Context, svc *service.SessionSemanticService) {
 	if svc == nil {
 		return

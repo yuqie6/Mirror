@@ -118,6 +118,7 @@ func NewCore(cfgPath string) (*Core, error) {
 	return c, nil
 }
 
+// Close 关闭核心依赖资源
 func (c *Core) Close() error {
 	if c == nil {
 		return nil
@@ -132,6 +133,7 @@ func (c *Core) Close() error {
 	return dbErr
 }
 
+// RequireAIConfigured 检查 AI 是否已配置
 func (c *Core) RequireAIConfigured() error {
 	if c.Clients.DeepSeek == nil || !c.Clients.DeepSeek.IsConfigured() {
 		return fmt.Errorf("DeepSeek API 未配置")

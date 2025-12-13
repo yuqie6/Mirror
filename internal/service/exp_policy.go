@@ -14,6 +14,7 @@ type ExpPolicy interface {
 // DefaultExpPolicy 默认经验策略：行数主导 + 低成本修正 + clamp
 type DefaultExpPolicy struct{}
 
+// CalcDiffExp 根据 Diff 列表计算经验值
 func (p DefaultExpPolicy) CalcDiffExp(diffs []schema.Diff) float64 {
 	if len(diffs) == 0 {
 		return 1
@@ -41,6 +42,7 @@ func (p DefaultExpPolicy) CalcDiffExp(diffs []schema.Diff) float64 {
 	return clamp(exp, 1, 20)
 }
 
+// countHunks 统计 diff 中的 hunk 数量
 func countHunks(diffContent string) int {
 	if diffContent == "" {
 		return 0
@@ -54,6 +56,7 @@ func countHunks(diffContent string) int {
 	return n
 }
 
+// clamp 将数值限制在指定范围内
 func clamp(v, min, max float64) float64 {
 	if v < min {
 		return min

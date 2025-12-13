@@ -55,6 +55,7 @@ func IsCodeEditor(appName string) bool {
 	return ok
 }
 
+// normalizeProcessName 标准化进程名称
 func normalizeProcessName(appName string) string {
 	s := strings.TrimSpace(strings.ToLower(appName))
 	if s == "" {

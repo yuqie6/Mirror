@@ -38,6 +38,7 @@ func NewBrowserService(
 	}
 }
 
+// SetOnPersisted 设置持久化后的回调函数
 func (s *BrowserService) SetOnPersisted(fn func(count int)) {
 	s.onPersisted = fn
 }

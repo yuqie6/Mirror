@@ -22,11 +22,13 @@ type SessionSemanticService struct {
 	rag         RAGQuerier // 可选
 }
 
+// SessionSemanticServiceConfig 会话语义服务配置
 type SessionSemanticServiceConfig struct {
-	Lookback time.Duration
-	Limit    int
+	Lookback time.Duration // 回溯时间范围
+	Limit    int           // 处理数量上限
 }
 
+// NewSessionSemanticService 创建会话语义服务
 func NewSessionSemanticService(
 	analyzer Analyzer,
 	sessionRepo SessionRepository,
@@ -43,6 +45,7 @@ func NewSessionSemanticService(
 	}
 }
 
+// SetRAG 设置 RAG 查询服务（可选）
 func (s *SessionSemanticService) SetRAG(rag RAGQuerier) {
 	s.rag = rag
 }
@@ -152,6 +155,7 @@ func (s *SessionSemanticService) GetSessionsBySkill(ctx context.Context, skillKe
 	return matched, nil
 }
 
+// shouldEnrichSession 判断会话是否需要补全语义字段
 func shouldEnrichSession(sess *schema.Session) bool {
 	if sess == nil || sess.ID == 0 {
 		return false
@@ -166,6 +170,7 @@ func shouldEnrichSession(sess *schema.Session) bool {
 	return false
 }
 
+// enrichOne 补全单个会话的语义字段
 func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Session) error {
 	if sess == nil || sess.ID == 0 {
 		return fmt.Errorf("无效会话")
@@ -378,6 +383,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 	return s.sessionRepo.UpdateSemantic(ctx, sess.ID, update)
 }
 
+// fallbackSessionCategory 根据证据类型推断会话分类
 func fallbackSessionCategory(diffs []schema.Diff, browser []schema.BrowserEvent) string {
 	hasDiff := len(diffs) > 0
 	hasBrowser := len(browser) > 0
@@ -393,6 +399,7 @@ func fallbackSessionCategory(diffs []schema.Diff, browser []schema.BrowserEvent)
 	}
 }
 
+// fallbackSessionSummary 生成默认的会话摘要
 func fallbackSessionSummary(sess *schema.Session, diffs []schema.Diff, topDomains []string, skills []string) string {
 	parts := []string{}
 	if len(skills) > 0 {
@@ -428,6 +435,7 @@ func fallbackSessionSummary(sess *schema.Session, diffs []schema.Diff, topDomain
 	return strings.Join(parts, "，") + "。"
 }
 
+// topKeysByCount 返回按计数排序的 TopN 键
 func topKeysByCount(m map[string]int, limit int) []string {
 	type kv struct {
 		k string
@@ -456,6 +464,7 @@ func topKeysByCount(m map[string]int, limit int) []string {
 	return out
 }
 
+// uniqueNonEmpty 去重并过滤空字符串
 func uniqueNonEmpty(in []string, limit int) []string {
 	seen := make(map[string]struct{}, len(in))
 	out := make([]string, 0, len(in))
@@ -477,6 +486,7 @@ func uniqueNonEmpty(in []string, limit int) []string {
 	return out
 }
 
+// minInt 返回两个整数的较小值
 func minInt(a, b int) int {
 	if a < b {
 		return a

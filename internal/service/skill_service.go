@@ -108,7 +108,7 @@ func (s *SkillService) ApplyContributions(ctx context.Context, contributions []S
 			continue
 		}
 
-	if skill == nil {
+		if skill == nil {
 			skill = NewSkillNode(key, c.SkillName, c.Category)
 			skill.ParentKey = parentKey
 		} else {
@@ -132,6 +132,8 @@ func (s *SkillService) ApplyContributions(ctx context.Context, contributions []S
 	return s.skillRepo.UpsertBatch(ctx, skillsToUpdate)
 }
 
+// filterNewContributions 过滤已处理过的贡献，实现幂等性
+// 通过 activityRepo 检查贡献是否已存在，仅返回新贡献并记录到活动表
 func (s *SkillService) filterNewContributions(ctx context.Context, contributions []SkillContribution) []SkillContribution {
 	if s.activityRepo == nil {
 		return contributions
@@ -426,6 +428,8 @@ func (s *SkillService) GetSkillEvidence(ctx context.Context, skillKey string, li
 	return result, nil
 }
 
+// truncateRunes 按 rune 数量截断字符串
+// 正确处理 Unicode 字符，超过 max 长度时添加省略号
 func truncateRunes(s string, max int) string {
 	if max <= 0 || s == "" {
 		return ""

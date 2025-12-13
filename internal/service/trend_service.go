@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/repository"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // TrendService 趋势分析服务
@@ -312,6 +312,7 @@ func (s *TrendService) detectBottlenecks(skills []SkillTrend, totalCodingMins in
 	return bottlenecks
 }
 
+// calcGrowthRateFloat 计算增长率
 func calcGrowthRateFloat(current, prev float64) float64 {
 	if current <= 0 && prev <= 0 {
 		return 0
@@ -323,6 +324,7 @@ func calcGrowthRateFloat(current, prev float64) float64 {
 	return (current - prev) / denom
 }
 
+// classifyTrendStatusByExp 根据经验增量和增长率分类趋势状态
 func classifyTrendStatusByExp(expGain float64, growthRate float64, daysInactive int) string {
 	if daysInactive > 7 {
 		return "declining"

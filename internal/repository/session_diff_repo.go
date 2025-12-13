@@ -13,6 +13,7 @@ type SessionDiffRepository struct {
 	db *gorm.DB
 }
 
+// NewSessionDiffRepository 创建会话-Diff 关联仓储
 func NewSessionDiffRepository(db *gorm.DB) *SessionDiffRepository {
 	return &SessionDiffRepository{db: db}
 }

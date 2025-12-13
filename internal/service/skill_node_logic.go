@@ -11,6 +11,7 @@ const (
 	skillLevelMultiplier = 1.5
 )
 
+// NewSkillNode 创建一个新的技能节点
 func NewSkillNode(key, name, category string) *schema.SkillNode {
 	return &schema.SkillNode{
 		Key:       key,
@@ -22,6 +23,7 @@ func NewSkillNode(key, name, category string) *schema.SkillNode {
 	}
 }
 
+// AddSkillExp 为技能增加经验值并处理升级逻辑
 func AddSkillExp(skill *schema.SkillNode, exp float64) {
 	if skill == nil || exp <= 0 {
 		return
@@ -37,6 +39,7 @@ func AddSkillExp(skill *schema.SkillNode, exp float64) {
 	}
 }
 
+// SkillDaysInactive 计算技能多少天未活跃
 func SkillDaysInactive(skill *schema.SkillNode) int {
 	if skill == nil || skill.LastActive == 0 {
 		return 0
@@ -45,6 +48,8 @@ func SkillDaysInactive(skill *schema.SkillNode) int {
 	return int(time.Since(last).Hours() / 24)
 }
 
+// ApplySkillDecay 对技能应用经验值衰减
+// 超过7天未活跃时按比例衰减，最多衰减50%
 func ApplySkillDecay(skill *schema.SkillNode) {
 	if skill == nil {
 		return
@@ -62,6 +67,7 @@ func ApplySkillDecay(skill *schema.SkillNode) {
 	skill.Exp *= (1 - decayRate)
 }
 
+// calcSkillExpToNext 计算升到下一级所需的经验值
 func calcSkillExpToNext(level int) float64 {
 	if level <= 0 {
 		level = 1
@@ -72,4 +78,3 @@ func calcSkillExpToNext(level int) float64 {
 	}
 	return skillBaseLevelUpCost * multiplier
 }
-

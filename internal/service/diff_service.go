@@ -33,6 +33,7 @@ func NewDiffService(
 	}
 }
 
+// SetOnPersisted 设置持久化后的回调函数
 func (s *DiffService) SetOnPersisted(fn func(count int)) {
 	s.onPersisted = fn
 }

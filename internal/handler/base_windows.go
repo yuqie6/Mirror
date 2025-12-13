@@ -14,12 +14,14 @@ import (
 	"github.com/yuqie6/mirror/internal/eventbus"
 )
 
+// API HTTP 处理器
 type API struct {
 	rt        *bootstrap.AgentRuntime
 	hub       *eventbus.Hub
 	startTime time.Time
 }
 
+// NewAPI 创建 API 处理器
 func NewAPI(rt *bootstrap.AgentRuntime, hub *eventbus.Hub) *API {
 	return &API{
 		rt:        rt,
@@ -28,6 +30,7 @@ func NewAPI(rt *bootstrap.AgentRuntime, hub *eventbus.Hub) *API {
 	}
 }
 
+// HandleHealth 健康检查接口
 func (a *API) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	if a == nil || a.rt == nil || a.rt.Cfg == nil {
 		WriteError(w, http.StatusServiceUnavailable, "rt 未初始化")
@@ -41,6 +44,7 @@ func (a *API) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleSSE Server-Sent Events 接口
 func (a *API) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -89,6 +93,7 @@ func (a *API) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// sanitizeSSEName 清理 SSE 事件名称
 func sanitizeSSEName(name string) string {
 	n := strings.TrimSpace(name)
 	if n == "" {
@@ -99,6 +104,7 @@ func sanitizeSSEName(name string) string {
 	return n
 }
 
+// Subscribe 订阅事件总线
 func (a *API) Subscribe(ctx context.Context, buffer int) <-chan eventbus.Event {
 	if a == nil || a.hub == nil {
 		ch := make(chan eventbus.Event)

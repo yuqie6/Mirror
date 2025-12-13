@@ -6,21 +6,25 @@ import (
 	"time"
 )
 
+// Event 事件总线事件
 type Event struct {
 	Type      string         `json:"type"`
 	Timestamp int64          `json:"timestamp"`
 	Data      map[string]any `json:"data,omitempty"`
 }
 
+// Hub 事件总线
 type Hub struct {
 	mu   sync.RWMutex
 	subs map[chan Event]struct{}
 }
 
+// NewHub 创建事件总线
 func NewHub() *Hub {
 	return &Hub{subs: make(map[chan Event]struct{})}
 }
 
+// Publish 发布事件到所有订阅者
 func (h *Hub) Publish(evt Event) {
 	if h == nil {
 		return
@@ -41,6 +45,7 @@ func (h *Hub) Publish(evt Event) {
 	}
 }
 
+// Subscribe 订阅事件，返回事件通道
 func (h *Hub) Subscribe(ctx context.Context, buffer int) <-chan Event {
 	if buffer <= 0 {
 		buffer = 16
