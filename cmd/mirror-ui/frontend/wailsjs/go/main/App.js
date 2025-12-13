@@ -6,10 +6,6 @@ export function BuildSessionsForDate(arg1) {
   return window['go']['main']['App']['BuildSessionsForDate'](arg1);
 }
 
-export function RebuildSessionsForDate(arg1) {
-  return window['go']['main']['App']['RebuildSessionsForDate'](arg1);
-}
-
 export function EnrichSessionsForDate(arg1) {
   return window['go']['main']['App']['EnrichSessionsForDate'](arg1);
 }
@@ -68,6 +64,10 @@ export function ListPeriodSummaryIndex(arg1, arg2) {
 
 export function ListSummaryIndex(arg1) {
   return window['go']['main']['App']['ListSummaryIndex'](arg1);
+}
+
+export function RebuildSessionsForDate(arg1) {
+  return window['go']['main']['App']['RebuildSessionsForDate'](arg1);
 }
 
 export function SaveSettings(arg1) {

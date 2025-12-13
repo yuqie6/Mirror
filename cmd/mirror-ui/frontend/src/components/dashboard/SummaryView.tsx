@@ -45,6 +45,12 @@ export interface SummaryIndex {
     preview: string;
 }
 
+export interface PeriodSummaryIndex {
+    type: 'week' | 'month';
+    start_date: string;
+    end_date: string;
+}
+
 export interface SummaryViewProps {
     summary: DailySummary | null;
     periodSummary?: PeriodSummary | null;
@@ -55,9 +61,13 @@ export interface SummaryViewProps {
     skills?: SkillNode[];
     appStats?: AppStat[];
     summaryIndex?: SummaryIndex[];
+    weekSummaryIndex?: PeriodSummaryIndex[];
+    monthSummaryIndex?: PeriodSummaryIndex[];
     selectedDate?: string | null;
     onSelectDate?: (date: string) => void;
     onReloadIndex?: () => void;
+    onSelectPeriod?: (type: 'week' | 'month', startDate: string) => void;
+    onReloadPeriodIndex?: (type: 'week' | 'month') => void;
 }
 
 const sessionCategoryLabel = (cat: string): string => {
@@ -181,7 +191,11 @@ const HistorySidebar: React.FC<{
     onSelectDate: (date: string) => void;
     onReload: () => void;
     onGeneratePeriod?: (type: 'week' | 'month') => void;
-}> = ({ summaryIndex, selectedDate, onSelectDate, onReload, onGeneratePeriod }) => {
+    weekSummaryIndex?: PeriodSummaryIndex[];
+    monthSummaryIndex?: PeriodSummaryIndex[];
+    onSelectPeriod?: (type: 'week' | 'month', startDate: string) => void;
+    onReloadPeriodIndex?: (type: 'week' | 'month') => void;
+}> = ({ summaryIndex, selectedDate, onSelectDate, onReload, onGeneratePeriod, weekSummaryIndex = [], monthSummaryIndex = [], onSelectPeriod, onReloadPeriodIndex }) => {
     const groupedByMonth = useMemo(() => {
         const groups: Record<string, SummaryIndex[]> = {};
         for (const item of summaryIndex) {
@@ -203,6 +217,33 @@ const HistorySidebar: React.FC<{
 
     const toggleMonth = (monthKey: string) => {
         setExpandedMonths(prev => ({ ...prev, [monthKey]: !prev[monthKey] }));
+    };
+
+    const groupedWeeks = useMemo(() => {
+        const groups: Record<string, PeriodSummaryIndex[]> = {};
+        for (const item of weekSummaryIndex) {
+            const monthKey = item.start_date.slice(0, 7);
+            const groupKey = `week:${monthKey}`;
+            if (!groups[groupKey]) groups[groupKey] = [];
+            groups[groupKey].push(item);
+        }
+        return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+    }, [weekSummaryIndex]);
+
+    const groupedMonths = useMemo(() => {
+        const groups: Record<string, PeriodSummaryIndex[]> = {};
+        for (const item of monthSummaryIndex) {
+            const yearKey = item.start_date.slice(0, 4);
+            const groupKey = `month:${yearKey}`;
+            if (!groups[groupKey]) groups[groupKey] = [];
+            groups[groupKey].push(item);
+        }
+        return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+    }, [monthSummaryIndex]);
+
+    const [expandedPeriodGroups, setExpandedPeriodGroups] = useState<Record<string, boolean>>({});
+    const togglePeriodGroup = (key: string) => {
+        setExpandedPeriodGroups(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     return (
@@ -276,13 +317,122 @@ const HistorySidebar: React.FC<{
                     })}
                 </div>
             )}
+
+            {/* 周/月汇总历史（生成后才会出现） */}
+            <div className="mt-6 space-y-6">
+                <div>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-gray-900">🗂️ 周汇总</h3>
+                        <button
+                            className="text-xs text-gray-500 hover:text-gray-900"
+                            onClick={() => onReloadPeriodIndex && onReloadPeriodIndex('week')}
+                        >
+                            刷新
+                        </button>
+                    </div>
+                    {groupedWeeks.length === 0 ? (
+                        <div className="text-xs text-gray-400">暂无周汇总历史</div>
+                    ) : (
+                        <div className="space-y-2">
+                            {groupedWeeks.map(([groupKey, items]) => {
+                                const label = groupKey.replace('week:', '');
+                                const expanded = !!expandedPeriodGroups[groupKey];
+                                return (
+                                    <div key={groupKey}>
+                                        <button
+                                            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 transition"
+                                            onClick={() => togglePeriodGroup(groupKey)}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm">{expanded ? '📂' : '📁'}</span>
+                                                <span className="text-sm font-medium text-gray-900">{label}</span>
+                                                <span className="text-xs text-gray-400">({items.length})</span>
+                                            </div>
+                                            <span className="text-xs text-gray-400">{expanded ? '▼' : '▶'}</span>
+                                        </button>
+                                        {expanded && (
+                                            <div className="mt-1 ml-4 space-y-0.5">
+                                                {items.map((it) => (
+                                                    <button
+                                                        key={`${it.type}:${it.start_date}:${it.end_date}`}
+                                                        className="w-full text-left px-2 py-1.5 rounded-md text-sm transition hover:bg-amber-50 text-gray-700"
+                                                        onClick={() => onSelectPeriod && onSelectPeriod('week', it.start_date)}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <span>📄</span>
+                                                            <span className="text-xs">{it.start_date.slice(5, 10)} ~ {it.end_date.slice(5, 10)}</span>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-gray-900">🗂️ 月汇总</h3>
+                        <button
+                            className="text-xs text-gray-500 hover:text-gray-900"
+                            onClick={() => onReloadPeriodIndex && onReloadPeriodIndex('month')}
+                        >
+                            刷新
+                        </button>
+                    </div>
+                    {groupedMonths.length === 0 ? (
+                        <div className="text-xs text-gray-400">暂无月汇总历史</div>
+                    ) : (
+                        <div className="space-y-2">
+                            {groupedMonths.map(([groupKey, items]) => {
+                                const label = groupKey.replace('month:', '');
+                                const expanded = !!expandedPeriodGroups[groupKey];
+                                return (
+                                    <div key={groupKey}>
+                                        <button
+                                            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 transition"
+                                            onClick={() => togglePeriodGroup(groupKey)}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm">{expanded ? '📂' : '📁'}</span>
+                                                <span className="text-sm font-medium text-gray-900">{label}</span>
+                                                <span className="text-xs text-gray-400">({items.length})</span>
+                                            </div>
+                                            <span className="text-xs text-gray-400">{expanded ? '▼' : '▶'}</span>
+                                        </button>
+                                        {expanded && (
+                                            <div className="mt-1 ml-4 space-y-0.5">
+                                                {items.map((it) => (
+                                                    <button
+                                                        key={`${it.type}:${it.start_date}:${it.end_date}`}
+                                                        className="w-full text-left px-2 py-1.5 rounded-md text-sm transition hover:bg-amber-50 text-gray-700"
+                                                        onClick={() => onSelectPeriod && onSelectPeriod('month', it.start_date)}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <span>📄</span>
+                                                            <span>{it.start_date.slice(0, 7)}</span>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
         </aside>
     );
 };
 
 const SummaryView: React.FC<SummaryViewProps> = ({
     summary, periodSummary, loading, error, onGenerate, onGeneratePeriod, skills = [], appStats = [],
-    summaryIndex = [], selectedDate = null, onSelectDate, onReloadIndex,
+    summaryIndex = [], weekSummaryIndex = [], monthSummaryIndex = [], selectedDate = null, onSelectDate, onReloadIndex, onSelectPeriod, onReloadPeriodIndex,
 }) => {
     const [sessions, setSessions] = useState<SessionDTO[]>([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -487,7 +637,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({
 
     return (
         <div className="flex gap-6 pb-12">
-            <HistorySidebar summaryIndex={summaryIndex} selectedDate={selectedDate} onSelectDate={onSelectDate || (() => {})} onReload={onReloadIndex || (() => {})} onGeneratePeriod={onGeneratePeriod} />
+            <HistorySidebar
+                summaryIndex={summaryIndex}
+                selectedDate={selectedDate}
+                onSelectDate={onSelectDate || (() => {})}
+                onReload={onReloadIndex || (() => {})}
+                onGeneratePeriod={onGeneratePeriod}
+                weekSummaryIndex={weekSummaryIndex}
+                monthSummaryIndex={monthSummaryIndex}
+                onSelectPeriod={onSelectPeriod}
+                onReloadPeriodIndex={onReloadPeriodIndex}
+            />
             <div className="flex-1">{renderMainContent()}</div>
         </div>
     );

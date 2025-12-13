@@ -6,25 +6,31 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // TrendService 趋势分析服务
 type TrendService struct {
-	skillRepo SkillRepository
-	diffRepo  DiffRepository
-	eventRepo EventRepository
+	skillRepo    SkillRepository
+	activityRepo SkillActivityRepository
+	diffRepo     DiffRepository
+	eventRepo    EventRepository
 }
 
 // NewTrendService 创建趋势服务
 func NewTrendService(
 	skillRepo SkillRepository,
+	activityRepo SkillActivityRepository,
 	diffRepo DiffRepository,
 	eventRepo EventRepository,
 ) *TrendService {
 	return &TrendService{
-		skillRepo: skillRepo,
-		diffRepo:  diffRepo,
-		eventRepo: eventRepo,
+		skillRepo:    skillRepo,
+		activityRepo: activityRepo,
+		diffRepo:     diffRepo,
+		eventRepo:    eventRepo,
 	}
 }
 
@@ -38,13 +44,15 @@ const (
 
 // SkillTrend 技能趋势
 type SkillTrend struct {
-	SkillKey   string  `json:"skill_key"`
-	SkillName  string  `json:"skill_name"`
-	Category   string  `json:"category"`
-	Changes    int     `json:"changes"`     // 变更次数
-	GrowthRate float64 `json:"growth_rate"` // 增长率 (相比上期)
-	Status     string  `json:"status"`      // growing, stable, declining
-	DaysActive int     `json:"days_active"` // 活跃天数
+	SkillKey    string  `json:"skill_key"`
+	SkillName   string  `json:"skill_name"`
+	Category    string  `json:"category"`
+	Changes     int     `json:"changes"`       // 活动次数（skill_activities events）
+	ExpGain     float64 `json:"exp_gain"`      // 当前期经验增量
+	PrevExpGain float64 `json:"prev_exp_gain"` // 上一期经验增量
+	GrowthRate  float64 `json:"growth_rate"`   // 增长率（相对上期经验增量）
+	Status      string  `json:"status"`        // growing, stable, declining
+	DaysActive  int     `json:"days_active"`   // 活跃天数（按 skill_activities 统计）
 }
 
 // LanguageTrend 语言趋势
@@ -110,56 +118,135 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 		})
 	}
 
-	// 获取指定时间窗内活跃的技能（真正的趋势TopSkills）
-	skills, err := s.skillRepo.GetActiveSkillsInPeriod(ctx, startTime, endTime, 10)
-	if err != nil {
-		return nil, err
+	// 技能趋势：基于 skill_activities 的经验增量（更贴近“能力变化”且可追溯证据）
+	currentStats := make(map[string]repository.SkillActivityStat)
+	prevStats := make(map[string]repository.SkillActivityStat)
+	if s.activityRepo != nil {
+		cur, err := s.activityRepo.GetStatsByTimeRange(ctx, startTime, endTime)
+		if err != nil {
+			return nil, err
+		}
+		for _, st := range cur {
+			currentStats[st.SkillKey] = st
+		}
+
+		prev, err := s.activityRepo.GetStatsByTimeRange(ctx, prevStartTime, prevEndTime)
+		if err != nil {
+			return nil, err
+		}
+		for _, st := range prev {
+			prevStats[st.SkillKey] = st
+		}
+	}
+	// 兼容历史数据：如果 skill_activities 为空但已经存在已分析的 Diff，则回填近 2 个周期的活动记录
+	if s.activityRepo != nil && len(currentStats) == 0 && len(prevStats) == 0 {
+		s.tryBackfillActivitiesFromDiffs(ctx, prevStartTime, endTime, 500)
+
+		cur, err := s.activityRepo.GetStatsByTimeRange(ctx, startTime, endTime)
+		if err != nil {
+			return nil, err
+		}
+		for _, st := range cur {
+			currentStats[st.SkillKey] = st
+		}
+		prev, err := s.activityRepo.GetStatsByTimeRange(ctx, prevStartTime, prevEndTime)
+		if err != nil {
+			return nil, err
+		}
+		for _, st := range prev {
+			prevStats[st.SkillKey] = st
+		}
 	}
 
-	// 从 Diff 证据统计技能变更（当前期 vs 上期）
-	currentSkillStats, err := s.buildSkillStatsFromDiffs(ctx, startTime, endTime)
-	if err != nil {
-		return nil, err
+	allSkills, _ := s.skillRepo.GetAll(ctx)
+	skillByKey := make(map[string]model.SkillNode, len(allSkills))
+	for _, sk := range allSkills {
+		skillByKey[sk.Key] = sk
 	}
-	prevSkillStats, err := s.buildSkillStatsFromDiffs(ctx, prevStartTime, prevEndTime)
-	if err != nil {
-		return nil, err
+
+	type keyRank struct {
+		key    string
+		expSum float64
+	}
+	ranks := make([]keyRank, 0, len(currentStats))
+	for k, st := range currentStats {
+		ranks = append(ranks, keyRank{key: k, expSum: st.ExpSum})
+	}
+	sort.Slice(ranks, func(i, j int) bool {
+		if ranks[i].expSum != ranks[j].expSum {
+			return ranks[i].expSum > ranks[j].expSum
+		}
+		return ranks[i].key < ranks[j].key
+	})
+
+	topKeys := make([]string, 0, 10)
+	for i := 0; i < len(ranks) && len(topKeys) < 10; i++ {
+		topKeys = append(topKeys, ranks[i].key)
+	}
+	if len(topKeys) < 10 {
+		declines := make([]keyRank, 0)
+		for k, st := range prevStats {
+			if _, ok := currentStats[k]; ok {
+				continue
+			}
+			declines = append(declines, keyRank{key: k, expSum: st.ExpSum})
+		}
+		sort.Slice(declines, func(i, j int) bool {
+			if declines[i].expSum != declines[j].expSum {
+				return declines[i].expSum > declines[j].expSum
+			}
+			return declines[i].key < declines[j].key
+		})
+		for i := 0; i < len(declines) && len(topKeys) < 10; i++ {
+			topKeys = append(topKeys, declines[i].key)
+		}
 	}
 
 	// 构建技能趋势
-	topSkills := make([]SkillTrend, 0, len(skills))
-	for _, skill := range skills {
-		cur := currentSkillStats[skill.Key]
-		prev := prevSkillStats[skill.Key]
-		growthRate := calcGrowthRate(cur.Changes, prev.Changes)
+	topSkills := make([]SkillTrend, 0, len(topKeys))
+	for _, key := range topKeys {
+		cur := currentStats[key]
+		prev := prevStats[key]
+		curExp := cur.ExpSum
+		prevExp := prev.ExpSum
 
-		status := classifyTrendStatus(cur.Changes, growthRate, skill.DaysInactive())
+		name := key
+		category := "other"
+		daysInactive := 0
+		if sk, ok := skillByKey[key]; ok {
+			if sk.Name != "" {
+				name = sk.Name
+			}
+			if sk.Category != "" {
+				category = sk.Category
+			}
+			daysInactive = sk.DaysInactive()
+		}
+
+		growthRate := calcGrowthRateFloat(curExp, prevExp)
+		status := classifyTrendStatusByExp(curExp, growthRate, daysInactive)
 
 		daysActive := cur.DaysActive
 		if daysActive <= 0 {
-			daysActive = days - skill.DaysInactive()
-			if daysActive < 0 {
-				daysActive = 0
-			}
+			daysActive = prev.DaysActive
 		}
 
 		topSkills = append(topSkills, SkillTrend{
-			SkillKey:   skill.Key,
-			SkillName:  skill.Name,
-			Category:   skill.Category,
-			Changes:    cur.Changes,
-			GrowthRate: growthRate,
-			Status:     status,
-			DaysActive: daysActive,
+			SkillKey:    key,
+			SkillName:   name,
+			Category:    category,
+			Changes:     int(cur.EventCount),
+			ExpGain:     curExp,
+			PrevExpGain: prevExp,
+			GrowthRate:  growthRate,
+			Status:      status,
+			DaysActive:  daysActive,
 		})
 	}
 
 	sort.Slice(topSkills, func(i, j int) bool {
-		if topSkills[i].Changes != topSkills[j].Changes {
-			return topSkills[i].Changes > topSkills[j].Changes
-		}
-		if topSkills[i].GrowthRate != topSkills[j].GrowthRate {
-			return topSkills[i].GrowthRate > topSkills[j].GrowthRate
+		if topSkills[i].ExpGain != topSkills[j].ExpGain {
+			return topSkills[i].ExpGain > topSkills[j].ExpGain
 		}
 		return topSkills[i].SkillName < topSkills[j].SkillName
 	})
@@ -178,7 +265,7 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 	}
 
 	// 检测瓶颈
-	bottlenecks := s.detectBottlenecks(topSkills)
+	bottlenecks := s.detectBottlenecks(topSkills, totalCodingMins)
 
 	return &TrendReport{
 		Period:          period,
@@ -194,23 +281,26 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 }
 
 // detectBottlenecks 检测技能瓶颈
-func (s *TrendService) detectBottlenecks(skills []SkillTrend) []string {
+func (s *TrendService) detectBottlenecks(skills []SkillTrend, totalCodingMins int64) []string {
 	bottlenecks := []string{}
 
 	if len(skills) == 0 {
+		if totalCodingMins > 0 {
+			return []string{"检测到编码时长，但没有技能经验记录；请先运行一次“AI 分析 Diff”以建立技能证据链"}
+		}
 		return []string{"没有检测到技能活动，开始编码吧！"}
 	}
 
-	// 高投入低增长：变更次数显著高于均值，但增长率不高（或为负）
-	avgChanges := float64(0)
+	// 高投入低增长：经验增量显著高于均值，但相对上期增长率不高（或为负）
+	avgExp := float64(0)
 	for _, sk := range skills {
-		avgChanges += float64(sk.Changes)
+		avgExp += sk.ExpGain
 	}
-	avgChanges = avgChanges / float64(len(skills))
+	avgExp = avgExp / float64(len(skills))
 
 	for _, skill := range skills {
-		if skill.Changes > 0 && avgChanges > 0 && float64(skill.Changes) >= avgChanges*1.5 && skill.GrowthRate <= 0 {
-			bottlenecks = append(bottlenecks, skill.SkillName+" 高投入但增长放缓，建议复盘方法或补齐知识点")
+		if skill.ExpGain > 0 && avgExp > 0 && skill.ExpGain >= avgExp*1.5 && skill.GrowthRate <= 0 {
+			bottlenecks = append(bottlenecks, skill.SkillName+" 仍在高投入，但相对上期增长放缓，建议复盘方法或补齐知识点")
 			continue
 		}
 		if skill.Status == "declining" {
@@ -218,76 +308,32 @@ func (s *TrendService) detectBottlenecks(skills []SkillTrend) []string {
 		}
 	}
 
+	// 全局瓶颈：编码时长显著，但经验增量很低
+	if totalCodingMins >= 120 && len(bottlenecks) == 0 {
+		if skills[0].ExpGain <= 0 {
+			bottlenecks = append(bottlenecks, "编码时长较高，但技能增长证据不足；建议检查 Diff 采集/AI 分析是否正常")
+		}
+	}
+
 	return bottlenecks
 }
 
-type skillStats struct {
-	Changes    int
-	DaysActive int
-}
-
-func (s *TrendService) buildSkillStatsFromDiffs(ctx context.Context, startTime, endTime int64) (map[string]skillStats, error) {
-	diffs, err := s.diffRepo.GetByTimeRange(ctx, startTime, endTime)
-	if err != nil {
-		return nil, err
-	}
-
-	byKey := make(map[string]skillStats)
-	byKeyDays := make(map[string]map[string]struct{})
-
-	for _, d := range diffs {
-		if strings.TrimSpace(d.AIInsight) == "" && len(d.SkillsDetected) == 0 {
-			continue
-		}
-		day := time.UnixMilli(d.Timestamp).Format("2006-01-02")
-
-		seen := make(map[string]struct{}, len(d.SkillsDetected))
-		for _, name := range d.SkillsDetected {
-			key := normalizeKey(name)
-			if key == "" {
-				continue
-			}
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
-
-			st := byKey[key]
-			st.Changes++
-			byKey[key] = st
-
-			if _, ok := byKeyDays[key]; !ok {
-				byKeyDays[key] = make(map[string]struct{})
-			}
-			byKeyDays[key][day] = struct{}{}
-		}
-	}
-
-	for key, days := range byKeyDays {
-		st := byKey[key]
-		st.DaysActive = len(days)
-		byKey[key] = st
-	}
-
-	return byKey, nil
-}
-
-func calcGrowthRate(current, prev int) float64 {
+func calcGrowthRateFloat(current, prev float64) float64 {
 	if current <= 0 && prev <= 0 {
 		return 0
 	}
-	denom := float64(prev)
+	denom := prev
 	if denom < 1 {
 		denom = 1
 	}
-	return float64(current-prev) / denom
+	return (current - prev) / denom
 }
 
-func classifyTrendStatus(changes int, growthRate float64, daysInactive int) string {
+func classifyTrendStatusByExp(expGain float64, growthRate float64, daysInactive int) string {
 	if daysInactive > 7 {
 		return "declining"
 	}
-	if changes <= 0 {
+	if expGain <= 0 {
 		return "stable"
 	}
 	// 使用轻微阈值避免噪声（相对变化 >= 20%）
@@ -302,4 +348,63 @@ func classifyTrendStatus(changes int, growthRate float64, daysInactive int) stri
 		return "stable"
 	}
 	return "stable"
+}
+
+func (s *TrendService) tryBackfillActivitiesFromDiffs(ctx context.Context, startTime, endTime int64, limit int) {
+	if s == nil || s.activityRepo == nil || s.diffRepo == nil {
+		return
+	}
+	if limit <= 0 {
+		limit = 500
+	}
+
+	diffs, err := s.diffRepo.GetByTimeRange(ctx, startTime, endTime)
+	if err != nil || len(diffs) == 0 {
+		return
+	}
+
+	sort.Slice(diffs, func(i, j int) bool { return diffs[i].Timestamp > diffs[j].Timestamp })
+	if len(diffs) > limit {
+		diffs = diffs[:limit]
+	}
+
+	policy := DefaultExpPolicy{}
+	activities := make([]model.SkillActivity, 0, len(diffs)*3)
+
+	for _, d := range diffs {
+		if d.ID <= 0 || d.Timestamp <= 0 || len(d.SkillsDetected) == 0 {
+			continue
+		}
+
+		uniqKeys := make(map[string]struct{}, len(d.SkillsDetected))
+		for _, name := range d.SkillsDetected {
+			key := normalizeKey(strings.TrimSpace(name))
+			if key == "" {
+				continue
+			}
+			uniqKeys[key] = struct{}{}
+		}
+		if len(uniqKeys) == 0 {
+			continue
+		}
+
+		baseExp := policy.CalcDiffExp([]model.Diff{d})
+		perSkillExp := baseExp / float64(len(uniqKeys))
+
+		for key := range uniqKeys {
+			activities = append(activities, model.SkillActivity{
+				SkillKey:   key,
+				Source:     "diff",
+				EvidenceID: d.ID,
+				Exp:        perSkillExp,
+				Timestamp:  d.Timestamp,
+			})
+		}
+	}
+
+	if len(activities) == 0 {
+		return
+	}
+
+	_, _ = s.activityRepo.BatchInsert(ctx, activities)
 }

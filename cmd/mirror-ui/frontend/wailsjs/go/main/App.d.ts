@@ -4,8 +4,6 @@ import {main} from '../models';
 
 export function BuildSessionsForDate(arg1:string):Promise<main.SessionBuildResultDTO>;
 
-export function RebuildSessionsForDate(arg1:string):Promise<main.SessionBuildResultDTO>;
-
 export function EnrichSessionsForDate(arg1:string):Promise<main.SessionEnrichResultDTO>;
 
 export function GetAppStats():Promise<Array<main.AppStatsDTO>>;
@@ -35,5 +33,7 @@ export function GetTrends(arg1:number):Promise<main.TrendReportDTO>;
 export function ListPeriodSummaryIndex(arg1:string,arg2:number):Promise<Array<main.PeriodSummaryIndexDTO>>;
 
 export function ListSummaryIndex(arg1:number):Promise<Array<main.SummaryIndexDTO>>;
+
+export function RebuildSessionsForDate(arg1:string):Promise<main.SessionBuildResultDTO>;
 
 export function SaveSettings(arg1:main.SaveSettingsRequestDTO):Promise<void>;

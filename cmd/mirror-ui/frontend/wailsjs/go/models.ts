@@ -423,6 +423,10 @@ export namespace main {
 	    skill_name: string;
 	    status: string;
 	    days_active: number;
+	    changes: number;
+	    exp_gain: number;
+	    prev_exp_gain: number;
+	    growth_rate: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SkillTrendDTO(source);
@@ -433,6 +437,10 @@ export namespace main {
 	        this.skill_name = source["skill_name"];
 	        this.status = source["status"];
 	        this.days_active = source["days_active"];
+	        this.changes = source["changes"];
+	        this.exp_gain = source["exp_gain"];
+	        this.prev_exp_gain = source["prev_exp_gain"];
+	        this.growth_rate = source["growth_rate"];
 	    }
 	}
 	export class SummaryIndexDTO {

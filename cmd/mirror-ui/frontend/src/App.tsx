@@ -1,12 +1,28 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 // @ts-ignore
-import { GetTodaySummary, GetDailySummary, ListSummaryIndex, GetPeriodSummary, GetSkillTree, GetAppStats } from "../wailsjs/go/main/App";
+import { GetTodaySummary, GetDailySummary, ListSummaryIndex, GetPeriodSummary, ListPeriodSummaryIndex, GetSkillTree, GetAppStats } from "../wailsjs/go/main/App";
 import MainLayout from './components/layout/MainLayout';
-import SummaryView, { DailySummary, AppStat, SummaryIndex, PeriodSummary } from './components/dashboard/SummaryView';
+import SummaryView, { DailySummary, AppStat, SummaryIndex, PeriodSummary, PeriodSummaryIndex } from './components/dashboard/SummaryView';
 import SkillView, { SkillNode } from './components/skills/SkillView';
 import TrendsView from './components/dashboard/TrendsView';
 import SettingsView from './components/settings/SettingsView';
+
+const normalizePeriodType = (value: string, fallback: 'week' | 'month'): 'week' | 'month' => {
+    if (value === 'week' || value === 'month') return value;
+    return fallback;
+};
+
+const normalizePeriodSummaryIndex = (
+    items: Array<{ type: string; start_date: string; end_date: string; }>,
+    fallbackType: 'week' | 'month',
+): PeriodSummaryIndex[] => {
+    return (items || []).map((it) => ({
+        type: normalizePeriodType(it.type, fallbackType),
+        start_date: it.start_date,
+        end_date: it.end_date,
+    }));
+};
 
 function App() {
     const [activeTab, setActiveTab] = useState<'summary' | 'skills' | 'trends' | 'settings'>('summary');
@@ -15,6 +31,8 @@ function App() {
     const [summary, setSummary] = useState<DailySummary | null>(null);
     const [periodSummary, setPeriodSummary] = useState<PeriodSummary | null>(null);
     const [summaryIndex, setSummaryIndex] = useState<SummaryIndex[]>([]);
+    const [weekSummaryIndex, setWeekSummaryIndex] = useState<PeriodSummaryIndex[]>([]);
+    const [monthSummaryIndex, setMonthSummaryIndex] = useState<PeriodSummaryIndex[]>([]);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [skills, setSkills] = useState<SkillNode[]>([]);
     const [appStats, setAppStats] = useState<AppStat[]>([]);
@@ -42,15 +60,16 @@ function App() {
     };
 
     // 加载阶段汇总
-    const loadPeriodSummary = async (periodType: 'week' | 'month') => {
+    const loadPeriodSummary = async (periodType: 'week' | 'month', startDate?: string) => {
         setPeriodLoading(true);
         setError(null);
         setPeriodSummary(null);
         setSummary(null); // 清除日报
         setSelectedDate(null);
         try {
-            const result = await GetPeriodSummary(periodType, ""); // 第二参数为空表示当前周/月
+            const result = await GetPeriodSummary(periodType, startDate || ""); // 为空表示当前周/月
             setPeriodSummary(result);
+            await loadPeriodSummaryIndex(periodType);
         } catch (e: any) {
             setError(e.message || '生成汇总失败');
         } finally {
@@ -65,6 +84,18 @@ function App() {
             setSummaryIndex(result || []);
         } catch (e: any) {
             console.error('加载历史索引失败:', e);
+        }
+    };
+
+    // 加载周/月汇总历史索引
+    const loadPeriodSummaryIndex = async (periodType: 'week' | 'month', limit: number = 60) => {
+        try {
+            const result = await ListPeriodSummaryIndex(periodType, limit);
+            const normalized = normalizePeriodSummaryIndex(result || [], periodType);
+            if (periodType === 'week') setWeekSummaryIndex(normalized);
+            else setMonthSummaryIndex(normalized);
+        } catch (e: any) {
+            console.error('加载阶段汇总历史索引失败:', e);
         }
     };
 
@@ -93,6 +124,8 @@ function App() {
         loadSkills();
         loadAppStats();
         loadSummaryIndex();
+        loadPeriodSummaryIndex('week');
+        loadPeriodSummaryIndex('month');
     }, []);
 
     // 视图渲染
@@ -110,9 +143,13 @@ function App() {
                         skills={skills}
                         appStats={appStats}
                         summaryIndex={summaryIndex}
+                        weekSummaryIndex={weekSummaryIndex}
+                        monthSummaryIndex={monthSummaryIndex}
                         selectedDate={selectedDate}
                         onSelectDate={(date: string) => { void loadSummary(date); }}
                         onReloadIndex={() => { void loadSummaryIndex(); }}
+                        onSelectPeriod={(type, startDate) => { void loadPeriodSummary(type, startDate); }}
+                        onReloadPeriodIndex={(type) => { void loadPeriodSummaryIndex(type); }}
                     />
                 );
             case 'skills':

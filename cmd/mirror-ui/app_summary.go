@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/model"
@@ -233,12 +234,12 @@ func (a *App) GetPeriodSummary(periodType string, startDateStr string) (*PeriodS
 		totalDiffs += s.TotalDiffs
 	}
 
-	aiResult, err := a.core.Services.AI.GeneratePeriodSummary(ctx, startStr, dataEndStr, summaries)
+	aiResult, err := a.core.Services.AI.GeneratePeriodSummary(ctx, periodType, startStr, dataEndStr, summaries)
 	if err != nil {
 		return nil, err
 	}
 
-	overview := aiResult.Overview
+	overview := normalizePeriodWording(periodType, aiResult.Overview)
 	if dataEndStr != endStr {
 		overview = fmt.Sprintf("（截至 %s）%s", dataEndStr, overview)
 	}
@@ -248,9 +249,9 @@ func (a *App) GetPeriodSummary(periodType string, startDateStr string) (*PeriodS
 		StartDate:    startStr,
 		EndDate:      endStr,
 		Overview:     overview,
-		Achievements: aiResult.Achievements,
-		Patterns:     aiResult.Patterns,
-		Suggestions:  aiResult.Suggestions,
+		Achievements: normalizePeriodWordingList(periodType, aiResult.Achievements),
+		Patterns:     normalizePeriodWording(periodType, aiResult.Patterns),
+		Suggestions:  normalizePeriodWording(periodType, aiResult.Suggestions),
 		TopSkills:    aiResult.TopSkills,
 		TotalCoding:  totalCoding,
 		TotalDiffs:   totalDiffs,
@@ -260,6 +261,43 @@ func (a *App) GetPeriodSummary(periodType string, startDateStr string) (*PeriodS
 	a.savePeriodSummary(ctx, result)
 
 	return result, nil
+}
+
+func normalizePeriodWording(periodType string, text string) string {
+	t := strings.TrimSpace(text)
+	if t == "" {
+		return t
+	}
+	if periodType != "month" {
+		return t
+	}
+	// 月汇总纠偏：避免直接以“本周/下周/这周”开头
+	replacements := []struct {
+		old string
+		new string
+	}{
+		{"本周", "本月"},
+		{"这周", "这个月"},
+		{"下周", "下月"},
+		{"一周", "一个月"},
+	}
+	for _, r := range replacements {
+		if strings.HasPrefix(t, r.old) {
+			return r.new + strings.TrimPrefix(t, r.old)
+		}
+	}
+	return t
+}
+
+func normalizePeriodWordingList(periodType string, items []string) []string {
+	if len(items) == 0 {
+		return items
+	}
+	out := make([]string, 0, len(items))
+	for _, it := range items {
+		out = append(out, normalizePeriodWording(periodType, it))
+	}
+	return out
 }
 
 func (a *App) periodSummaryToDTO(ps *model.PeriodSummary) *PeriodSummaryDTO {

@@ -23,6 +23,7 @@ type Core struct {
 		Event         *repository.EventRepository
 		Summary       *repository.SummaryRepository
 		Skill         *repository.SkillRepository
+		SkillActivity *repository.SkillActivityRepository
 		Browser       *repository.BrowserEventRepository
 		Session       *repository.SessionRepository
 		SessionDiff   *repository.SessionDiffRepository
@@ -30,10 +31,10 @@ type Core struct {
 	}
 
 	Services struct {
-		Skills   *service.SkillService
-		AI       *service.AIService
-		Trends   *service.TrendService
-		Sessions *service.SessionService
+		Skills          *service.SkillService
+		AI              *service.AIService
+		Trends          *service.TrendService
+		Sessions        *service.SessionService
 		SessionSemantic *service.SessionSemanticService
 	}
 
@@ -70,6 +71,7 @@ func NewCore(cfgPath string) (*Core, error) {
 	c.Repos.Event = repository.NewEventRepository(db.DB)
 	c.Repos.Summary = repository.NewSummaryRepository(db.DB)
 	c.Repos.Skill = repository.NewSkillRepository(db.DB)
+	c.Repos.SkillActivity = repository.NewSkillActivityRepository(db.DB)
 	c.Repos.Browser = repository.NewBrowserEventRepository(db.DB)
 	c.Repos.Session = repository.NewSessionRepository(db.DB)
 	c.Repos.SessionDiff = repository.NewSessionDiffRepository(db.DB)
@@ -84,9 +86,9 @@ func NewCore(cfgPath string) (*Core, error) {
 	analyzer := ai.NewDiffAnalyzer(c.Clients.DeepSeek)
 
 	// Services
-	c.Services.Skills = service.NewSkillService(c.Repos.Skill, c.Repos.Diff, service.DefaultExpPolicy{})
+	c.Services.Skills = service.NewSkillService(c.Repos.Skill, c.Repos.Diff, c.Repos.SkillActivity, service.DefaultExpPolicy{})
 	c.Services.AI = service.NewAIService(analyzer, c.Repos.Diff, c.Repos.Event, c.Repos.Summary, c.Services.Skills)
-	c.Services.Trends = service.NewTrendService(c.Repos.Skill, c.Repos.Diff, c.Repos.Event)
+	c.Services.Trends = service.NewTrendService(c.Repos.Skill, c.Repos.SkillActivity, c.Repos.Diff, c.Repos.Event)
 	c.Services.Sessions = service.NewSessionService(
 		c.Repos.Event,
 		c.Repos.Diff,

@@ -66,6 +66,12 @@ type SkillRepository interface {
 	GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]model.SkillNode, error)
 }
 
+type SkillActivityRepository interface {
+	BatchInsert(ctx context.Context, activities []model.SkillActivity) (int64, error)
+	ListExistingKeys(ctx context.Context, keys []repository.SkillActivityKey) (map[repository.SkillActivityKey]struct{}, error)
+	GetStatsByTimeRange(ctx context.Context, startTime, endTime int64) ([]repository.SkillActivityStat, error)
+}
+
 type Analyzer interface {
 	AnalyzeDiff(ctx context.Context, filePath, language, diffContent string, existingSkills []ai.SkillInfo) (*ai.DiffInsight, error)
 	GenerateDailySummary(ctx context.Context, req *ai.DailySummaryRequest) (*ai.DailySummaryResult, error)

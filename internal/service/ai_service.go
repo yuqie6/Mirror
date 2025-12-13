@@ -289,10 +289,11 @@ func (s *AIService) GenerateWeeklySummary(ctx context.Context, req *ai.WeeklySum
 }
 
 // GeneratePeriodSummary 生成阶段汇总（周/月）
-func (s *AIService) GeneratePeriodSummary(ctx context.Context, startDate, endDate string, summaries []model.DailySummary) (*ai.WeeklySummaryResult, error) {
+func (s *AIService) GeneratePeriodSummary(ctx context.Context, periodType, startDate, endDate string, summaries []model.DailySummary) (*ai.WeeklySummaryResult, error) {
 	req := &ai.WeeklySummaryRequest{
-		StartDate: startDate,
-		EndDate:   endDate,
+		PeriodType: periodType,
+		StartDate:  startDate,
+		EndDate:    endDate,
 	}
 
 	for _, sum := range summaries {

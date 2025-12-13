@@ -50,11 +50,11 @@ func (f fakeDiffRepoForTrend) GetByID(ctx context.Context, id int64) (*model.Dif
 }
 
 type fakeSkillRepoForTrend struct {
-	active []model.SkillNode
+	all []model.SkillNode
 }
 
 func (f fakeSkillRepoForTrend) GetAll(ctx context.Context) ([]model.SkillNode, error) {
-	return nil, nil
+	return f.all, nil
 }
 func (f fakeSkillRepoForTrend) GetByKey(ctx context.Context, key string) (*model.SkillNode, error) {
 	return nil, nil
@@ -67,7 +67,56 @@ func (f fakeSkillRepoForTrend) GetTopSkills(ctx context.Context, limit int) ([]m
 	return nil, nil
 }
 func (f fakeSkillRepoForTrend) GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]model.SkillNode, error) {
-	return f.active, nil
+	return nil, nil
+}
+
+type fakeSkillActivityRepoForTrend struct {
+	activities []model.SkillActivity
+}
+
+func (f fakeSkillActivityRepoForTrend) BatchInsert(ctx context.Context, activities []model.SkillActivity) (int64, error) {
+	return int64(len(activities)), nil
+}
+func (f fakeSkillActivityRepoForTrend) ListExistingKeys(ctx context.Context, keys []repository.SkillActivityKey) (map[repository.SkillActivityKey]struct{}, error) {
+	return map[repository.SkillActivityKey]struct{}{}, nil
+}
+func (f fakeSkillActivityRepoForTrend) GetStatsByTimeRange(ctx context.Context, startTime, endTime int64) ([]repository.SkillActivityStat, error) {
+	type agg struct {
+		expSum     float64
+		eventCount int64
+		days       map[string]struct{}
+		lastTs     int64
+	}
+	byKey := make(map[string]*agg)
+	for _, a := range f.activities {
+		if a.Timestamp < startTime || a.Timestamp > endTime {
+			continue
+		}
+		x := byKey[a.SkillKey]
+		if x == nil {
+			x = &agg{days: make(map[string]struct{})}
+			byKey[a.SkillKey] = x
+		}
+		x.expSum += a.Exp
+		x.eventCount++
+		day := time.UnixMilli(a.Timestamp).Format("2006-01-02")
+		x.days[day] = struct{}{}
+		if a.Timestamp > x.lastTs {
+			x.lastTs = a.Timestamp
+		}
+	}
+
+	out := make([]repository.SkillActivityStat, 0, len(byKey))
+	for k, x := range byKey {
+		out = append(out, repository.SkillActivityStat{
+			SkillKey:    k,
+			ExpSum:      x.expSum,
+			EventCount:  x.eventCount,
+			DaysActive:  len(x.days),
+			LastTsMilli: x.lastTs,
+		})
+	}
+	return out, nil
 }
 
 type fakeEventRepoForTrend struct {
@@ -97,7 +146,7 @@ func TestGetTrendReport(t *testing.T) {
 		{Language: "ts", DiffCount: 1, LinesAdded: 3, LinesDeleted: 0},
 	}
 
-	activeSkills := []model.SkillNode{
+	allSkills := []model.SkillNode{
 		{Key: "go", Name: "Go", Category: "language", LastActive: now.UnixMilli()},
 		{Key: "react", Name: "React", Category: "framework", LastActive: now.Add(-9 * 24 * time.Hour).UnixMilli()},
 	}
@@ -107,17 +156,16 @@ func TestGetTrendReport(t *testing.T) {
 		{AppName: "chrome.exe", TotalDuration: 7200},
 	}
 
-	diffs := []model.Diff{
-		{
-			Timestamp:      now.Add(-24 * time.Hour).UnixMilli(),
-			AIInsight:      "use channels",
-			SkillsDetected: model.JSONArray{"Go"},
-		},
+	activities := []model.SkillActivity{
+		{SkillKey: "go", Source: "diff", EvidenceID: 1, Exp: 10, Timestamp: now.Add(-24 * time.Hour).UnixMilli()},
+		// react 在上期活跃，本期不活跃 -> declining
+		{SkillKey: "react", Source: "diff", EvidenceID: 2, Exp: 5, Timestamp: now.Add(-10 * 24 * time.Hour).UnixMilli()},
 	}
 
 	svc := NewTrendService(
-		fakeSkillRepoForTrend{active: activeSkills},
-		fakeDiffRepoForTrend{langStats: langStats, diffs: diffs},
+		fakeSkillRepoForTrend{all: allSkills},
+		fakeSkillActivityRepoForTrend{activities: activities},
+		fakeDiffRepoForTrend{langStats: langStats, diffs: nil},
 		fakeEventRepoForTrend{stats: appStats},
 	)
 
@@ -154,11 +202,11 @@ func TestGetTrendReport(t *testing.T) {
 
 func TestDetectBottlenecks(t *testing.T) {
 	svc := &TrendService{}
-	b := svc.detectBottlenecks([]SkillTrend{{SkillName: "Go", Status: "declining"}})
+	b := svc.detectBottlenecks([]SkillTrend{{SkillName: "Go", Status: "declining"}}, 0)
 	if len(b) != 1 {
 		t.Fatalf("len=%d, want 1", len(b))
 	}
-	b = svc.detectBottlenecks(nil)
+	b = svc.detectBottlenecks(nil, 0)
 	if len(b) != 1 || b[0] == "" {
 		t.Fatalf("empty skills should return default message")
 	}

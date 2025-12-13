@@ -29,9 +29,13 @@ type LanguageTrendDTO struct {
 
 // SkillTrendDTO 技能趋势 DTO
 type SkillTrendDTO struct {
-	SkillName  string `json:"skill_name"`
-	Status     string `json:"status"`
-	DaysActive int    `json:"days_active"`
+	SkillName   string  `json:"skill_name"`
+	Status      string  `json:"status"`
+	DaysActive  int     `json:"days_active"`
+	Changes     int     `json:"changes"`
+	ExpGain     float64 `json:"exp_gain"`
+	PrevExpGain float64 `json:"prev_exp_gain"`
+	GrowthRate  float64 `json:"growth_rate"`
 }
 
 // GetTrends 获取趋势报告
@@ -65,9 +69,13 @@ func (a *App) GetTrends(days int) (*TrendReportDTO, error) {
 	skills := make([]SkillTrendDTO, len(report.TopSkills))
 	for i, s := range report.TopSkills {
 		skills[i] = SkillTrendDTO{
-			SkillName:  s.SkillName,
-			Status:     s.Status,
-			DaysActive: s.DaysActive,
+			SkillName:   s.SkillName,
+			Status:      s.Status,
+			DaysActive:  s.DaysActive,
+			Changes:     s.Changes,
+			ExpGain:     s.ExpGain,
+			PrevExpGain: s.PrevExpGain,
+			GrowthRate:  s.GrowthRate,
 		}
 	}
 

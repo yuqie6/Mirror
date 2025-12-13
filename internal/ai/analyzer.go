@@ -417,6 +417,7 @@ func cleanJSONResponse(response string) string {
 
 // WeeklySummaryRequest 周报请求
 type WeeklySummaryRequest struct {
+	PeriodType     string // week/month（为空按 week）
 	StartDate      string
 	EndDate        string
 	DailySummaries []DailySummaryInfo
@@ -448,7 +449,17 @@ func (a *DiffAnalyzer) GenerateWeeklySummary(ctx context.Context, req *WeeklySum
 		dailyDetails.WriteString(fmt.Sprintf("【%s】%s 亮点: %s\n", s.Date, s.Summary, s.Highlights))
 	}
 
-	prompt := fmt.Sprintf(`请分析以下一周的工作记录，生成周报总结：
+	periodType := strings.ToLower(strings.TrimSpace(req.PeriodType))
+	periodLabel := "本周"
+	nextLabel := "下周"
+	periodScope := "一周"
+	if periodType == "month" {
+		periodLabel = "本月"
+		nextLabel = "下月"
+		periodScope = "一个月"
+	}
+
+	prompt := fmt.Sprintf(`请分析以下%s的工作记录，生成阶段汇总：
 
 时间范围: %s 至 %s
 总编码时长: %d 分钟
@@ -459,15 +470,16 @@ func (a *DiffAnalyzer) GenerateWeeklySummary(ctx context.Context, req *WeeklySum
 
 请用 JSON 格式返回（不要 markdown 代码块）:
 {
-  "overview": "本周整体概述（3-4句话总结这周做了什么，有什么进展）",
+  "overview": "%s整体概述（3-4句话总结这段时间做了什么，有什么进展）",
   "achievements": ["成就1", "成就2", "成就3"],
   "patterns": "学习模式分析（发现了什么规律或趋势）",
-  "suggestions": "下周建议（基于本周情况给出具体可行的建议）",
-  "top_skills": ["本周最常用的技能"]
-}`, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String())
+  "suggestions": "%s建议（基于%s情况给出具体可行的建议）",
+  "top_skills": ["%s最常用/最活跃的技能"]
+}
+注意：如果这是月汇总，请不要使用“本周/下周”的措辞。`, periodScope, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String(), periodLabel, nextLabel, periodLabel, periodLabel)
 
 	messages := []Message{
-		{Role: "system", Content: "你是一个个人成长助手，帮助用户回顾一周的工作和学习，提供有深度的分析和建设性的反馈。回复必须是纯 JSON。"},
+		{Role: "system", Content: fmt.Sprintf("你是一个个人成长助手，帮助用户回顾%s的工作和学习，提供有深度的分析和建设性的反馈。回复必须是纯 JSON。", periodScope)},
 		{Role: "user", Content: prompt},
 	}
 

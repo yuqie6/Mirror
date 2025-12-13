@@ -8,24 +8,27 @@ import (
 
 	"github.com/yuqie6/mirror/internal/ai"
 	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/repository"
 )
 
 // SkillService 技能服务
 type SkillService struct {
-	skillRepo SkillRepository
-	diffRepo  DiffRepository
-	expPolicy ExpPolicy
+	skillRepo    SkillRepository
+	diffRepo     DiffRepository
+	activityRepo SkillActivityRepository
+	expPolicy    ExpPolicy
 }
 
 // NewSkillService 创建技能服务
-func NewSkillService(skillRepo SkillRepository, diffRepo DiffRepository, expPolicy ExpPolicy) *SkillService {
+func NewSkillService(skillRepo SkillRepository, diffRepo DiffRepository, activityRepo SkillActivityRepository, expPolicy ExpPolicy) *SkillService {
 	if expPolicy == nil {
 		expPolicy = DefaultExpPolicy{}
 	}
 	return &SkillService{
-		skillRepo: skillRepo,
-		diffRepo:  diffRepo,
-		expPolicy: expPolicy,
+		skillRepo:    skillRepo,
+		diffRepo:     diffRepo,
+		activityRepo: activityRepo,
+		expPolicy:    expPolicy,
 	}
 }
 
@@ -36,6 +39,11 @@ func (s *SkillService) GetAllSkills(ctx context.Context) ([]model.SkillNode, err
 
 // ApplyContributions 统一入口：根据贡献更新技能
 func (s *SkillService) ApplyContributions(ctx context.Context, contributions []SkillContribution) error {
+	if len(contributions) == 0 {
+		return nil
+	}
+
+	contributions = s.filterNewContributions(ctx, contributions)
 	if len(contributions) == 0 {
 		return nil
 	}
@@ -117,6 +125,77 @@ func (s *SkillService) ApplyContributions(ctx context.Context, contributions []S
 	}
 
 	return s.skillRepo.UpsertBatch(ctx, skillsToUpdate)
+}
+
+func (s *SkillService) filterNewContributions(ctx context.Context, contributions []SkillContribution) []SkillContribution {
+	if s.activityRepo == nil {
+		return contributions
+	}
+
+	seen := make(map[repository.SkillActivityKey]struct{}, len(contributions))
+	keys := make([]repository.SkillActivityKey, 0, len(contributions))
+	unique := make([]SkillContribution, 0, len(contributions))
+	passthrough := make([]SkillContribution, 0)
+
+	for _, c := range contributions {
+		source := strings.TrimSpace(c.Source)
+		if source == "" {
+			source = "other"
+		}
+		key := c.SkillKey
+		if key == "" {
+			key = normalizeKey(c.SkillName)
+		}
+		c.Source = source
+		c.SkillKey = key
+
+		if key == "" || c.EvidenceID <= 0 || c.Timestamp <= 0 {
+			// 无法做幂等：不写 activity，但仍允许技能更新
+			passthrough = append(passthrough, c)
+			continue
+		}
+
+		k := repository.SkillActivityKey{Source: source, EvidenceID: c.EvidenceID, SkillKey: key}
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		keys = append(keys, k)
+		unique = append(unique, c)
+	}
+
+	existing, err := s.activityRepo.ListExistingKeys(ctx, keys)
+	if err != nil {
+		// 查询失败时不做过滤，保证核心流程可用
+		return contributions
+	}
+
+	out := make([]SkillContribution, 0, len(unique)+len(passthrough))
+	activities := make([]model.SkillActivity, 0, len(keys))
+
+	for _, c := range unique {
+		k := repository.SkillActivityKey{Source: c.Source, EvidenceID: c.EvidenceID, SkillKey: c.SkillKey}
+		if _, ok := existing[k]; ok {
+			continue
+		}
+		out = append(out, c)
+		activities = append(activities, model.SkillActivity{
+			SkillKey:   c.SkillKey,
+			Source:     c.Source,
+			EvidenceID: c.EvidenceID,
+			Exp:        c.Exp,
+			Timestamp:  c.Timestamp,
+		})
+	}
+	out = append(out, passthrough...)
+
+	if len(activities) > 0 {
+		if _, err := s.activityRepo.BatchInsert(ctx, activities); err != nil {
+			slog.Warn("写入技能活动失败", "error", err)
+		}
+	}
+
+	return out
 }
 
 // UpdateSkillsFromDiffsWithCategory 根据 AI 返回的技能信息更新技能（兼容旧调用，内部转贡献）
