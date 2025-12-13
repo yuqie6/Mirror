@@ -42,4 +42,3 @@ func GetLanguageFromExt(ext string) string {
 	}
 	return "Unknown"
 }
-

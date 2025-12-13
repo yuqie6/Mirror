@@ -23,34 +23,38 @@ type Collector interface {
 
 // WindowCollector Windows 窗口采集器
 type WindowCollector struct {
-	pollInterval time.Duration // 轮询间隔
-	minDuration  time.Duration // 最小记录时长
-	maxDuration  time.Duration // 单段最大时长（用于持续窗口的心跳落库）
-	eventChan    chan *schema.Event
-	stopChan     chan struct{}
-	lastWindow   *WindowInfo
-	lastSwitchAt time.Time
-	currentStart time.Time
-	running      bool
-	stopOnce     sync.Once  // 确保 Stop 只执行一次
-	mu           sync.Mutex // 保护 running 状态
+	pollInterval  time.Duration // 轮询间隔
+	minDuration   time.Duration // 最小记录时长
+	maxDuration   time.Duration // 单段最大时长（用于持续窗口的心跳落库）
+	idleThreshold time.Duration // 系统空闲阈值（超过则视为 idle，不计入窗口时长）
+	eventChan     chan *schema.Event
+	stopChan      chan struct{}
+	lastWindow    *WindowInfo
+	lastSwitchAt  time.Time
+	currentStart  time.Time
+	idleMode      bool // 是否处于 idle（锁屏/离开等）
+	running       bool
+	stopOnce      sync.Once  // 确保 Stop 只执行一次
+	mu            sync.Mutex // 保护 running 状态
 }
 
 // CollectorConfig 采集器配置
 type CollectorConfig struct {
-	PollIntervalMs int // 轮询间隔（毫秒）
-	MinDurationSec int // 最小记录时长（秒）
-	MaxDurationSec int // 单段最大时长（秒），超过则强制落库并重新计时（0=默认60）
-	BufferSize     int // 事件缓冲区大小
+	PollIntervalMs   int // 轮询间隔（毫秒）
+	MinDurationSec   int // 最小记录时长（秒）
+	MaxDurationSec   int // 单段最大时长（秒），超过则强制落库并重新计时（0=默认60）
+	IdleThresholdSec int // 系统空闲阈值（秒），超过则暂停累计窗口时长并形成“空洞”（0=默认360，即6分钟）
+	BufferSize       int // 事件缓冲区大小
 }
 
 // DefaultCollectorConfig 默认配置
 func DefaultCollectorConfig() *CollectorConfig {
 	return &CollectorConfig{
-		PollIntervalMs: 500,
-		MinDurationSec: 3,
-		MaxDurationSec: 60,
-		BufferSize:     2048,
+		PollIntervalMs:   500,
+		MinDurationSec:   3,
+		MaxDurationSec:   60,
+		IdleThresholdSec: 6 * 60,
+		BufferSize:       2048,
 	}
 }
 
@@ -62,13 +66,17 @@ func NewWindowCollector(cfg *CollectorConfig) *WindowCollector {
 	if cfg.MaxDurationSec <= 0 {
 		cfg.MaxDurationSec = 60
 	}
+	if cfg.IdleThresholdSec <= 0 {
+		cfg.IdleThresholdSec = 6 * 60
+	}
 
 	return &WindowCollector{
-		pollInterval: time.Duration(cfg.PollIntervalMs) * time.Millisecond,
-		minDuration:  time.Duration(cfg.MinDurationSec) * time.Second,
-		maxDuration:  time.Duration(cfg.MaxDurationSec) * time.Second,
-		eventChan:    make(chan *schema.Event, cfg.BufferSize),
-		stopChan:     make(chan struct{}),
+		pollInterval:  time.Duration(cfg.PollIntervalMs) * time.Millisecond,
+		minDuration:   time.Duration(cfg.MinDurationSec) * time.Second,
+		maxDuration:   time.Duration(cfg.MaxDurationSec) * time.Second,
+		idleThreshold: time.Duration(cfg.IdleThresholdSec) * time.Second,
+		eventChan:     make(chan *schema.Event, cfg.BufferSize),
+		stopChan:      make(chan struct{}),
 	}
 }
 
@@ -101,7 +109,7 @@ func (c *WindowCollector) Stop() error {
 		close(c.stopChan)
 
 		// 记录最后一个窗口的时长
-		if c.lastWindow != nil {
+		if c.lastWindow != nil && !c.idleMode {
 			c.emitEvent(c.lastWindow, time.Since(c.currentStart))
 		}
 
@@ -147,6 +155,33 @@ func (c *WindowCollector) poll() {
 	}
 
 	now := time.Now()
+
+	// 系统空闲检测：当用户长时间无输入时，不应把 idle 时间记到窗口时长里。
+	if c.idleThreshold > 0 {
+		if idleDur, err := GetIdleDuration(); err == nil && idleDur >= c.idleThreshold {
+			if !c.idleMode && c.lastWindow != nil && !c.currentStart.IsZero() {
+				lastActiveAt := now.Add(-idleDur)
+				if lastActiveAt.Before(c.currentStart) {
+					lastActiveAt = c.currentStart
+				}
+				activeDuration := lastActiveAt.Sub(c.currentStart)
+				if activeDuration >= c.minDuration {
+					c.emitEvent(c.lastWindow, activeDuration)
+				}
+			}
+			c.idleMode = true
+			return
+		}
+	}
+
+	// 从 idle 恢复：重置起点，形成时间空洞以供会话切分识别
+	if c.idleMode {
+		c.idleMode = false
+		c.lastWindow = current
+		c.currentStart = now
+		c.lastSwitchAt = now
+		return
+	}
 
 	// 首次记录
 	if c.lastWindow == nil {

@@ -13,7 +13,12 @@ type SessionRepository struct {
 	db *gorm.DB
 }
 
-const latestSessionVersionPerDateSQL = "session_version = (SELECT MAX(session_version) FROM sessions s2 WHERE s2.date = sessions.date)"
+const sessionDateExprSQL = "COALESCE(NULLIF(date, ''), strftime('%Y-%m-%d', start_time / 1000, 'unixepoch', 'localtime'))"
+
+const latestSessionVersionPerDateSQL = "session_version = (SELECT MAX(session_version) FROM sessions s2 WHERE " +
+	"COALESCE(NULLIF(s2.date, ''), strftime('%Y-%m-%d', s2.start_time / 1000, 'unixepoch', 'localtime')) = " +
+	"COALESCE(NULLIF(sessions.date, ''), strftime('%Y-%m-%d', sessions.start_time / 1000, 'unixepoch', 'localtime'))" +
+	")"
 
 // NewSessionRepository 创建会话仓储
 func NewSessionRepository(db *gorm.DB) *SessionRepository {
@@ -103,7 +108,7 @@ func (r *SessionRepository) GetMaxSessionVersionByDate(ctx context.Context, date
 	if err := r.db.WithContext(ctx).
 		Model(&schema.Session{}).
 		Select("COALESCE(MAX(session_version), 0)").
-		Where("date = ?", date).
+		Where(sessionDateExprSQL+" = ?", date).
 		Scan(&max).Error; err != nil {
 		return 0, fmt.Errorf("查询会话版本失败: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -22,7 +23,9 @@ var (
 	procGetWindowTextW           = user32.NewProc("GetWindowTextW")
 	procGetWindowTextLengthW     = user32.NewProc("GetWindowTextLengthW")
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
+	procGetLastInputInfo         = user32.NewProc("GetLastInputInfo")
 	procOpenProcess              = kernel32.NewProc("OpenProcess")
+	procGetTickCount             = kernel32.NewProc("GetTickCount")
 	procGetModuleBaseNameW       = psapi.NewProc("GetModuleBaseNameW")
 )
 
@@ -37,6 +40,28 @@ type WindowInfo struct {
 	Title     string  // 窗口标题
 	ProcessID uint32  // 进程 ID
 	AppName   string  // 应用程序名称 (如 Chrome.exe)
+}
+
+type lastInputInfo struct {
+	cbSize uint32
+	dwTime uint32
+}
+
+// GetIdleDuration 返回系统空闲时长（基于最后一次用户输入时间）
+func GetIdleDuration() (time.Duration, error) {
+	var li lastInputInfo
+	li.cbSize = uint32(unsafe.Sizeof(li))
+	ret, _, err := procGetLastInputInfo.Call(uintptr(unsafe.Pointer(&li)))
+	if ret == 0 {
+		return 0, err
+	}
+
+	now, _, _ := procGetTickCount.Call()
+	nowTick := uint32(now)
+
+	// uint32 溢出是定义良好的：两者同为 GetTickCount 的毫秒 tick
+	idleMs := nowTick - li.dwTime
+	return time.Duration(idleMs) * time.Millisecond, nil
 }
 
 // GetForegroundWindowInfo 获取当前前台窗口信息
