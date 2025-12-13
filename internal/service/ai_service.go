@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -140,12 +141,25 @@ func (s *AIService) getSkillInfoList(ctx context.Context) []ai.SkillInfo {
 		return nil
 	}
 
+	// ParentKey 是内部 Key；传给 AI 的 parent 需要是“父技能名称”以保持语义一致。
+	keyToName := make(map[string]string, len(skills))
+	for _, skill := range skills {
+		if strings.TrimSpace(skill.Key) == "" {
+			continue
+		}
+		keyToName[skill.Key] = skill.Name
+	}
+
 	result := make([]ai.SkillInfo, 0, len(skills))
 	for _, skill := range skills {
+		parentName := ""
+		if strings.TrimSpace(skill.ParentKey) != "" {
+			parentName = keyToName[skill.ParentKey]
+		}
 		result = append(result, ai.SkillInfo{
 			Name:     skill.Name,
 			Category: skill.Category,
-			Parent:   skill.ParentKey,
+			Parent:   parentName,
 		})
 	}
 	return result

@@ -4,7 +4,6 @@ import (
 	"context"
 	"math"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/model"
@@ -140,7 +139,7 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 	}
 	// 兼容历史数据：如果 skill_activities 为空但已经存在已分析的 Diff，则回填近 2 个周期的活动记录
 	if s.activityRepo != nil && len(currentStats) == 0 && len(prevStats) == 0 {
-		s.tryBackfillActivitiesFromDiffs(ctx, prevStartTime, endTime, 500)
+		_, _ = BackfillSkillActivitiesFromDiffs(ctx, s.diffRepo, s.activityRepo, DefaultExpPolicy{}, prevStartTime, endTime, 500)
 
 		cur, err := s.activityRepo.GetStatsByTimeRange(ctx, startTime, endTime)
 		if err != nil {
@@ -348,63 +347,4 @@ func classifyTrendStatusByExp(expGain float64, growthRate float64, daysInactive 
 		return "stable"
 	}
 	return "stable"
-}
-
-func (s *TrendService) tryBackfillActivitiesFromDiffs(ctx context.Context, startTime, endTime int64, limit int) {
-	if s == nil || s.activityRepo == nil || s.diffRepo == nil {
-		return
-	}
-	if limit <= 0 {
-		limit = 500
-	}
-
-	diffs, err := s.diffRepo.GetByTimeRange(ctx, startTime, endTime)
-	if err != nil || len(diffs) == 0 {
-		return
-	}
-
-	sort.Slice(diffs, func(i, j int) bool { return diffs[i].Timestamp > diffs[j].Timestamp })
-	if len(diffs) > limit {
-		diffs = diffs[:limit]
-	}
-
-	policy := DefaultExpPolicy{}
-	activities := make([]model.SkillActivity, 0, len(diffs)*3)
-
-	for _, d := range diffs {
-		if d.ID <= 0 || d.Timestamp <= 0 || len(d.SkillsDetected) == 0 {
-			continue
-		}
-
-		uniqKeys := make(map[string]struct{}, len(d.SkillsDetected))
-		for _, name := range d.SkillsDetected {
-			key := normalizeKey(strings.TrimSpace(name))
-			if key == "" {
-				continue
-			}
-			uniqKeys[key] = struct{}{}
-		}
-		if len(uniqKeys) == 0 {
-			continue
-		}
-
-		baseExp := policy.CalcDiffExp([]model.Diff{d})
-		perSkillExp := baseExp / float64(len(uniqKeys))
-
-		for key := range uniqKeys {
-			activities = append(activities, model.SkillActivity{
-				SkillKey:   key,
-				Source:     "diff",
-				EvidenceID: d.ID,
-				Exp:        perSkillExp,
-				Timestamp:  d.Timestamp,
-			})
-		}
-	}
-
-	if len(activities) == 0 {
-		return
-	}
-
-	_, _ = s.activityRepo.BatchInsert(ctx, activities)
 }

@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
 	"github.com/fsnotify/fsnotify"
+	"github.com/yuqie6/mirror/internal/model"
 )
 
 // DiffCollector 文件 Diff 采集器
@@ -43,7 +43,7 @@ type DiffCollectorConfig struct {
 func DefaultDiffCollectorConfig() *DiffCollectorConfig {
 	return &DiffCollectorConfig{
 		WatchPaths:  []string{},
-		Extensions:  []string{".go", ".py", ".js", ".ts", ".jsx", ".tsx", ".vue", ".java", ".rs", ".c", ".cpp", ".h"},
+		Extensions:  []string{".go", ".py", ".js", ".ts", ".jsx", ".tsx", ".vue", ".java", ".rs", ".c", ".cpp"},
 		BufferSize:  512,
 		DebounceSec: 2,
 	}

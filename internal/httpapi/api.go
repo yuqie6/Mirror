@@ -669,8 +669,8 @@ func (a *apiServer) getSkillSessions(w http.ResponseWriter, r *http.Request) {
 
 	result := make([]SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
-		diffIDs := toInt64Slice(s.Metadata, "diff_ids")
-		browserIDs := toInt64Slice(s.Metadata, "browser_event_ids")
+		diffIDs := model.GetInt64Slice(s.Metadata, "diff_ids")
+		browserIDs := model.GetInt64Slice(s.Metadata, "browser_event_ids")
 		timeRange := strings.TrimSpace(s.TimeRange)
 		if timeRange == "" {
 			timeRange = formatTimeRangeMs(s.StartTime, s.EndTime)
@@ -916,8 +916,8 @@ func (a *apiServer) getSessionsByDate(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
-		diffIDs := toInt64Slice(s.Metadata, "diff_ids")
-		browserIDs := toInt64Slice(s.Metadata, "browser_event_ids")
+		diffIDs := model.GetInt64Slice(s.Metadata, "diff_ids")
+		browserIDs := model.GetInt64Slice(s.Metadata, "browser_event_ids")
 		timeRange := strings.TrimSpace(s.TimeRange)
 		if timeRange == "" {
 			timeRange = formatTimeRangeMs(s.StartTime, s.EndTime)
@@ -961,8 +961,8 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	diffIDs := toInt64Slice(sess.Metadata, "diff_ids")
-	browserIDs := toInt64Slice(sess.Metadata, "browser_event_ids")
+	diffIDs := model.GetInt64Slice(sess.Metadata, "diff_ids")
+	browserIDs := model.GetInt64Slice(sess.Metadata, "browser_event_ids")
 
 	var diffs []model.Diff
 	if len(diffIDs) > 0 {
@@ -1028,8 +1028,8 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 			DiffCount:      len(diffIDs),
 			BrowserCount:   len(browserIDs),
 		},
-		Tags:     toStringSlice(sess.Metadata, "tags"),
-		RAGRefs:  toMapSlice(sess.Metadata, "rag_refs"),
+		Tags:     model.GetStringSlice(sess.Metadata, "tags"),
+		RAGRefs:  model.GetMapSlice(sess.Metadata, "rag_refs"),
 		AppUsage: appUsage,
 		Diffs:    diffDTOs,
 		Browser:  browserDTOs,

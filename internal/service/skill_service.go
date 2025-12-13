@@ -85,15 +85,20 @@ func (s *SkillService) ApplyContributions(ctx context.Context, contributions []S
 		c := a.contrib
 
 		// 父技能优先使用已存在的 Key，避免 Key 漂移
-		parentKey := c.ParentKey
-		if parentKey == "" && c.ParentKey == "" && c.Category != "" {
-			// no-op，仅保持结构
-		}
-		if parentKey != "" {
-			if existingKey, ok := nameToKeyMap[strings.ToLower(parentKey)]; ok {
+		parentKey := ""
+		parentName := strings.TrimSpace(c.ParentName)
+		if parentName != "" {
+			if existingKey, ok := nameToKeyMap[strings.ToLower(parentName)]; ok {
 				parentKey = existingKey
 			} else {
-				parentKey = normalizeKey(parentKey)
+				normalized := normalizeKey(parentName)
+				if normalized != "" {
+					if _, ok := nameToKeyMap[strings.ToLower(normalized)]; ok {
+						parentKey = normalized
+					} else if existing, _ := s.skillRepo.GetByKey(ctx, normalized); existing != nil {
+						parentKey = normalized
+					}
+				}
 			}
 		}
 
@@ -224,10 +229,7 @@ func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, di
 	contribs := make([]SkillContribution, 0, len(skills))
 	for _, aiSkill := range skills {
 		skillKey := normalizeKey(aiSkill.Name)
-		parentKey := ""
-		if aiSkill.Parent != "" {
-			parentKey = normalizeKey(aiSkill.Parent)
-		}
+		parentName := strings.TrimSpace(aiSkill.Parent)
 		ctxText := latestInsight
 		if ctxText == "" {
 			ctxText = latestFile
@@ -237,7 +239,7 @@ func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, di
 			SkillKey:            skillKey,
 			SkillName:           aiSkill.Name,
 			Category:            aiSkill.Category,
-			ParentKey:           parentKey,
+			ParentName:          parentName,
 			Exp:                 perSkillExp,
 			EvidenceID:          latestDiffID,
 			ContributionContext: ctxText,

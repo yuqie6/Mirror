@@ -136,9 +136,7 @@ function App() {
             void loadSummaryIndex();
         };
 
-        es.addEventListener("events_persisted", refresh);
-        es.addEventListener("diffs_persisted", refresh);
-        es.addEventListener("browser_events_persisted", refresh);
+        es.addEventListener("data_changed", refresh);
 
         es.onerror = () => {
             // 浏览器会自动重连；避免噪音

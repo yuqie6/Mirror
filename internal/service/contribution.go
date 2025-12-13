@@ -7,7 +7,7 @@ type SkillContribution struct {
 	SkillKey            string  `json:"skill_key"`
 	SkillName           string  `json:"skill_name"`
 	Category            string  `json:"category,omitempty"`
-	ParentKey           string  `json:"parent_key,omitempty"`
+	ParentName          string  `json:"parent_name,omitempty"`
 	Exp                 float64 `json:"exp"`
 	EvidenceID          int64   `json:"evidence_id"`
 	ContributionContext string  `json:"contribution_context"`

@@ -139,7 +139,7 @@ func (s *SessionSemanticService) GetSessionsBySkill(ctx context.Context, skillKe
 			break
 		}
 		sess := sessions[i]
-		keys := getStringSlice(sess.Metadata, "skill_keys")
+		keys := model.GetStringSlice(sess.Metadata, "skill_keys")
 		for _, k := range keys {
 			if k == skillKey {
 				matched = append(matched, sess)
@@ -160,7 +160,7 @@ func shouldEnrichSession(sess *model.Session) bool {
 		return true
 	}
 	// 证据索引缺失也需要补齐（用于 skill→session 追溯）
-	if len(getStringSlice(sess.Metadata, "skill_keys")) == 0 && len(sess.SkillsInvolved) == 0 {
+	if len(model.GetStringSlice(sess.Metadata, "skill_keys")) == 0 && len(sess.SkillsInvolved) == 0 {
 		return true
 	}
 	return false
@@ -176,7 +176,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 		meta = make(model.JSONMap)
 	}
 
-	diffIDs := getInt64Slice(meta, "diff_ids")
+	diffIDs := model.GetInt64Slice(meta, "diff_ids")
 	var diffs []model.Diff
 	var err error
 	if len(diffIDs) > 0 {
@@ -193,7 +193,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 			diffIDs = append(diffIDs, d.ID)
 		}
 	}
-	setInt64Slice(meta, "diff_ids", diffIDs)
+	model.SetInt64Slice(meta, "diff_ids", diffIDs)
 
 	// 应用使用统计
 	appStats, err := s.eventRepo.GetAppStats(ctx, sess.StartTime, sess.EndTime)
@@ -213,7 +213,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 	}
 
 	// 浏览事件（优先用索引 ID，否则按时间窗补全）
-	browserIDs := getInt64Slice(meta, "browser_event_ids")
+	browserIDs := model.GetInt64Slice(meta, "browser_event_ids")
 	var browserEvents []model.BrowserEvent
 	if len(browserIDs) > 0 {
 		browserEvents, err = s.browserRepo.GetByIDs(ctx, browserIDs)
@@ -229,7 +229,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 			browserIDs = append(browserIDs, e.ID)
 		}
 	}
-	setInt64Slice(meta, "browser_event_ids", browserIDs)
+	model.SetInt64Slice(meta, "browser_event_ids", browserIDs)
 
 	// 技能聚合：从已分析 Diff 归因（避免凭空推断）
 	skillNameToKey := make(map[string]string)
@@ -492,82 +492,4 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
-}
-
-func getInt64Slice(meta model.JSONMap, key string) []int64 {
-	if meta == nil {
-		return nil
-	}
-	raw, ok := meta[key]
-	if !ok || raw == nil {
-		return nil
-	}
-	switch v := raw.(type) {
-	case []int64:
-		return append([]int64(nil), v...)
-	case []interface{}:
-		out := make([]int64, 0, len(v))
-		for _, it := range v {
-			switch n := it.(type) {
-			case int64:
-				out = append(out, n)
-			case int:
-				out = append(out, int64(n))
-			case float64:
-				out = append(out, int64(n))
-			case float32:
-				out = append(out, int64(n))
-			}
-		}
-		return out
-	default:
-		return nil
-	}
-}
-
-func setInt64Slice(meta model.JSONMap, key string, ids []int64) {
-	if meta == nil {
-		return
-	}
-	if len(ids) == 0 {
-		delete(meta, key)
-		return
-	}
-	out := make([]int64, 0, len(ids))
-	seen := make(map[int64]struct{}, len(ids))
-	for _, id := range ids {
-		if id == 0 {
-			continue
-		}
-		if _, ok := seen[id]; ok {
-			continue
-		}
-		seen[id] = struct{}{}
-		out = append(out, id)
-	}
-	meta[key] = out
-}
-
-func getStringSlice(meta model.JSONMap, key string) []string {
-	if meta == nil {
-		return nil
-	}
-	raw, ok := meta[key]
-	if !ok || raw == nil {
-		return nil
-	}
-	switch v := raw.(type) {
-	case []string:
-		return append([]string(nil), v...)
-	case []interface{}:
-		out := make([]string, 0, len(v))
-		for _, it := range v {
-			if s, ok := it.(string); ok && strings.TrimSpace(s) != "" {
-				out = append(out, strings.TrimSpace(s))
-			}
-		}
-		return out
-	default:
-		return nil
-	}
 }

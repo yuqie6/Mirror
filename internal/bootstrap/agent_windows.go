@@ -51,8 +51,8 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		FlushIntervalSec: core.Cfg.Collector.FlushIntervalSec,
 		OnWriteSuccess: func(count int) {
 			rt.Hub.Publish(eventbus.Event{
-				Type: "events_persisted",
-				Data: map[string]any{"count": count},
+				Type: "data_changed",
+				Data: map[string]any{"source": "events", "count": count},
 			})
 		},
 	})
@@ -80,8 +80,8 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		rt.Services.Diff = service.NewDiffService(diffCollector, core.Repos.Diff)
 		rt.Services.Diff.SetOnPersisted(func(count int) {
 			rt.Hub.Publish(eventbus.Event{
-				Type: "diffs_persisted",
-				Data: map[string]any{"count": count},
+				Type: "data_changed",
+				Data: map[string]any{"source": "diffs", "count": count},
 			})
 		})
 		if err := rt.Services.Diff.Start(ctx); err != nil {
@@ -113,8 +113,8 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 			rt.Services.Browser = service.NewBrowserService(bc, core.Repos.Browser)
 			rt.Services.Browser.SetOnPersisted(func(count int) {
 				rt.Hub.Publish(eventbus.Event{
-					Type: "browser_events_persisted",
-					Data: map[string]any{"count": count},
+					Type: "data_changed",
+					Data: map[string]any{"source": "browser_events", "count": count},
 				})
 			})
 			_ = rt.Services.Browser.Start(ctx)
