@@ -1,0 +1,14 @@
+<article id="doc-privacy" class="doc-content" data-lang="zh">
+    <h1>隐私策略</h1>
+    <p>最后更新：2025年12月</p>
+    <p>复盘镜遵循 <strong>Local-first &amp; Privacy by default</strong>：默认本地存储、默认脱敏、默认可离线。</p>
+
+    <h2>数据存储</h2>
+    <p>采集数据（窗口事件、Diff、浏览历史等）会写入本地 SQLite 数据库（默认 <code>./data/workmirror.db</code>）。本地 HTTP 仅监听 <code>127.0.0.1</code>，不会暴露到局域网/公网。</p>
+
+    <h2>默认脱敏</h2>
+    <p>默认开启脱敏：URL 会清空 query/fragment 并保留域名与"存在路径"的事实；窗口标题/浏览标题会按规则替换敏感片段。你可以在配置中调整 <code>privacy.patterns</code>。</p>
+
+    <h2>AI 处理</h2>
+    <p>不配置任何 Key 时，不会调用外部 AI。启用 AI 后，仅在需要生成语义摘要/建议时发送经脱敏的最小必要文本到你配置的提供商（例如 DeepSeek / SiliconFlow）。</p>
+</article>

@@ -1,0 +1,19 @@
+<article id="doc-faq-en" class="doc-content" data-lang="en">
+    <h1>FAQ</h1>
+
+    <h2>Do I need internet?</h2>
+    <p>No. Without AI Key configured, WorkMirror generates session summaries and reviews using rule-based approach; with AI configured, external providers are only called when semantic summaries/suggestions are needed.</p>
+
+    <h2>Why is the page empty/no data?</h2>
+    <ul>
+        <li>First check <code>/status</code> (or status page entry) for collection health and recent errors.</li>
+        <li>Diff collection requires configuring <code>diff.watch_paths</code> (or select project directories in settings/onboarding).</li>
+        <li>Browser collection depends on local History file path; check auto-detection results in settings and specify manually if needed.</li>
+    </ul>
+
+    <h2>Does it support macOS/Linux/mobile?</h2>
+    <p>Currently only Windows 10/11 is supported, with no cloud sync or account system.</p>
+
+    <h2>How to export diagnostic info?</h2>
+    <p>Use "Export Diagnostic Package" on the status page, or access <code>/api/diagnostics/export</code> to download desensitized zip.</p>
+</article>

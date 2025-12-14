@@ -1,0 +1,14 @@
+<article id="doc-privacy-en" class="doc-content" data-lang="en">
+    <h1>Privacy Policy</h1>
+    <p>Last updated: December 2025</p>
+    <p>WorkMirror follows <strong>Local-first &amp; Privacy by default</strong>: local storage by default, desensitization by default, offline-capable by default.</p>
+
+    <h2>Data Storage</h2>
+    <p>Collected data (window events, Diff, browser history, etc.) is written to local SQLite database (default <code>./data/workmirror.db</code>). Local HTTP only listens on <code>127.0.0.1</code>, not exposed to LAN/public network.</p>
+
+    <h2>Default Desensitization</h2>
+    <p>Desensitization is enabled by default: URLs have query/fragment cleared, keeping only domain and "path exists" fact; window/browser titles have sensitive fragments replaced by rules. You can adjust <code>privacy.patterns</code> in config.</p>
+
+    <h2>AI Processing</h2>
+    <p>Without any Key configured, no external AI is called. With AI enabled, desensitized minimum necessary text is sent to your configured provider (e.g., DeepSeek / SiliconFlow) only when semantic summaries/suggestions are needed.</p>
+</article>

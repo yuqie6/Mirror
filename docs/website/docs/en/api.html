@@ -1,0 +1,17 @@
+<article id="doc-api-en" class="doc-content" data-lang="en">
+    <h1>Local API (Advanced)</h1>
+    <p>Local HTTP only listens on <code>127.0.0.1</code>, port randomly assigned (see <code>./data/http_base_url.txt</code>).</p>
+
+    <h2>Status & Observability (P0)</h2>
+    <ul>
+        <li><code>GET /api/status</code>: Summary snapshot of collection/pipeline/AI/recent errors</li>
+        <li><code>GET /api/events</code>: SSE (data changes/config changes events)</li>
+    </ul>
+
+    <h2>Maintenance Actions</h2>
+    <ul>
+        <li><code>POST /api/maintenance/sessions/rebuild</code>: Rebuild sessions by date</li>
+        <li><code>POST /api/maintenance/sessions/enrich</code>: Enrich semantics by date (when AI enabled)</li>
+        <li><code>GET /api/diagnostics/export</code>: Export desensitized diagnostic package (zip)</li>
+    </ul>
+</article>

@@ -1,0 +1,23 @@
+<article id="doc-config-en" class="doc-content" data-lang="en">
+    <h1>Settings & Privacy</h1>
+    <p>Config file is YAML: default path <code>./config/config.yaml</code> (auto-generated on first startup). Refer to template <code>./config/config.yaml.example</code>.</p>
+
+    <h2>You Probably Only Need to Change These</h2>
+    <pre>diff:
+  enabled: true
+  watch_paths:
+    - "C:\\Users\\Dev\\Projects\\Go-Backend"
+
+browser:
+  enabled: true
+  history_path: "" # empty for auto-detect
+
+storage:
+  db_path: "./data/workmirror.db"
+
+privacy:
+  enabled: true</pre>
+
+    <h2>AI Key & Environment Variables</h2>
+    <p>Recommended to inject Key via environment variables (avoid writing to disk/committing to repo), e.g., <code>DEEPSEEK_API_KEY</code>, <code>SILICONFLOW_API_KEY</code>.</p>
+</article>

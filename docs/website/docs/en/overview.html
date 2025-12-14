@@ -1,0 +1,37 @@
+<article id="doc-overview-en" class="doc-content" data-lang="en">
+    <h1>About WorkMirror</h1>
+    <p>WorkMirror is a Windows system tray resident local review tool: automatically collects your work "traces" (windows, code changes, browser history), organizes them into traceable work sessions, and generates daily/weekly reports and skill evolution.</p>
+
+    <h2>What You Get</h2>
+    <ul>
+        <li>Daily/weekly reviews: Every conclusion can be clicked to see evidence coverage and details.</li>
+        <li>Skill tree and capability evolution: Growth sources can be traced back to contributing work sessions.</li>
+        <li>Works offline: Rule-based summaries and reviews work without AI Key.</li>
+        <li>No need to contact the author when you see "blank page/no data": The status page tells you where the gap is and what to do next.</li>
+    </ul>
+
+    <h2>Privacy & Local-first</h2>
+    <ul>
+        <li>Data is stored in local SQLite by default (<code>./data/workmirror.db</code>), no cloud sync or account system.</li>
+        <li>Local HTTP only listens on <code>127.0.0.1</code>, port randomly assigned.</li>
+        <li>When AI is enabled, only the minimum necessary desensitized text is sent for generating summaries and suggestions.</li>
+    </ul>
+
+    <h2>How It Runs (v0.2)</h2>
+    <ul>
+        <li><code>workmirror.exe</code> (Windows 10/11 system tray resident)</li>
+        <li>Built-in local HTTP Server (random port, only listens on <code>127.0.0.1</code>)</li>
+        <li>Built-in Web UI (React/Vite SPA, prioritizes loading from <code>frontend/dist/</code> in the same directory, otherwise falls back to embedded resources)</li>
+        <li>Port discovery: Written to <code>./data/http_base_url.txt</code></li>
+    </ul>
+
+    <h2>How It Works (Brief)</h2>
+    <p>Collection → Generate work sessions (segmentation/aggregation/summary) → Aggregate to skills and reviews → Each conclusion can be clicked to view evidence chain.</p>
+
+    <h2>What's Not Included</h2>
+    <ul>
+        <li>Cloud sync/account system/team collaboration</li>
+        <li>macOS/Linux (at this stage)</li>
+        <li>Complex goal management (TODO/OKR/habits)</li>
+    </ul>
+</article>

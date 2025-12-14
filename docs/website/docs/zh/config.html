@@ -1,0 +1,23 @@
+<article id="doc-config" class="doc-content" data-lang="zh">
+    <h1>设置与隐私</h1>
+    <p>配置文件为 YAML：默认路径 <code>./config/config.yaml</code>（首次启动会自动生成）。可以参考模板 <code>./config/config.yaml.example</code>。</p>
+
+    <h2>你大概率只需要改这几项</h2>
+    <pre>diff:
+  enabled: true
+  watch_paths:
+    - "C:\\Users\\Dev\\Projects\\Go-Backend"
+
+browser:
+  enabled: true
+  history_path: "" # 为空则自动探测
+
+storage:
+  db_path: "./data/workmirror.db"
+
+privacy:
+  enabled: true</pre>
+
+    <h2>AI Key 与环境变量</h2>
+    <p>建议通过环境变量注入 Key（避免写入磁盘/提交仓库），例如 <code>DEEPSEEK_API_KEY</code>、<code>SILICONFLOW_API_KEY</code>。</p>
+</article>

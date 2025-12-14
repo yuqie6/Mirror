@@ -1,0 +1,122 @@
+<article id="doc-architecture-en" class="doc-content" data-lang="en">
+    <h1>How It Works (Advanced)</h1>
+    <p>The diagrams below show how WorkMirror runs locally and the evidence → work sessions → reviews/skills pipeline.</p>
+
+    <h2>Runtime Component Diagram</h2>
+    <figure>
+        <svg viewBox="0 0 900 360" width="100%" role="img" aria-label="WorkMirror Runtime Component Diagram">
+            <rect x="20" y="20" width="520" height="320" rx="14" fill="#0b0b0f" stroke="#27272a" />
+            <text x="40" y="52" fill="#ffffff" font-size="18" font-family="Inter, sans-serif" font-weight="700">workmirror.exe (Windows System Tray Resident)</text>
+            <text x="40" y="78" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Single process: Collection → DB → Session/Attribution → Local HTTP (API + SSE + UI)</text>
+
+            <rect x="40" y="110" width="240" height="90" rx="12" fill="#111113" stroke="#27272a" />
+            <text x="56" y="140" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Collectors</text>
+            <text x="56" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Window / GitDiff / BrowserHistory</text>
+
+            <rect x="300" y="110" width="220" height="90" rx="12" fill="#111113" stroke="#27272a" />
+            <text x="316" y="140" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">SQLite (WAL)</text>
+            <text x="316" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">repository + schema_version gate</text>
+
+            <rect x="40" y="220" width="240" height="90" rx="12" fill="#111113" stroke="#27272a" />
+            <text x="56" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Services</text>
+            <text x="56" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Session Segmentation / Skill Attribution / Review</text>
+
+            <rect x="300" y="220" width="220" height="90" rx="12" fill="#111113" stroke="#27272a" />
+            <text x="316" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Local HTTP</text>
+            <text x="316" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">JSON API + SSE + Static UI</text>
+
+            <defs>
+                <marker id="arrow-en" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                    <path d="M0,0 L0,6 L8,3 z" fill="#52525b"></path>
+                </marker>
+            </defs>
+
+            <path d="M280 155 L300 155" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+            <path d="M160 220 L160 200" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+            <path d="M280 265 L300 265" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+            <path d="M410 200 L410 220" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+
+            <rect x="580" y="110" width="300" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" />
+            <text x="600" y="140" fill="#ffffff" font-size="14" font-family="Inter, sans-serif" font-weight="600">Browser / WebView (Local UI)</text>
+            <text x="600" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Reads local API + SSE, displays Dashboard/Sessions/Skills/Status</text>
+
+            <path d="M520 265 L580 155" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+
+            <rect x="580" y="220" width="300" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" stroke-dasharray="6 6" />
+            <text x="600" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">UI Static Asset Loading Priority</text>
+            <text x="600" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">frontend/dist/ in same dir → embedded internal/uiassets</text>
+            <path d="M520 290 L580 265" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+        </svg>
+        <figcaption>Fig: Single-process local architecture (only listens on 127.0.0.1), UI and API served from same origin.</figcaption>
+    </figure>
+
+    <h2>Evidence Chain Pipeline Diagram</h2>
+    <figure>
+        <svg viewBox="0 0 900 300" width="100%" role="img" aria-label="WorkMirror Evidence Chain Pipeline Diagram">
+            <defs>
+                <marker id="arrow2-en" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                    <path d="M0,0 L0,6 L8,3 z" fill="#52525b"></path>
+                </marker>
+            </defs>
+
+            <rect x="20" y="30" width="210" height="70" rx="12" fill="#111113" stroke="#27272a" />
+            <text x="40" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Raw Evidence</text>
+            <text x="40" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">WindowEvent / Diff / BrowserEvent</text>
+
+            <rect x="260" y="30" width="200" height="70" rx="12" fill="#111113" stroke="#27272a" />
+            <text x="280" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Sessionization</text>
+            <text x="280" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Segmentation + Aggregation + Coverage</text>
+
+            <rect x="490" y="30" width="190" height="70" rx="12" fill="#111113" stroke="#27272a" />
+            <text x="510" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Sessions (Source of Truth)</text>
+            <text x="510" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Unified input for all upstream</text>
+
+            <rect x="710" y="20" width="170" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" />
+            <text x="728" y="52" fill="#ffffff" font-size="14" font-family="Inter, sans-serif" font-weight="600">Outputs</text>
+            <text x="728" y="76" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Skill / Daily / Weekly</text>
+            <text x="728" y="98" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Click to view evidence chain</text>
+
+            <path d="M230 65 L260 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+            <path d="M460 65 L490 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+            <path d="M680 65 L710 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+
+            <rect x="260" y="150" width="200" height="60" rx="12" fill="#0b0b0f" stroke="#27272a" />
+            <text x="280" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">Offline Rule-based (Default)</text>
+            <text x="280" y="200" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Works without AI Key</text>
+
+            <rect x="490" y="150" width="200" height="60" rx="12" fill="#0b0b0f" stroke="#27272a" />
+            <text x="510" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">AI Enhanced (Optional)</text>
+            <text x="510" y="200" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Semantic summaries/tags (desensitized)</text>
+
+            <path d="M360 100 L360 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+            <path d="M590 100 L590 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+            <path d="M460 180 L490 180" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+
+            <rect x="20" y="150" width="210" height="120" rx="12" fill="#0b0b0f" stroke="#27272a" stroke-dasharray="6 6" />
+            <text x="40" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">Observability / Diagnostics</text>
+            <text x="40" y="204" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">/api/status</text>
+            <text x="40" y="228" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">/api/diagnostics/export</text>
+            <text x="40" y="252" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Rebuild sessions / Enrich semantics</text>
+            <path d="M125 100 L125 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+        </svg>
+        <figcaption>Fig: Sessions are the authoritative input; offline rules work by default, AI as optional enhancement; failure paths exposed via status and diagnostic actions.</figcaption>
+    </figure>
+
+    <details>
+        <summary>Developers: Directory Structure (Go / React)</summary>
+        <ul>
+            <li><code>cmd/workmirror-agent/</code>: Windows Agent entry (tray, collectors, HTTP API/UI)</li>
+            <li><code>internal/collector/</code>: Collectors (window/Diff/browser history)</li>
+            <li><code>internal/server/</code>: Local HTTP Server (JSON API + SSE + static UI)</li>
+            <li><code>internal/service/</code>: Session/Skill/review business logic</li>
+            <li><code>internal/repository/</code>: SQLite data access and migration gate (<code>schema_version</code>)</li>
+            <li><code>frontend/</code>: Frontend source (during development, use <code>VITE_API_TARGET</code> to point to local Agent)</li>
+        </ul>
+    </details>
+
+    <h2>Pipeline Explanation</h2>
+    <p>Upper-level skills/reviews don't count directly from raw data, but uniformly use sessions as input, ensuring "same numbers, same evidence chain".</p>
+
+    <h2>Self-troubleshooting</h2>
+    <p>When data is empty/unreliable, first locate the gap from the status page (collection/segmentation/analysis/config), and follow the prompts: add watch paths, rebuild sessions for a day, export diagnostic package, etc.</p>
+</article>
