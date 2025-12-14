@@ -44,7 +44,10 @@ func (t *TrayHandler) Quit() {
 }
 
 func (t *TrayHandler) onReady() {
-	// 设置标题和提示（不设置图标，避免格式问题）
+	// 设置图标（使用嵌入的 ICO 数据）
+	if len(TrayIconData) > 0 {
+		systray.SetIcon(TrayIconData)
+	}
 	systray.SetTitle(t.appName)
 	systray.SetTooltip(t.appName + " - 个人成长量化系统")
 

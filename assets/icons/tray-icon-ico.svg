@@ -1,0 +1,10 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <!-- 六边形外框 - 使用靛蓝色 -->
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2L3.33975 7V17L12 22L20.6603 17V7L12 2ZM4.83975 8.13397L12 4L19.1603 8.13397V15.866L12 20L4.83975 15.866V8.13397Z" fill="#818cf8" opacity="0.9"/>
+    
+    <!-- 中间镜像线 - 白色 -->
+    <rect x="11" y="5" width="2" height="14" rx="1" fill="#ffffff"/>
+    
+    <!-- 左侧实心 - 翠绿色 -->
+    <path d="M11 7.5L6.5 9.5V14.5L11 16.5V7.5Z" fill="#34d399"/>
+</svg>

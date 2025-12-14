@@ -10,6 +10,7 @@ import {
 import { GetTrends, GetAppStats, GetTodaySummary, GetStatus } from '@/api/app';
 import { EvidenceStatusDTO } from '@/types/status';
 import { todayLocalISODate } from '@/lib/date';
+import { useTranslation } from '@/lib/i18n';
 
 // 后端实际返回的 TrendReportDTO 结构 - 匹配 internal/dto/httpapi.go:61
 interface TrendReportDTO {
@@ -43,6 +44,7 @@ interface DashboardViewProps {
 }
 
 export default function DashboardView({ onNavigate }: DashboardViewProps) {
+  const { t } = useTranslation();
   const [trends, setTrends] = useState<TrendReportDTO | null>(null);
   const [appStats, setAppStats] = useState<AppStat[]>([]);
   const [evidence, setEvidence] = useState<EvidenceStatusDTO | null>(null);
@@ -67,7 +69,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
         setEvidence(statusData?.evidence || null);
       } catch (e: any) {
         console.error('Failed to load dashboard data:', e);
-        setError(e?.message || '加载失败');
+        setError(e?.message || t('common.error'));
       } finally {
         setLoading(false);
       }
@@ -117,7 +119,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-zinc-500">
-        加载仪表盘数据...
+        {t('dashboard.loadingData')}
       </div>
     );
   }
@@ -132,7 +134,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
           onClick={() => onNavigate?.('status')}
           className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm text-zinc-300 transition-colors"
         >
-          <ExternalLink size={14} /> 前往系统诊断页
+          <ExternalLink size={14} /> {t('dashboard.goToStatus')}
         </button>
       </div>
     );
@@ -145,15 +147,15 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
         {/* Session Counter */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-6">
-            <h3 className="text-zinc-400 text-sm font-medium mb-1">今日会话（自然日）</h3>
+            <h3 className="text-zinc-400 text-sm font-medium mb-1">{t('dashboard.todaySessions')}</h3>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-white">{todaySessions}</span>
             </div>
             <div className="mt-4 text-xs text-zinc-500">
-              30天代码变更: {trends?.total_diffs || 0} 次
+              {t('dashboard.thirtyDayDiffs')}: {trends?.total_diffs || 0} {t('dashboard.times')}
             </div>
             <div className="text-xs text-zinc-600">
-              日均: {trends?.avg_diffs_per_day?.toFixed(1) || 0} 次/天
+              {t('dashboard.avgPerDay')}: {trends?.avg_diffs_per_day?.toFixed(1) || 0} {t('dashboard.perDay')}
             </div>
           </CardContent>
         </Card>
@@ -161,7 +163,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
         {/* Evidence Coverage */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-6">
-            <h3 className="text-zinc-400 text-sm font-medium mb-1">证据覆盖率</h3>
+            <h3 className="text-zinc-400 text-sm font-medium mb-1">{t('dashboard.evidenceCoverage')}</h3>
             <div className="flex items-baseline gap-2">
               <span className={`text-3xl font-bold ${
                 evidenceCoverage >= 70 ? 'text-emerald-400' : 
@@ -170,7 +172,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
                 {evidenceCoverage}%
               </span>
               <span className="text-sm text-zinc-500">
-                {evidenceCoverage >= 70 ? '高可信度' : evidenceCoverage >= 40 ? '中等' : '需提升'}
+                {evidenceCoverage >= 70 ? t('dashboard.highCredibility') : evidenceCoverage >= 40 ? t('dashboard.medium') : t('dashboard.needsImprovement')}
               </span>
             </div>
             {weakEvidenceCount > 0 && (
@@ -178,14 +180,14 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
                 title="证据不足：缺少 Diff/浏览等证据的会话比例较高，建议配置 Diff 监控路径或启用浏览器采集"
                 className="mt-4 text-xs text-amber-500 flex items-center gap-1"
               >
-                <AlertTriangle size={12} /> {weakEvidenceCount} 个证据不足会话
+                <AlertTriangle size={12} /> {weakEvidenceCount} {t('dashboard.weakEvidenceSessions')}
               </div>
             )}
             {evidence && (
               <div className="mt-2 text-xs text-zinc-600">
-                24h: {evidence.sessions_24h} 会话 | 
-                有Diff: {evidence.with_diff} | 
-                有浏览: {evidence.with_browser}
+                24h: {evidence.sessions_24h} {t('common.sessions')} | 
+                {t('dashboard.withDiff')}: {evidence.with_diff} | 
+                {t('dashboard.withBrowser')}: {evidence.with_browser}
               </div>
             )}
           </CardContent>
@@ -194,7 +196,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
         {/* Focus Distribution */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-6">
-            <h3 className="text-zinc-400 text-sm font-medium mb-2">专注分布</h3>
+            <h3 className="text-zinc-400 text-sm font-medium mb-2">{t('dashboard.focusDistribution')}</h3>
             {focusData.length > 0 ? (
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20">
@@ -230,7 +232,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
                 </div>
               </div>
             ) : (
-              <div className="text-zinc-500 text-sm">暂无应用使用数据</div>
+              <div className="text-zinc-500 text-sm">{t('dashboard.noAppData')}</div>
             )}
           </CardContent>
         </Card>
@@ -247,9 +249,9 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
               <FileText size={20} />
             </div>
             <div>
-              <h3 className="text-indigo-100 font-medium">每日总结已生成</h3>
+              <h3 className="text-indigo-100 font-medium">{t('dashboard.dailySummaryReady')}</h3>
               <p className="text-sm text-zinc-400">
-                查看今日自动生成的工作回顾
+                {t('dashboard.viewTodaySummary')}
               </p>
             </div>
           </div>
@@ -261,7 +263,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
       {trends?.top_skills && trends.top_skills.length > 0 && (
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
-            <CardTitle className="text-zinc-200 text-base font-medium">30天热门技能</CardTitle>
+            <CardTitle className="text-zinc-200 text-base font-medium">{t('dashboard.hotSkills30Days')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -272,7 +274,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
                   className="px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-300 hover:border-indigo-500/50 cursor-pointer transition-colors"
                 >
                   {skill.skill_name}
-                  <span className="ml-2 text-xs text-zinc-600">{skill.days_active}天</span>
+                  <span className="ml-2 text-xs text-zinc-600">{skill.days_active}{t('common.days')}</span>
                 </span>
               ))}
             </div>
@@ -285,9 +287,9 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-zinc-200 text-base font-medium">
-              活动热力图
+              {t('dashboard.activityHeatmap')}
             </CardTitle>
-            <span className="text-xs text-zinc-600">最近 30 天</span>
+            <span className="text-xs text-zinc-600">{t('dashboard.last30Days')}</span>
           </div>
         </CardHeader>
         <CardContent>
@@ -313,11 +315,11 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
               })}
             </div>
           ) : (
-            <div className="text-zinc-500 text-sm">暂无热力图数据</div>
+            <div className="text-zinc-500 text-sm">{t('dashboard.noHeatmapData')}</div>
           )}
           <div className="flex justify-between mt-2 text-[10px] text-zinc-600">
-            <span>30天前</span>
-            <span>今天</span>
+            <span>30{t('dashboard.daysAgo')}</span>
+            <span>{t('common.today')}</span>
           </div>
         </CardContent>
       </Card>

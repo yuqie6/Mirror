@@ -1,4 +1,10 @@
+中文 | [English](README_EN.md)
+
 # 复盘镜（WorkMirror）
+
+<p align="center">
+  <img src="assets/icons/app-icon.svg" width="128" height="128" alt="WorkMirror Logo">
+</p>
 
 每天自动复盘你的真实工作，一键生成可追溯证据的日报与周报（本地优先 / Windows 托盘）
 
