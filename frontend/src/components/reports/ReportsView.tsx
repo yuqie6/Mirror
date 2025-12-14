@@ -15,6 +15,7 @@ interface DailySummary {
   skills_gained: string[];
   total_coding: number;
   total_diffs: number;
+  evidence?: DailySummaryEvidence;
 }
 
 // 匹配后端 PeriodSummaryDTO
@@ -29,6 +30,38 @@ interface PeriodSummary {
   top_skills: string[];
   total_coding: number;
   total_diffs: number;
+  evidence?: PeriodSummaryEvidence;
+}
+
+interface SessionRefDTO {
+  id: number;
+  date: string;
+  time_range?: string;
+  category?: string;
+  summary?: string;
+  evidence_hint?: 'diff+browser' | 'diff' | 'browser' | 'window_only' | string;
+}
+
+interface EvidenceBlockDTO {
+  sessions?: SessionRefDTO[];
+}
+
+interface ClaimEvidenceDTO {
+  claim: string;
+  sessions?: SessionRefDTO[];
+}
+
+interface DailySummaryEvidence {
+  summary?: EvidenceBlockDTO;
+  highlights?: ClaimEvidenceDTO[];
+  struggles?: ClaimEvidenceDTO[];
+}
+
+interface PeriodSummaryEvidence {
+  overview?: EvidenceBlockDTO;
+  achievements?: ClaimEvidenceDTO[];
+  patterns?: EvidenceBlockDTO;
+  suggestions?: ClaimEvidenceDTO[];
 }
 
 interface SummaryIndexItem {
@@ -260,7 +293,50 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
 
   const parseList = (text: string | undefined): string[] => {
     if (!text) return [];
-    return text.split(/\n|;|。/).filter(Boolean).map((h) => h.trim()).filter(h => h.length > 0);
+    return text
+      .split(/[\r\n;；。]+/)
+      .map((h) => h.trim())
+      .filter((h) => h.length > 0 && h !== '无');
+  };
+
+  const buildClaimToSessionsMap = (claims?: ClaimEvidenceDTO[]): Map<string, SessionRefDTO[]> => {
+    const m = new Map<string, SessionRefDTO[]>();
+    for (const c of claims || []) {
+      const key = (c?.claim || '').trim();
+      if (!key) continue;
+      m.set(key, Array.isArray(c.sessions) ? c.sessions : []);
+    }
+    return m;
+  };
+
+  const EvidenceChips = ({ sessions }: { sessions?: SessionRefDTO[] }) => {
+    const list = Array.isArray(sessions) ? sessions : [];
+    if (list.length === 0) {
+      return (
+        <div className="mt-2 text-[11px] text-zinc-600">
+          暂无可跳转的来源会话（可能是证据不足或语义未补全）
+        </div>
+      );
+    }
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {list.slice(0, 4).map((s) => (
+          <button
+            key={`${s.date}-${s.id}`}
+            onClick={() => onNavigateToSession?.(s.id, s.date)}
+            className="px-2 py-1 rounded border border-zinc-800 bg-zinc-950/40 hover:bg-zinc-900 transition-colors text-[11px] text-zinc-300 font-mono"
+            title={`${s.date} ${s.time_range || ''} ${s.category || ''}`.trim()}
+          >
+            #{s.id}{s.time_range ? ` ${s.time_range}` : ''}
+          </button>
+        ))}
+        {list.length > 4 && (
+          <span className="px-2 py-1 rounded border border-zinc-800 bg-zinc-950/20 text-[11px] text-zinc-600 font-mono">
+            +{list.length - 4}
+          </span>
+        )}
+      </div>
+    );
   };
 
   const summary = viewType === 'daily' ? dailySummary : null;
@@ -335,18 +411,17 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
         </Card>
       )}
 
-      {/* Evidence First：Report → Sessions（最短闭环） */}
+      {/* 会话总览（全量浏览） */}
       {!loading && (
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-zinc-300 flex items-center gap-2">
-              <CheckCircle2 size={14} className="text-emerald-400" /> 来源会话（点开查看证据）
+              <CheckCircle2 size={14} className="text-emerald-400" /> 本期会话（全部）
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="text-xs text-zinc-500">
-              报告里的结论来自这些会话。点击会话可查看 Diff / 应用时间线 / 浏览记录等来源证据。
-              <span className="ml-2 text-zinc-600">充足=Diff+浏览，一般=Diff或浏览，不足=仅窗口。</span>
+              用于全量浏览该时间范围的会话；每条结论下方的“来源会话”用于快速回到对应证据。
             </div>
             {relatedLoading ? (
               <div className="text-zinc-500 text-sm">加载中...</div>
@@ -461,31 +536,54 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
               </div>
             </div>
             <p className="text-zinc-300 text-lg leading-relaxed">{summary.summary}</p>
+            <EvidenceChips sessions={summary.evidence?.summary?.sessions} />
           </CardHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="p-8 border-r border-zinc-800">
+	          <div className="grid grid-cols-1 md:grid-cols-2">
+	            <div className="p-8 border-r border-zinc-800">
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
                 <CheckCircle2 size={16} className="text-emerald-500" /> 主要成就
               </h3>
-              <div className="space-y-4">
-                {parseList(summary.highlights).length > 0 ? parseList(summary.highlights).map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-3">
-                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                    <p className="text-zinc-200">{item}</p>
-                  </div>
-                )) : <p className="text-zinc-500 italic">无亮点记录</p>}
-              </div>
-              
-              {summary.struggles && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Target size={16} className="text-amber-500" /> 挑战与困难
-                  </h3>
-                  <p className="text-zinc-400 text-sm">{summary.struggles}</p>
-                </div>
-              )}
-            </div>
+	              <div className="space-y-4">
+	                {(() => {
+                    const items = parseList(summary.highlights);
+                    const evidenceMap = buildClaimToSessionsMap(summary.evidence?.highlights);
+                    if (items.length === 0) return <p className="text-zinc-500 italic">无成就记录</p>;
+                    return items.map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-3">
+                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-zinc-200">{item}</p>
+                          <EvidenceChips sessions={evidenceMap.get(item)} />
+                        </div>
+                      </div>
+                    ));
+                  })()}
+	              </div>
+	              
+	              {summary.struggles && (
+	                <div className="mt-6">
+	                  <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+	                    <Target size={16} className="text-amber-500" /> 挑战与困难
+	                  </h3>
+                    {(() => {
+                      const items = parseList(summary.struggles);
+                      const evidenceMap = buildClaimToSessionsMap(summary.evidence?.struggles);
+                      if (items.length === 0) return <p className="text-zinc-500 italic">无</p>;
+                      return (
+                        <div className="space-y-3">
+                          {items.map((item, idx) => (
+                            <div key={idx}>
+                              <p className="text-zinc-400 text-sm">{item}</p>
+                              <EvidenceChips sessions={evidenceMap.get(item)} />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+	                </div>
+	              )}
+	            </div>
 
             <div className="p-8">
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
@@ -533,32 +631,41 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
               </div>
             </div>
             <p className="text-zinc-300 text-lg leading-relaxed">{period.overview}</p>
+            <EvidenceChips sessions={period.evidence?.overview?.sessions} />
           </CardHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="p-8 border-r border-zinc-800">
+	          <div className="grid grid-cols-1 md:grid-cols-2">
+	            <div className="p-8 border-r border-zinc-800">
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
                 <CheckCircle2 size={16} className="text-emerald-500" /> 
                 {viewType === 'week' ? '本周成就' : '本月成就'}
               </h3>
-              <div className="space-y-4">
-                {period.achievements?.length > 0 ? period.achievements.map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-3">
-                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-purple-500"></div>
-                    <p className="text-zinc-200">{item}</p>
-                  </div>
-                )) : <p className="text-zinc-500 italic">无成就记录</p>}
-              </div>
+	              <div className="space-y-4">
+	                {(() => {
+                    const evidenceMap = buildClaimToSessionsMap(period.evidence?.achievements);
+                    if (!period.achievements || period.achievements.length === 0) return <p className="text-zinc-500 italic">无成就记录</p>;
+                    return period.achievements.map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-3">
+                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-zinc-200">{item}</p>
+                          <EvidenceChips sessions={evidenceMap.get(item)} />
+                        </div>
+                      </div>
+                    ));
+                  })()}
+	              </div>
 
-              {period.patterns && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Target size={16} className="text-sky-500" /> 工作模式
-                  </h3>
-                  <p className="text-zinc-400 text-sm">{period.patterns}</p>
-                </div>
-              )}
-            </div>
+	              {period.patterns && (
+	                <div className="mt-6">
+	                  <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+	                    <Target size={16} className="text-sky-500" /> 工作模式
+	                  </h3>
+	                  <p className="text-zinc-400 text-sm">{period.patterns}</p>
+                    <EvidenceChips sessions={period.evidence?.patterns?.sessions} />
+	                </div>
+	              )}
+	            </div>
 
             <div className="p-8">
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
@@ -573,14 +680,30 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
                 )) : <p className="text-zinc-500 italic">无技能记录</p>}
               </div>
 
-              {period.suggestions && (
-                <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded">
-                  <h4 className="text-xs font-semibold text-indigo-400 uppercase mb-2 flex items-center gap-1">
-                    <Lightbulb size={12} /> 建议
-                  </h4>
-                  <p className="text-zinc-300 text-sm">{period.suggestions}</p>
-                </div>
-              )}
+	              {period.suggestions && (
+	                <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded">
+	                  <h4 className="text-xs font-semibold text-indigo-400 uppercase mb-2 flex items-center gap-1">
+	                    <Lightbulb size={12} /> 建议
+	                  </h4>
+                    {(() => {
+                      const items = parseList(period.suggestions);
+                      const evidenceMap = buildClaimToSessionsMap(period.evidence?.suggestions);
+                      if (items.length <= 1) {
+                        return <p className="text-zinc-300 text-sm">{period.suggestions}</p>;
+                      }
+                      return (
+                        <div className="space-y-2">
+                          {items.map((item, idx) => (
+                            <div key={idx}>
+                              <p className="text-zinc-300 text-sm">{item}</p>
+                              <EvidenceChips sessions={evidenceMap.get(item)} />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+	                </div>
+	              )}
 
               <div className="grid grid-cols-2 gap-4 text-center mt-6">
                 <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">

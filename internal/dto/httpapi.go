@@ -4,13 +4,38 @@ package dto
 // 不要在这里放 GORM/持久化细节；内部持久化 schema 请见 internal/schema；业务逻辑收敛在 internal/service。
 
 type DailySummaryDTO struct {
-	Date         string   `json:"date"`
-	Summary      string   `json:"summary"`
-	Highlights   string   `json:"highlights"`
-	Struggles    string   `json:"struggles"`
-	SkillsGained []string `json:"skills_gained"`
-	TotalCoding  int      `json:"total_coding"`
-	TotalDiffs   int      `json:"total_diffs"`
+	Date         string                   `json:"date"`
+	Summary      string                   `json:"summary"`
+	Highlights   string                   `json:"highlights"`
+	Struggles    string                   `json:"struggles"`
+	SkillsGained []string                 `json:"skills_gained"`
+	TotalCoding  int                      `json:"total_coding"`
+	TotalDiffs   int                      `json:"total_diffs"`
+	Evidence     *DailySummaryEvidenceDTO `json:"evidence,omitempty"`
+}
+
+type SessionRefDTO struct {
+	ID           int64  `json:"id"`
+	Date         string `json:"date"`
+	TimeRange    string `json:"time_range,omitempty"`
+	Category     string `json:"category,omitempty"`
+	Summary      string `json:"summary,omitempty"`
+	EvidenceHint string `json:"evidence_hint,omitempty"` // e.g. "diff+browser" | "diff" | "browser" | "window_only"
+}
+
+type EvidenceBlockDTO struct {
+	Sessions []SessionRefDTO `json:"sessions,omitempty"`
+}
+
+type ClaimEvidenceDTO struct {
+	Claim    string          `json:"claim"`
+	Sessions []SessionRefDTO `json:"sessions,omitempty"`
+}
+
+type DailySummaryEvidenceDTO struct {
+	Summary    EvidenceBlockDTO   `json:"summary,omitempty"`
+	Highlights []ClaimEvidenceDTO `json:"highlights,omitempty"`
+	Struggles  []ClaimEvidenceDTO `json:"struggles,omitempty"`
 }
 
 type SummaryIndexDTO struct {
@@ -20,16 +45,24 @@ type SummaryIndexDTO struct {
 }
 
 type PeriodSummaryDTO struct {
-	Type         string   `json:"type"`
-	StartDate    string   `json:"start_date"`
-	EndDate      string   `json:"end_date"`
-	Overview     string   `json:"overview"`
-	Achievements []string `json:"achievements"`
-	Patterns     string   `json:"patterns"`
-	Suggestions  string   `json:"suggestions"`
-	TopSkills    []string `json:"top_skills"`
-	TotalCoding  int      `json:"total_coding"`
-	TotalDiffs   int      `json:"total_diffs"`
+	Type         string                    `json:"type"`
+	StartDate    string                    `json:"start_date"`
+	EndDate      string                    `json:"end_date"`
+	Overview     string                    `json:"overview"`
+	Achievements []string                  `json:"achievements"`
+	Patterns     string                    `json:"patterns"`
+	Suggestions  string                    `json:"suggestions"`
+	TopSkills    []string                  `json:"top_skills"`
+	TotalCoding  int                       `json:"total_coding"`
+	TotalDiffs   int                       `json:"total_diffs"`
+	Evidence     *PeriodSummaryEvidenceDTO `json:"evidence,omitempty"`
+}
+
+type PeriodSummaryEvidenceDTO struct {
+	Overview     EvidenceBlockDTO   `json:"overview,omitempty"`
+	Achievements []ClaimEvidenceDTO `json:"achievements,omitempty"`
+	Patterns     EvidenceBlockDTO   `json:"patterns,omitempty"`
+	Suggestions  []ClaimEvidenceDTO `json:"suggestions,omitempty"`
 }
 
 type PeriodSummaryIndexDTO struct {
@@ -59,22 +92,22 @@ type SkillEvidenceDTO struct {
 }
 
 type DailyTrendStatDTO struct {
-	Date           string `json:"date"`
+	Date            string `json:"date"`
 	TotalDiffs      int64  `json:"total_diffs"`
 	TotalCodingMins int64  `json:"total_coding_mins"`
 	SessionCount    int64  `json:"session_count"`
 }
 
 type TrendReportDTO struct {
-	Period          string             `json:"period"`
-	StartDate       string             `json:"start_date"`
-	EndDate         string             `json:"end_date"`
-	TotalDiffs      int64              `json:"total_diffs"`
-	TotalCodingMins int64              `json:"total_coding_mins"`
-	AvgDiffsPerDay  float64            `json:"avg_diffs_per_day"`
-	TopLanguages    []LanguageTrendDTO `json:"top_languages"`
-	TopSkills       []SkillTrendDTO    `json:"top_skills"`
-	Bottlenecks     []string           `json:"bottlenecks"`
+	Period          string              `json:"period"`
+	StartDate       string              `json:"start_date"`
+	EndDate         string              `json:"end_date"`
+	TotalDiffs      int64               `json:"total_diffs"`
+	TotalCodingMins int64               `json:"total_coding_mins"`
+	AvgDiffsPerDay  float64             `json:"avg_diffs_per_day"`
+	TopLanguages    []LanguageTrendDTO  `json:"top_languages"`
+	TopSkills       []SkillTrendDTO     `json:"top_skills"`
+	Bottlenecks     []string            `json:"bottlenecks"`
 	DailyStats      []DailyTrendStatDTO `json:"daily_stats,omitempty"`
 }
 

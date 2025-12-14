@@ -32,6 +32,13 @@ func (a *API) HandleTodaySummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var evidenceDTO *dto.DailySummaryEvidenceDTO
+	if a.rt != nil && a.rt.Repos.Session != nil {
+		if ev, evErr := service.BuildDailySummaryEvidence(ctx, a.rt.Repos.Session, a.rt.Repos.Diff, summary); evErr == nil {
+			evidenceDTO = toDailySummaryEvidenceDTO(ev)
+		}
+	}
+
 	WriteJSON(w, http.StatusOK, &dto.DailySummaryDTO{
 		Date:         summary.Date,
 		Summary:      summary.Summary,
@@ -40,6 +47,7 @@ func (a *API) HandleTodaySummary(w http.ResponseWriter, r *http.Request) {
 		SkillsGained: summary.SkillsGained,
 		TotalCoding:  summary.TotalCoding,
 		TotalDiffs:   summary.TotalDiffs,
+		Evidence:     evidenceDTO,
 	})
 }
 
@@ -100,6 +108,13 @@ func (a *API) HandleDailySummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var evidenceDTO *dto.DailySummaryEvidenceDTO
+	if a.rt != nil && a.rt.Repos.Session != nil {
+		if ev, evErr := service.BuildDailySummaryEvidence(ctx, a.rt.Repos.Session, a.rt.Repos.Diff, summary); evErr == nil {
+			evidenceDTO = toDailySummaryEvidenceDTO(ev)
+		}
+	}
+
 	WriteJSON(w, http.StatusOK, &dto.DailySummaryDTO{
 		Date:         summary.Date,
 		Summary:      summary.Summary,
@@ -108,5 +123,6 @@ func (a *API) HandleDailySummary(w http.ResponseWriter, r *http.Request) {
 		SkillsGained: summary.SkillsGained,
 		TotalCoding:  summary.TotalCoding,
 		TotalDiffs:   summary.TotalDiffs,
+		Evidence:     evidenceDTO,
 	})
 }

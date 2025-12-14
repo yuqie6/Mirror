@@ -11,6 +11,7 @@ import (
 	"github.com/yuqie6/mirror/internal/bootstrap"
 	"github.com/yuqie6/mirror/internal/dto"
 	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/mirror/internal/service"
 )
 
 func normalizeToMonday(t time.Time) time.Time {
@@ -96,7 +97,14 @@ func (a *API) HandlePeriodSummary(w http.ResponseWriter, r *http.Request) {
 	if !force && a.rt.Repos.PeriodSummary != nil {
 		cached, err := a.rt.Repos.PeriodSummary.GetByTypeAndRange(ctx, periodType, startStr, endStr, 365*24*time.Hour)
 		if err == nil && cached != nil {
-			WriteJSON(w, http.StatusOK, periodSummaryToDTO(cached))
+			dtoResp := periodSummaryToDTO(cached)
+			// 证据映射：从 sessions 构建“结论 → 会话”跳转（P0 核心闭环）
+			if a.rt != nil && a.rt.Repos.Session != nil && dtoResp != nil {
+				if ev, evErr := service.BuildPeriodSummaryEvidence(ctx, a.rt.Repos.Session, a.rt.Repos.Diff, startStr, dataEndStr, dtoResp.Achievements, dtoResp.Overview, dtoResp.Patterns, dtoResp.Suggestions); evErr == nil {
+					dtoResp.Evidence = toPeriodSummaryEvidenceDTO(ev)
+				}
+			}
+			WriteJSON(w, http.StatusOK, dtoResp)
 			return
 		}
 	}
@@ -148,6 +156,13 @@ func (a *API) HandlePeriodSummary(w http.ResponseWriter, r *http.Request) {
 		TopSkills:    aiResult.TopSkills,
 		TotalCoding:  totalCoding,
 		TotalDiffs:   totalDiffs,
+	}
+
+	// 证据映射：从 sessions 构建“结论 → 会话”跳转（P0 核心闭环）
+	if a.rt != nil && a.rt.Repos.Session != nil {
+		if ev, evErr := service.BuildPeriodSummaryEvidence(ctx, a.rt.Repos.Session, a.rt.Repos.Diff, startStr, dataEndStr, result.Achievements, result.Overview, result.Patterns, result.Suggestions); evErr == nil {
+			result.Evidence = toPeriodSummaryEvidenceDTO(ev)
+		}
 	}
 
 	savePeriodSummary(ctx, a.rt, result)

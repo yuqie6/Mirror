@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Mirror - 每日自动复盘与日报（本地优先 / Windows 托盘）</title>
+    <title>复盘镜（WorkMirror）- 每日自动复盘与日报（本地优先 / Windows 托盘）</title>
     <meta name="description" content="Windows 托盘常驻，自动生成日报/周报与复盘总结；每条结论都能点开回溯到证据来源。默认本地、可离线、隐私优先。">
     
     <!-- Tailwind CSS -->
@@ -102,7 +102,7 @@
                 <div class="w-8 h-8 bg-white rounded flex items-center justify-center shadow-lg shadow-indigo-500/20">
                     <div class="w-4 h-4 bg-zinc-950 rounded-full"></div>
                 </div>
-                <span class="font-bold text-lg tracking-tight text-white">Project Mirror</span>
+                <span class="font-bold text-lg tracking-tight text-white">复盘镜</span>
                 <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700">v0.2</span>
             </div>
             <div class="flex items-center gap-6">
@@ -138,7 +138,7 @@
                 </h1>
 
                 <p class="text-lg text-zinc-400 max-w-2xl mb-10 animate-slide-up" style="animation-delay: 0.1s;">
-                    Project Mirror 在后台自动记录你一天的工作痕迹，生成日报/周报与复盘总结。
+                    复盘镜在后台自动记录你一天的工作痕迹，生成日报/周报与复盘总结。
                     <span class="text-zinc-500">减少手写记录与回忆成本；每条结论都能点开回溯到来源证据；默认本地、可离线。</span>
                 </p>
 
@@ -159,7 +159,7 @@
                         <div class="flex items-center gap-4">
                             <span class="font-bold text-white text-sm tracking-tight flex items-center gap-2">
                                 <div class="w-1 h-4 bg-indigo-500 rounded-full"></div>
-                                Project Mirror
+                                复盘镜
                             </span>
                             <span class="text-[10px] text-zinc-500 font-mono">v0.2</span>
                         </div>
@@ -418,7 +418,7 @@
 	            <aside class="w-64 fixed h-[calc(100vh-4rem)] overflow-y-auto border-r border-zinc-800 bg-zinc-950 p-6 hidden lg:block">
 	                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">使用指南</div>
 	                <div class="space-y-1 mb-8">
-	                    <button onclick="showDoc('overview')" id="nav-overview" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">了解 Project Mirror</button>
+	                    <button onclick="showDoc('overview')" id="nav-overview" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">了解复盘镜</button>
 	                    <button onclick="showDoc('architecture')" id="nav-architecture" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">工作原理（高级）</button>
 	                    <button onclick="showDoc('install')" id="nav-install" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">快速开始</button>
 	                    <button onclick="showDoc('config')" id="nav-config" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">设置与隐私</button>
@@ -436,7 +436,7 @@
             <!-- Mobile Nav Toggle (Visible only on small screens) -->
 	            <div class="lg:hidden p-4 border-b border-zinc-800 bg-zinc-950 w-full sticky top-16 z-40">
 	                <select onchange="showDoc(this.value)" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded p-2 text-sm">
-	                    <option value="overview">了解 Project Mirror</option>
+	                    <option value="overview">了解复盘镜</option>
 	                    <option value="architecture">工作原理（高级）</option>
 	                    <option value="install">快速开始</option>
 	                    <option value="config">设置与隐私</option>
@@ -453,8 +453,8 @@
                     
 	                    <!-- DOC: INSTALL -->
 	                    <article id="doc-overview" class="doc-content hidden">
-	                        <h1>了解 Project Mirror</h1>
-	                        <p>Project Mirror 是一个 Windows 托盘常驻的本地回顾工具：自动收集你电脑上的工作“痕迹”（窗口、代码变更、浏览历史），整理成可追溯的工作片段，并生成日报/周报与技能变化。</p>
+	                        <h1>了解复盘镜</h1>
+	                        <p>复盘镜（WorkMirror）是一个 Windows 托盘常驻的本地回顾工具：自动收集你电脑上的工作“痕迹”（窗口、代码变更、浏览历史），整理成可追溯的工作片段，并生成日报/周报与技能变化。</p>
 
 	                        <h2>你能得到什么</h2>
 	                        <ul>
@@ -492,11 +492,11 @@
 
 	                    <article id="doc-architecture" class="doc-content hidden">
 	                        <h1>工作原理（高级）</h1>
-	                        <p>下面两张图展示 Project Mirror 在本机如何运行，以及“证据 → 工作片段（会话） → 回顾/技能”的口径链路。</p>
+	                        <p>下面两张图展示复盘镜在本机如何运行，以及“证据 → 工作片段（会话） → 回顾/技能”的口径链路。</p>
 
                         <h2>运行时组件图</h2>
                         <figure>
-                            <svg viewBox="0 0 900 360" width="100%" role="img" aria-label="Project Mirror 运行时组件图">
+                            <svg viewBox="0 0 900 360" width="100%" role="img" aria-label="复盘镜（WorkMirror）运行时组件图">
                                 <rect x="20" y="20" width="520" height="320" rx="14" fill="#0b0b0f" stroke="#27272a" />
                                 <text x="40" y="52" fill="#ffffff" font-size="18" font-family="Inter, sans-serif" font-weight="700">mirror.exe（Windows 托盘常驻）</text>
                                 <text x="40" y="78" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">单进程：采集 → 入库 → 会话/归因 → 本地 HTTP（API + SSE + UI 静态资源）</text>
@@ -544,7 +544,7 @@
 
                         <h2>证据链流水线图（口径）</h2>
                         <figure>
-                            <svg viewBox="0 0 900 300" width="100%" role="img" aria-label="Project Mirror 证据链流水线图">
+                            <svg viewBox="0 0 900 300" width="100%" role="img" aria-label="复盘镜（WorkMirror）证据链流水线图">
                                 <defs>
                                     <marker id="arrow2" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
                                         <path d="M0,0 L0,6 L8,3 z" fill="#52525b"></path>
@@ -618,7 +618,7 @@
                             <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 推荐阅读
                         </div>
                         <h1>快速开始</h1>
-                        <p>Project Mirror 是一个 Windows 托盘常驻 Agent + 本地 Web UI。目标是让新用户在 <strong>10 分钟</strong>完成闭环：配置 watch paths → 看到当天会话 → 能点开证据。</p>
+                        <p>复盘镜是一个 Windows 托盘常驻 Agent + 本地 Web UI。目标是让新用户在 <strong>10 分钟</strong>完成闭环：配置 watch paths → 看到当天会话 → 能点开证据。</p>
                         
                         <h2>1. 获取程序</h2>
                         <p>推荐从 GitHub Releases 下载 Windows 版本；或从源码构建（需 Go 1.25.4，且仅支持 Windows 构建）。</p>
@@ -626,7 +626,7 @@
                         <p>说明：上述命令会构建为 GUI 子系统，运行时不会弹出前台控制台窗口。</p>
                         
                         <h2>2. 初始化</h2>
-                        <p>首次运行后，Project Mirror 会最小化到系统托盘。右键点击图标选择 <strong>"打开面板"</strong>。</p>
+                        <p>首次运行后，复盘镜会最小化到系统托盘。右键点击图标选择 <strong>"打开面板"</strong>。</p>
                         <ul>
                             <li>默认数据库：<code>./data/mirror.db</code>（相对路径以可执行文件目录为基准）</li>
                             <li>本地 HTTP：只监听 <code>127.0.0.1</code>，端口为随机分配</li>
@@ -664,7 +664,7 @@
                         <h1>常见问题</h1>
 
                         <h2>需要联网吗？</h2>
-                        <p>不需要。未配置 AI Key 时，Project Mirror 会以规则口径生成会话摘要与回顾；配置 AI 后，仅在需要语义化摘要/建议时调用外部提供商。</p>
+                        <p>不需要。未配置 AI Key 时，复盘镜会以规则口径生成会话摘要与回顾；配置 AI 后，仅在需要语义化摘要/建议时调用外部提供商。</p>
 
                         <h2>为什么页面为空/没有数据？</h2>
                         <ul>
@@ -684,7 +684,7 @@
                     <article id="doc-privacy" class="doc-content hidden">
                         <h1>隐私策略</h1>
                         <p>最后更新：2025年12月</p>
-                        <p>Project Mirror 遵循 <strong>Local-first &amp; Privacy by default</strong>：默认本地存储、默认脱敏、默认可离线。</p>
+                        <p>复盘镜遵循 <strong>Local-first &amp; Privacy by default</strong>：默认本地存储、默认脱敏、默认可离线。</p>
                         
                         <h2>数据存储</h2>
                         <p>采集数据（窗口事件、Diff、浏览历史等）会写入本地 SQLite 数据库（默认 <code>./data/mirror.db</code>）。本地 HTTP 仅监听 <code>127.0.0.1</code>，不会暴露到局域网/公网。</p>
@@ -724,7 +724,7 @@ privacy:
                     <!-- DOC: TERMS -->
                     <article id="doc-terms" class="doc-content hidden">
                         <h1>服务条款</h1>
-                        <p>Project Mirror 是开源软件（MIT License），按“现状”提供，不对适用性或无缺陷作任何保证。你在本机使用时产生的任何数据与后果由你自行承担。</p>
+                        <p>复盘镜（WorkMirror）是开源软件（MIT License），按“现状”提供，不对适用性或无缺陷作任何保证。你在本机使用时产生的任何数据与后果由你自行承担。</p>
                         <p>本项目不提供云服务、不提供账号体系；本地 HTTP 服务仅用于本机 UI 与本地集成。</p>
                     </article>
 
@@ -740,10 +740,10 @@ privacy:
                 <div class="w-6 h-6 bg-zinc-800 rounded flex items-center justify-center">
                     <div class="w-3 h-3 bg-zinc-500 rounded-full"></div>
                 </div>
-                <span class="font-bold text-zinc-500">Project Mirror</span>
+                <span class="font-bold text-zinc-500">复盘镜</span>
             </div>
             <div class="text-sm text-zinc-500">
-                &copy; 2025 Project Mirror. Built for Engineers.
+                &copy; 2025 复盘镜（WorkMirror）. Built for Engineers.
             </div>
             <div class="flex gap-6">
                 <a href="#" onclick="switchView('docs', 'overview')" class="text-zinc-500 hover:text-white transition-colors">Documentation</a>
