@@ -189,7 +189,8 @@ type SessionDetailDTO struct {
 }
 
 type SessionBuildResultDTO struct {
-	Created int `json:"created"`
+	Created  int `json:"created"`
+	Enriched int `json:"enriched,omitempty"` // 语义丰富的会话数量（重建时自动触发）
 }
 
 type SessionEnrichResultDTO struct {

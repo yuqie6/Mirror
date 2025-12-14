@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { GetSkillEvidence, GetDiffDetail, GetSkillSessions } from '../../api/app';
 import SessionDetailModal, { SessionDTO } from '../sessions/SessionDetailModal';
+import EmptyState, { SkillTreeIcon } from '../common/EmptyState';
 
 export interface SkillNode {
     key: string;
@@ -380,17 +381,20 @@ const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
 
     if (!skills || skills.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 animate-fade-in">
-                <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center">
-                    <svg className="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-                    </svg>
-                </div>
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">技能树空空如也</h2>
-                    <p className="text-gray-500">开始编写代码，您的技能树将自动成长</p>
-                </div>
-            </div>
+            <EmptyState
+                icon={<SkillTreeIcon />}
+                title="技能树空空如也"
+                description="开始编写代码，您的技能树将自动成长。系统会分析您的代码变更并提取相关技能。"
+                action={
+                    <a 
+                        href="#" 
+                        className="text-sm text-accent-gold hover:underline"
+                        onClick={(e) => e.preventDefault()}
+                    >
+                        了解技能树如何工作
+                    </a>
+                }
+            />
         );
     }
 

@@ -58,14 +58,21 @@ func (a *API) HandleRebuildSessionsForDate(w http.ResponseWriter, r *http.Reques
 		WriteError(w, http.StatusBadRequest, "会话服务未初始化")
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 	created, err := a.rt.Core.Services.Sessions.RebuildSessionsForDate(ctx, date)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, &dto.SessionBuildResultDTO{Created: created})
+
+	// 重建后自动触发语义丰富，确保 skill_keys 等字段被填充，恢复技能树证据链
+	enriched := 0
+	if created > 0 && a.rt.Core.Services.SessionSemantic != nil {
+		enriched, _ = a.rt.Core.Services.SessionSemantic.EnrichSessionsForDate(ctx, date, 200)
+	}
+
+	WriteJSON(w, http.StatusOK, &dto.SessionBuildResultDTO{Created: created, Enriched: enriched})
 }
 
 func (a *API) HandleEnrichSessionsForDate(w http.ResponseWriter, r *http.Request) {

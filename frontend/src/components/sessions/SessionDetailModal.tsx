@@ -146,7 +146,7 @@ const SessionDetailModal: React.FC<{ sessionId: number; onClose: () => void; }> 
                     {data && (
                         <>
                             <div className="card">
-                                <h3 className="text-sm font-semibold text-gray-900 mb-2">📝 摘要</h3>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1.5"><svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>摘要</h3>
                                 <p className="text-gray-600 leading-relaxed">{data.summary || '（暂无摘要）'}</p>
                                 {data.skills_involved?.length > 0 && (
                                     <div className="mt-3 flex flex-wrap gap-2">
@@ -162,7 +162,7 @@ const SessionDetailModal: React.FC<{ sessionId: number; onClose: () => void; }> 
 
                             {data.app_usage?.length > 0 && (
                                 <div className="card">
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">🪟 应用使用</h3>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-1.5"><svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25m-18 0V6a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 6v2.25m-18 0h18M5.25 6h.008v.008H5.25V6zM7.5 6h.008v.008H7.5V6zm2.25 0h.008v.008H9.75V6z" /></svg>应用使用</h3>
                                     <div className="space-y-2">
                                         {data.app_usage.map((a, i) => (
                                             <div key={i} className="flex items-center justify-between text-sm">
@@ -177,7 +177,7 @@ const SessionDetailModal: React.FC<{ sessionId: number; onClose: () => void; }> 
                             <div className="grid grid-cols-12 gap-5">
                                 <div className="col-span-7 card">
                                     <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-sm font-semibold text-gray-900">🧾 Diffs</h3>
+                                        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5"><svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.231 13.888L15 9.75l-1.519 4.138M7.5 11.25l-1.5 3 1.5 3m7.5-6l1.5-3-1.5-3M8.25 4.5h6.75c.621 0 1.125.504 1.125 1.125v.375c0 .621-.504 1.125-1.125 1.125H8.25a1.125 1.125 0 01-1.125-1.125v-.375c0-.621.504-1.125 1.125-1.125z" /></svg>Diffs</h3>
                                         <span className="text-xs text-gray-400">{data.diffs?.length || 0}</span>
                                     </div>
                                     {data.diffs?.length ? (
@@ -204,7 +204,7 @@ const SessionDetailModal: React.FC<{ sessionId: number; onClose: () => void; }> 
 
                                 <div className="col-span-5 card">
                                     <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-sm font-semibold text-gray-900">🌐 浏览</h3>
+                                        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5"><svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" /></svg>浏览</h3>
                                         <span className="text-xs text-gray-400">{data.browser?.length || 0}</span>
                                     </div>
                                     {data.browser?.length ? (
@@ -225,7 +225,7 @@ const SessionDetailModal: React.FC<{ sessionId: number; onClose: () => void; }> 
 
                             {data.rag_refs?.length > 0 && (
                                 <div className="card">
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">🧠 使用到的历史记忆（RAG）</h3>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-1.5"><svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" /></svg>使用到的历史记忆（RAG）</h3>
                                     <div className="space-y-2">
                                         {data.rag_refs.map((r, i) => (
                                             <div key={i} className="p-3 rounded-xl border border-gray-100">

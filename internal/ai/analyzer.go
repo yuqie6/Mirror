@@ -312,10 +312,19 @@ func (a *DiffAnalyzer) GenerateSessionSummary(ctx context.Context, req *SessionS
 		mem = mem[:maxMem]
 	}
 
+	// 计算会话丰富度，用于自适应摘要长度
+	evidenceScore := len(diffs)*3 + len(browser)*2 + len(apps)
+	summaryGuidance := "1 句话"
+	if evidenceScore >= 20 {
+		summaryGuidance = "4-6 句话（请详细描述主要工作内容、涉及的技术点和解决的问题）"
+	} else if evidenceScore >= 8 {
+		summaryGuidance = "2-3 句话（概括主要活动和技术点）"
+	}
+
 	var b strings.Builder
 	b.WriteString("请基于以下本地行为证据，生成一个可解释的会话摘要。\n")
 	b.WriteString("要求：\n")
-	b.WriteString("1) summary 用中文 1 句话（尽量具体，避免空泛）\n")
+	b.WriteString(fmt.Sprintf("1) summary 用中文 %s（尽量具体，避免空泛；引用具体的文件名、技术名称、网站等证据）\n", summaryGuidance))
 	b.WriteString("2) category 只能是 technical/learning/exploration/other\n")
 	b.WriteString("3) skills_involved 最多 8 个，尽量使用用户已有技能树中的标准名称（如 Go、Redis、React）\n")
 	b.WriteString("4) tags 最多 6 个，用中文短标签（如 并发、性能、数据库、文档阅读）\n")

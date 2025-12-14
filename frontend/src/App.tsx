@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
+import { ToastProvider } from './components/common/Toast';
 import { GetTodaySummary, GetDailySummary, ListSummaryIndex, GetPeriodSummary, ListPeriodSummaryIndex, GetSkillTree, GetAppStats } from "./api/app";
 import MainLayout from './components/layout/MainLayout';
 import SummaryView, { DailySummary, AppStat, SummaryIndex, PeriodSummary, PeriodSummaryIndex } from './components/dashboard/SummaryView';
@@ -190,9 +191,11 @@ function App() {
     };
 
     return (
-        <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
-            {renderContent()}
-        </MainLayout>
+        <ToastProvider>
+            <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
+                {renderContent()}
+            </MainLayout>
+        </ToastProvider>
     );
 }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { GetSettings, SaveSettings } from "../../api/app";
+import { useToast } from '../common/Toast';
 
 export interface SettingsDTO {
     config_path: string;
@@ -45,6 +46,7 @@ const SettingsView: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const { showToast } = useToast();
 
     const [settings, setSettings] = useState<SettingsDTO | null>(null);
 
@@ -111,10 +113,14 @@ const SettingsView: React.FC = () => {
                 browser_history_path: browserHistoryPath.trim() || undefined,
             };
             const resp = await SaveSettings(req as any) as any;
-            setSuccess(resp?.restart_required ? '保存成功，需要重启 Agent 生效' : '保存成功');
+            const msg = resp?.restart_required ? '保存成功，需要重启 Agent 生效' : '保存成功';
+            setSuccess(msg);
+            showToast(msg, 'success');
             await load();
         } catch (e: any) {
-            setError(e?.message || '保存失败');
+            const errMsg = e?.message || '保存失败';
+            setError(errMsg);
+            showToast(errMsg, 'error');
         } finally {
             setSaving(false);
         }
