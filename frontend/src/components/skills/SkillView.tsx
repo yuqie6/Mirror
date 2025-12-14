@@ -13,19 +13,32 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  ExternalLink,
+  FileCode,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GetSkillTree } from '@/api/app';
+import { GetSkillTree, GetSkillEvidence, GetSkillSessions } from '@/api/app';
 import { ISkillNode, SkillNodeDTO, buildSkillTree } from '@/types/skill';
 
-// Mock radar data
-const SKILL_BALANCE_DATA = [
-  { subject: '并发编程', value: 85 },
-  { subject: '框架使用', value: 60 },
-  { subject: '测试', value: 45 },
-  { subject: '安全', value: 70 },
-  { subject: '性能优化', value: 50 },
-];
+interface SkillEvidence {
+  id: number;
+  skill_key: string;
+  source_type: string;
+  source_id: number;
+  file_name: string;
+  insight: string;
+  experience: number;
+  created_at: string;
+}
+
+interface SkillSession {
+  id: number;
+  category: string;
+  summary: string;
+  time_range: string;
+  date: string;
+}
 
 // 递归树节点组件
 interface SkillTreeItemProps {
@@ -40,7 +53,6 @@ function SkillTreeItem({ node, selectedId, onSelect, depth = 0 }: SkillTreeItemP
   const hasChildren = node.children && node.children.length > 0;
   const isSelected = selectedId === node.id;
 
-  // 热度衰减：3天内白色，7天以上暗灰
   const isRecent = node.lastActive === 'Today' || node.lastActive === 'Yesterday' || node.lastActive === '今天' || node.lastActive === '昨天';
   const nameColor = isRecent ? 'text-zinc-200' : 'text-zinc-500';
 
@@ -109,10 +121,17 @@ function SkillTreeItem({ node, selectedId, onSelect, depth = 0 }: SkillTreeItemP
   );
 }
 
-export default function SkillView() {
+interface SkillViewProps {
+  onNavigateToSession?: (sessionId: number) => void;
+}
+
+export default function SkillView({ onNavigateToSession }: SkillViewProps) {
   const [skills, setSkills] = useState<ISkillNode[]>([]);
   const [selectedSkill, setSelectedSkill] = useState<ISkillNode | null>(null);
   const [loading, setLoading] = useState(false);
+  const [evidence, setEvidence] = useState<SkillEvidence[]>([]);
+  const [sessions, setSessions] = useState<SkillSession[]>([]);
+  const [loadingEvidence, setLoadingEvidence] = useState(false);
 
   useEffect(() => {
     const loadSkills = async () => {
@@ -121,7 +140,6 @@ export default function SkillView() {
         const data: SkillNodeDTO[] = await GetSkillTree();
         const tree = buildSkillTree(data);
         setSkills(tree);
-        // 默认选中第一个子节点
         if (tree.length > 0 && tree[0].children && tree[0].children.length > 0) {
           setSelectedSkill(tree[0].children[0]);
         }
@@ -133,6 +151,28 @@ export default function SkillView() {
     };
     loadSkills();
   }, []);
+
+  // 加载选中技能的证据和会话
+  useEffect(() => {
+    if (!selectedSkill) return;
+    
+    const loadEvidence = async () => {
+      setLoadingEvidence(true);
+      try {
+        const [evidenceData, sessionsData] = await Promise.all([
+          GetSkillEvidence(selectedSkill.id).catch(() => []),
+          GetSkillSessions(selectedSkill.id).catch(() => []),
+        ]);
+        setEvidence(evidenceData || []);
+        setSessions(sessionsData || []);
+      } catch (e) {
+        console.error('Failed to load evidence:', e);
+      } finally {
+        setLoadingEvidence(false);
+      }
+    };
+    loadEvidence();
+  }, [selectedSkill]);
 
   const getTrendText = (trend: string) => {
     if (trend === 'up') return '↗ 上升中';
@@ -216,44 +256,85 @@ export default function SkillView() {
               </CardContent>
             </Card>
 
-            {/* Skill Balance (仅 Branch) */}
-            {selectedSkill.type !== 'topic' && (
-              <Card className="bg-zinc-900 border-zinc-800 mb-6">
-                <CardHeader>
-                  <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
-                    技能分布
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {SKILL_BALANCE_DATA.map((item) => (
-                    <div key={item.subject} className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-zinc-400">{item.subject}</span>
-                        <span className="text-zinc-500">{item.value}%</span>
-                      </div>
-                      <Progress value={item.value} className="h-1.5" />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Contextual Evidence */}
-            <Card className="bg-zinc-900 border-zinc-800">
+            {/* 相关会话 - 可点击跳转 */}
+            <Card className="bg-zinc-900 border-zinc-800 mb-6">
               <CardHeader>
-                <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
-                  语境证据
+                <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                  <History size={14} /> 相关会话
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="p-3 bg-zinc-950 border border-zinc-800 rounded text-sm text-zinc-400 hover:text-zinc-200 cursor-pointer">
-                  <div className="font-mono text-xs text-indigo-400 mb-1">会话 #101</div>
-                  大量修改了 <code className="bg-zinc-900 px-1 rounded">pkg/auth/middleware.go</code>
-                </div>
-                <div className="p-3 bg-zinc-950 border border-zinc-800 rounded text-sm text-zinc-400 hover:text-zinc-200 cursor-pointer">
-                  <div className="font-mono text-xs text-indigo-400 mb-1">会话 #98</div>
-                  阅读文档 30 分钟
-                </div>
+              <CardContent className="space-y-2">
+                {loadingEvidence ? (
+                  <div className="text-zinc-500 text-sm">加载中...</div>
+                ) : sessions.length > 0 ? (
+                  sessions.slice(0, 5).map((session) => (
+                    <div
+                      key={session.id}
+                      onClick={() => onNavigateToSession?.(session.id)}
+                      className="p-3 bg-zinc-950 border border-zinc-800 rounded text-sm cursor-pointer hover:bg-zinc-900 hover:border-zinc-700 transition-colors group"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-mono text-xs text-indigo-400 mb-1">
+                            会话 #{session.id} • {session.date}
+                          </div>
+                          <div className="text-zinc-300">{session.category || session.summary}</div>
+                          <div className="text-xs text-zinc-500 mt-1">{session.time_range}</div>
+                        </div>
+                        <ExternalLink size={14} className="text-zinc-600 group-hover:text-indigo-400 transition-colors" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-zinc-500 text-sm italic">暂无相关会话</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 代码证据 - 可展开 */}
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardHeader>
+                <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                  <FileCode size={14} /> 代码证据
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {loadingEvidence ? (
+                  <div className="text-zinc-500 text-sm">加载中...</div>
+                ) : evidence.length > 0 ? (
+                  evidence.slice(0, 10).map((ev) => (
+                    <Collapsible key={ev.id}>
+                      <div className="bg-zinc-950 border border-zinc-800 rounded overflow-hidden">
+                        <CollapsibleTrigger className="w-full p-3 flex items-center justify-between hover:bg-zinc-900/50 transition-colors text-left">
+                          <div className="flex items-center gap-2 font-mono text-xs">
+                            <FileCode size={14} className="text-emerald-400" />
+                            <span className="text-zinc-300 truncate max-w-[200px]">{ev.file_name}</span>
+                            <Badge variant="outline" className="text-[10px]">
+                              +{ev.experience} XP
+                            </Badge>
+                          </div>
+                          <ChevronDown size={14} className="text-zinc-500" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="border-t border-zinc-800 p-3">
+                            {ev.insight && (
+                              <div className="mb-2 p-2 bg-indigo-500/10 border border-indigo-500/20 rounded text-sm text-indigo-200">
+                                <span className="text-indigo-400 font-medium">洞察：</span> {ev.insight}
+                              </div>
+                            )}
+                            <div className="text-xs text-zinc-500">
+                              来源: {ev.source_type} #{ev.source_id}
+                              <br />
+                              时间: {ev.created_at}
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  ))
+                ) : (
+                  <div className="text-zinc-500 text-sm italic">暂无代码证据</div>
+                )}
               </CardContent>
             </Card>
           </>
