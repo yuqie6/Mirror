@@ -183,7 +183,7 @@ export default function SettingsView() {
 
       {/* 新手引导（最小可重复口径：强提示 diff watch paths） */}
       {(pendingChanges.diff_enabled ?? settings.diff_enabled) &&
-        (pendingChanges.diff_watch_paths ?? settings.diff_watch_paths).length === 0 && (
+        displayWatchPaths.length === 0 && (
           <Card className="bg-amber-500/10 border-amber-500/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-amber-300 flex items-center gap-2">

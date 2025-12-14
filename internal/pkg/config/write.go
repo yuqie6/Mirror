@@ -50,8 +50,8 @@ func WriteFile(path string, cfg *Config) error {
 		},
 		"diff": map[string]any{
 			"enabled":      cfg.Diff.Enabled,
-			"watch_paths":  cfg.Diff.WatchPaths,
-			"extensions":   cfg.Diff.Extensions,
+			"watch_paths":  append([]string{}, cfg.Diff.WatchPaths...),
+			"extensions":   append([]string{}, cfg.Diff.Extensions...),
 			"buffer_size":  cfg.Diff.BufferSize,
 			"debounce_sec": cfg.Diff.DebounceSec,
 		},
@@ -75,7 +75,7 @@ func WriteFile(path string, cfg *Config) error {
 		},
 		"privacy": map[string]any{
 			"enabled":  cfg.Privacy.Enabled,
-			"patterns": cfg.Privacy.Patterns,
+			"patterns": append([]string{}, cfg.Privacy.Patterns...),
 		},
 	}
 

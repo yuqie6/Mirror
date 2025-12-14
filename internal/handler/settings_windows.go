@@ -52,12 +52,12 @@ func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
 
 		DBPath:             cfg.Storage.DBPath,
 		DiffEnabled:        cfg.Diff.Enabled,
-		DiffWatchPaths:     append([]string(nil), cfg.Diff.WatchPaths...),
+		DiffWatchPaths:     append([]string{}, cfg.Diff.WatchPaths...),
 		BrowserEnabled:     cfg.Browser.Enabled,
 		BrowserHistoryPath: cfg.Browser.HistoryPath,
 
 		PrivacyEnabled:  cfg.Privacy.Enabled,
-		PrivacyPatterns: append([]string(nil), cfg.Privacy.Patterns...),
+		PrivacyPatterns: append([]string{}, cfg.Privacy.Patterns...),
 	})
 }
 
