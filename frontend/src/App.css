@@ -2,94 +2,106 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-gradient-warm text-gray-900 antialiased;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    min-height: 100vh;
-    background-attachment: fixed;
-  }
-}
-
-@layer components {
-  /* 亮色卡片 - 白色背景 */
-  .card {
-    @apply bg-white rounded-3xl p-6 shadow-card transition-all duration-300;
-  }
-  
-  .card:hover {
-    @apply shadow-card-lg -translate-y-0.5;
-  }
-
-  /* 深色卡片 - 用于主要展示区 */
-  .card-dark {
-    @apply bg-card-dark text-white rounded-3xl p-6 shadow-card-dark overflow-hidden relative;
-  }
-
-  /* 统计卡片 */
-  .stat-card {
-    @apply bg-white rounded-2xl p-5 shadow-card flex flex-col gap-2;
-  }
-
-  /* 顶部导航 */
-  .nav-item {
-    @apply px-4 py-2 text-sm font-medium text-gray-600 rounded-full transition-all duration-200;
-  }
-
-  .nav-item:hover {
-    @apply text-gray-900 bg-white/60;
-  }
-
-  .nav-item.active {
-    @apply bg-white text-gray-900 shadow-sm;
-  }
-
-  /* 金色强调按钮 */
-  .btn-gold {
-    @apply px-6 py-2.5 bg-gradient-gold text-white font-medium rounded-full shadow-lg transition-all duration-200;
-  }
-
-  .btn-gold:hover {
-    @apply shadow-xl -translate-y-0.5;
-  }
-
-  /* 标签/Pills */
-  .pill {
-    @apply px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600;
-  }
-
-  .pill-active {
-    @apply bg-accent-gold text-white;
-  }
-}
-
-@layer utilities {
-  /* 渐变文字 */
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-gold to-amber-500;
-  }
-
-  /* 波浪背景装饰 */
-  .wave-bg {
-    background: linear-gradient(180deg, transparent 0%, rgba(212, 175, 55, 0.1) 100%);
-  }
-}
-
-/* 自定义滚动条 */
+/* Custom scrollbar for "Engineer's Cockpit" feel */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: #09090b;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
+  background: #27272a;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
+  background: #3f3f46;
+}
+
+/* Shadcn CSS Variables */
+@layer base {
+  :root {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 6.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 6.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 239 84% 67%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}
+
+/* Animation utilities */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-from-bottom-2 {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slide-in-from-right {
+  from { 
+    opacity: 0; 
+    transform: translateX(100%); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+}
+
+.animate-in {
+  animation-duration: 300ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fade-in;
+}
+
+.slide-in-from-bottom-2 {
+  animation-name: slide-in-from-bottom-2;
+}
+
+.duration-500 {
+  animation-duration: 500ms;
 }

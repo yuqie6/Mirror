@@ -1,127 +1,261 @@
-### 一、 设计核心概念：The "Engineer's Cockpit" (工程师驾驶舱)
+Project Mirror v0.2 UI/UX Design Specification (Final)
 
-- **视觉隐喻：** IDE（VS Code）、CI/CD 面板、服务器监控台。
-- **配色策略：**
-  - **底色：** 深色模式优先（Zinc/Slate 900），符合开发者习惯。
-  - **状态色（关键）：** 既然 P0 是“诊断”，状态色必须明确。
-    - 🟢 Emerald: 正常/强证据/AI 生成。
-    - 🟡 Amber: 规则降级/弱证据/警告。
-    - 🔴 Rose: 采集失败/错误/无数据。
-  - **数据色：** 靛蓝（Indigo）或紫色（Violet）用于表示“智能/归因”。
-- **字体：**
-  - UI 文本：Inter 或系统默认 sans-serif。
-  - **证据/Diff/路径/日志：必须用等宽字体（JetBrains Mono / Fira Code）。**
+1. 设计哲学：工程师驾驶舱 (The Engineer's Cockpit)
 
----
+Project Mirror 不是一个用来“展示”的 Marketing 页面，而是一个用来“诊断”和“回顾”的生产力仪表盘。
 
-### 二、 布局架构 (App Shell)
+核心隐喻：IDE (VS Code) + 服务器监控 (Grafana)。
 
-由于是本地 Web UI，不需要复杂的路由过渡，追求**“信息触手可及”**。
+第一原则：
 
-#### 1. 侧边栏 (Sidebar Navigation)
+Evidence First (证据优先)：任何漂亮的图表或 AI 结论，必须能在一秒内点击展开看到“原始数据”（Diff/Logs/Events）。
 
-使用收缩式侧边栏，最大化右侧内容区域。
+No Silent Failures (拒绝沉默失败)：系统的健康状态（采集器死活）必须像服务器报警一样显眼。
 
-- **顶部：** App Logo (Project Mirror)。
-- **主导航：**
-  - 📊 Dashboard (概览)
-  - ⏱️ Sessions (会话流 - 核心)
-  - 🌳 Skills (技能树)
-  - 📅 Reports (周报/回顾)
-- **底部（固定）：**
-  - 🏥 **System Status (红绿灯指示器，P0 关键入口)**
-  - ⚙️ Settings
+Hierarchy is Key (层级至上)：技能不是孤立的点，而是树状生长的结构。
 
-#### 2. 全局状态栏 (Global Health Bar) - 对应 PRD 8.1
+2. 视觉系统 (Visual System)
 
-不要把状态藏在设置里。在页面顶部或侧边栏底部做一个微型组件：
+2.1 配色策略 (Dark Mode Optimized)
 
-- 显示：`Window: 🟢` `Diff: 🟢` `AI: 🟡 (Offline)`
-- **交互：** 点击直接跳转到 `/status` 页面进行诊断。这是实现“消灭沉默失败”的关键 UI 设计。
+基于 Tailwind CSS zinc 色系，打造沉浸式、高对比度的专业感。
 
----
+Canvas (背景): bg-zinc-950 (深邃黑)
 
-### 三、 核心页面设计方案
+Surface (卡片): bg-zinc-900 + border-zinc-800 (微弱边框，避免视觉噪音)
 
-#### 1. Dashboard (首页) - "Today at a Glance"
+Semantic Colors (语义色):
 
-布局建议：**Bento Grid (便当盒布局)**
+🟢 Emerald (Healthy/Growth): 采集正常、技能增长、强证据。
 
-- **左上 (大卡片)：** **今日投入分布。** 饼图或进度条，显示 Code vs. Browse vs. Idle。
-- **右上 (关键指标)：**
-  - Session 数量 (比如 "12 Sessions")。
-  - 证据覆盖率 (比如 "85% Covered" - 🟢 高亮)。
-- **中段 (Action 区域)：**
-  - 如果是空态/异常：显示一个醒目的警告 Banner，“Diff 采集未配置，点击修复”。
-  - 如果是正常：显示“最近一个 Session”的简报。
-- **底部：** **Contribution Graph (类似 GitHub)**。展示过去 30 天的活跃热力图，给用户“连续打卡”的成就感。
+🟡 Amber (Warning/Offline): 离线模式、规则降级、弱证据、采集器警告。
 
-#### 2. Sessions (会话流) - " The Source of Truth"
+🟣 Indigo (Intelligence/AI): AI 生成的洞察、关键成就。
 
-这是最复杂的页面，需要展示“权威路径”。建议采用 **“Timeline Feed”** 形式。
+🔴 Rose (Error/Stop): 采集器挂掉、关键路径缺失。
 
-- **列表项设计 (Card)：**
-  - **Header:** `[14:00 - 15:30]` `VS Code` `Project Mirror Dev` (标题由 AI 或规则生成)。
-  - **Badges (证据强度):**
-    - `✨ AI Generated` (或是 `⚙️ Rule Based` 灰色标)
-    - `Diff: +120/-5` (点击展开)
-    - `Browser: 45 events`
-  - **Summary:** 一段简短的文本摘要。
-- **交互 (Drill Down)：**
-  - 点击 Card，**右侧滑出 Drawer (抽屉)**，而不是跳转页面。
-  - **Drawer 内容：** 完整的证据链。
-    - Tab 1: Timeline (窗口切换时间轴)。
-    - Tab 2: Diffs (渲染后的 git diff，代码高亮)。
-    - Tab 3: Browser (访问过的 URL 列表，脱敏显示)。
-- **设计理由：** 这种设计符合 PRD 的“任何结论必须可点开看到来源”。
+2.2 字体 (Typography)
 
-#### 3. Reports (周报) - "The Insight"
+UI Text: Inter 或系统默认 Sans-serif (清晰、现代)。
 
-- **布局：** 类似 notion 文档的阅读体验，单列居中布局。
-- **Weak Evidence Pattern (弱证据模式)：**
-  - 如果某条结论证据不足（例如 AI 瞎编的），UI 上必须显示一个**虚线边框**或**黄色三角图标**。
-  - Hover 提示：“缺少 Diff 数据，仅基于窗口标题推断”。
+Data/Code: JetBrains Mono 或 Fira Code (用于 Diff、路径、Log、Hash ID)。
 
-#### 4. Status & Diagnostics (诊断页) - P0 核心
+3. 核心视图详细设计
 
-- **风格：** 必须像“服务器仪表盘”。
-- **模块划分：**
-  - **Collectors (卡片组):** 每个采集器一个卡片（Window, Diff, Browser）。显示：`Last Heartbeat`, `Events/24h`, `Error Rate`。
-  - **Pipeline:** 显示 Session 切分任务的状态。
-  - **Actions (危险区):** 使用红色边框或红色按钮。
-    - `Rebuild Sessions (YYYY-MM-DD)`
-    - `Export Debug Pack`
-- **反馈：** 点击“重建”后，需要有一个实时的 Log 窗口或 Toast，告诉用户后台在干活，不能让用户觉得“卡死了”。
+3.1 全局导航与状态 (Shell & Health)
 
----
+侧边栏: 收缩式设计，留出最大屏幕空间给数据。
 
-### 四、 组件库映射 (Shadcn UI)
+P0 级状态栏 (System Health):
 
-为了快速落地，直接使用以下 Shadcn 组件对应你的需求：
+位置：侧边栏底部常驻。
 
-| PRD 需求      | 推荐 UI 组件                 | 备注                               |
-| :------------ | :--------------------------- | :--------------------------------- |
-| **整体布局**  | `Sidebar` / `Layout`         | 刚出的 Shadcn Block 这种布局很现成 |
-| **证据详情**  | `Sheet` (Side Drawer)        | 保持上下文，不要全屏跳转           |
-| **诊断信息**  | `Alert`, `Badge`             | 区分 Info/Warning/Destructive      |
-| **技能树**    | `Accordion` 或 `Tree`        | 简单的折叠面板即可满足 v0.2        |
-| **数据卡片**  | `Card`                       | 加上 `HoverCard` 做解释说明        |
-| **时间选择**  | `Calendar`, `DatePicker`     | 用于选择重建 Session 的日期        |
-| **操作反馈**  | `Toast`                      | 成功/失败的非阻塞通知              |
-| **设置表单**  | `Form`, `Switch`             | 尤其是隐私设置的开关               |
-| **Diff 展示** | (第三方库) `react-diff-view` | 嵌入在 Card 或 Sheet 中            |
+样式：红绿灯圆点指示器 (Win, Diff, AI)。
 
----
+交互：点击直接跳转 /status 诊断页。
 
-### 五、 针对 "AI vs. 规则" 的视觉区分策略
+3.2 仪表盘 (Dashboard)
 
-PRD 中提到**“无 AI 时仍能产出规则回顾，且 UI 明确标注”**。这一点在设计上非常重要，可以通过以下方式强化：
+采用 Bento Grid (便当盒) 布局，强调信息密度。
 
-1.  **Icon 区分：**
-    - AI 生成的内容：使用 ✨ (Sparkles) 图标，颜色用 Indigo-500。
-    - 规则生成的内容：使用 ⚙️ (Gear) 或 📊 (Chart) 图标，颜色用 Slate-500。
-2.  **背景微光：**
-    - AI 生成的卡片可以有一个极其微弱的紫色渐变背景或边框发光。
-    - 规则生成的卡片保持扁平灰底。
+今日投入 (Focus): 进度条展示 Coding vs Reading vs Meeting。
 
----
+会话计数: 巨大的数字展示今日产出。
+
+热力图 (Heatmap): 类似 GitHub 的绿色格子，展示“连续性”。
+
+快速入口: 如果当天日报已生成，显示一个横幅卡片，点击直达 Reports。
+
+3.3 会话流 (Sessions - Timeline Feed)
+
+卡片设计:
+
+左侧时间轴，右侧内容。
+
+区分 AI vs 规则:
+
+✨ AI 生成：Indigo 色微光/图标。
+
+⚙️ 规则生成：灰色/机械图标。
+
+证据链交互 (Drill-down):
+
+动作: 点击卡片，右侧滑出 Drawer (抽屉)。
+
+内容:
+
+Diff View: 代码高亮展示 (只读)。
+
+App Timeline: 类似甘特图的 App 切换条。
+
+Browser: 脱敏后的域名列表。
+
+4. 技能树交互设计 (Skill Tree Logic) - 重点强化
+
+针对现有后端逻辑，技能树必须体现 父子继承 (Parent-Child Inheritance) 和 经验值聚合 (XP Aggregation)。
+
+4.1 结构定义
+
+技能树不再是扁平列表，而是类似文件资源管理器（File Explorer）的多级折叠结构。
+
+Root (Domain): 领域 (e.g., Backend, Frontend)
+
+Branch (Skill): 具体技能 (e.g., Golang, React)
+
+Leaf (Topic/Lib): 细分知识点 (e.g., Goroutines, React Hooks)
+
+4.2 视觉表现 (UI Components)
+
+A. 折叠树组件 (The Tree Explorer)
+
+左侧导航栏使用树状折叠菜单，所有节点均可点击：
+
+▼ 📂 Backend Engineering (Lvl 12) <-- 点击查看领域汇总
+│
+├─▼ 🔷 Golang (Lvl 8) <-- 点击查看技能综合看板
+│ │
+│ ├─ • Concurrency (XP: 550) <-- 点击查看“并发编程”专项证据
+│ └─ • Gin Framework (XP: 300)
+│
+└─▶ 🔷 Docker (Lvl 4) <-- 折叠状态
+
+父级状态: 父级的 XP 进度条 = 所有子级 XP 的总和。
+
+热度衰减:
+
+高亮白色：最近 3 天有 Session 贡献。
+
+暗灰色：超过 7 天未活跃。
+
+选中态: 选中的节点（无论是父还是子）需要有明显的背景色 (bg-indigo-500/10) 和左侧高亮条，保持导航上下文清晰。
+
+B. 详情面板 (The Detail View)
+
+右侧面板根据选中的节点类型，展示不同维度的信息：
+
+情况 1：选中 Branch 节点 (e.g., "Golang")
+
+聚合概览: 总等级、总 XP、下属子技能的雷达图或占比条（例如：并发 60%, 框架 40%）。
+
+子技能列表: 列出所有子节点及其趋势，点击可下钻。
+
+Recent Activity: 聚合了所有子节点的最近 Session。
+
+情况 2：选中 Leaf 节点 (e.g., "Concurrency")
+
+专项聚焦:
+
+显示该特定知识点的 XP 增长曲线。
+
+"Contextual Evidence" (语境证据): 这里不只是列出 Session，更要高亮 Session 中具体相关的文件。
+
+例如：展示 "Session #101 (Refactoring)"，并在下方小字标注 "Modified worker_pool.go (+50 lines)"。
+
+学习建议: 如果开启了 AI，针对该细分点给出具体的进阶建议（例如：“你最近频繁使用 Mutex，建议复习一下 Channel 模式”）。
+
+5. 诊断与维护 (Diagnostics - P0)
+
+这是区别于玩具项目的关键。
+
+仪表盘风格: 每一行都是一个采集器 (Collector)。
+
+心跳检测: 显示 Last Heartbeat: 2s ago。
+
+自愈操作 (Actionable):
+
+如果 AI 挂了 -> 显示 "Switch to Rule Mode" 或 "Check API Key" 按钮。
+
+如果数据乱了 -> 显示 "Rebuild Sessions for
+
+$$Date$$
+
+" 按钮。
+
+6. 实现建议 (Implementation Notes)
+
+数据结构映射:
+前端接收到的 JSON 应该包含 parentId 字段，或者已经是嵌套好的 children: [] 结构。使用递归组件 (RecursiveTreeItem) 来渲染左侧菜单。
+
+路由设计:
+
+/dashboard: 概览
+
+/sessions: 流
+
+/sessions/:id: 详情（虽然用 Drawer，但保持 URL 同步便于分享/刷新）
+
+/skills: 树根
+
+/skills/:skillId: 选中特定节点 (Branch 或 Leaf 统一 ID 空间)
+
+样式隔离:
+确保 Markdown 渲染（用于 AI 周报）和 Code Diff 渲染的样式不污染全局 UI。
+
+7. 关键数据结构定义 (TypeScript Interfaces) - Agent 指导核心
+
+为了确保 Agent 生成的前端代码与后端逻辑一致，必须严格遵守以下类型定义：
+
+// 1. Session & Evidence
+interface ISession {
+id: number;
+startTime: string; // ISO 8601
+endTime: string;
+duration: string; // "1h 15m"
+title: string;
+summary: string;
+type: 'ai' | 'rule';
+evidenceStrength: 'strong' | 'weak';
+
+// 证据负载 (按需加载)
+evidence?: {
+diffs: { file: string; additions: number; deletions: number; lang: string }[];
+windowEvents: { app: string; duration: number }[];
+urls: { domain: string; count: number }[];
+};
+}
+
+// 2. Skill Tree (Recursive)
+interface ISkillNode {
+id: string;
+parentId?: string; // 允许扁平结构转树
+name: string;
+type: 'domain' | 'skill' | 'topic'; // 对应 Root -> Branch -> Leaf
+level: number;
+xp: number;
+maxXp: number;
+trend: 'up' | 'flat' | 'down';
+lastActive: string; // "Today", "3 days ago"
+
+// 聚合数据 (仅父级需要)
+children?: ISkillNode[];
+
+// 详情页专用 (不包含在列表 API 中)
+recentSessions?: number[]; // Session IDs
+contextualEvidence?: { sessionId: number; fileHint: string }[]; // Leaf 节点专用
+}
+
+8. 组件架构与技术栈细节 (Tech Stack Specs)
+   Agent 在生成代码时必须强制使用以下库和组件映射：
+
+8.1 基础技术栈
+Framework: React 18 + Vite
+
+Styling: Tailwind CSS (使用 zinc 作为 gray 别名)
+
+Icons: Lucide React
+
+Charts: Recharts (用于 XP 增长曲线和分布图)
+
+Utils: clsx, tailwind-merge (用于样式合并)
+
+8.2 Shadcn UI 组件映射表
+Agent 禁止手写复杂交互组件，必须复用以下 Shadcn 原语：
+
+UI 模块 推荐 Shadcn 组件 备注
+技能树导航 Collapsible / Accordion 必须支持递归渲染
+会话详情 Sheet (Side Drawer) 从右侧滑出，保留上下文
+状态标签 Badge 配合 variant (default, secondary, destructive)
+XP 进度条 Progress 自定义颜色 class
+诊断卡片 Card + Alert 区分正常显示和报警信息
+日期选择 Calendar + Popover 用于选择重建 Session 的日期
+操作菜单 DropdownMenu 用于 Session 卡片右上角的更多操作
