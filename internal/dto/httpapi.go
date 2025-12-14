@@ -141,6 +141,10 @@ type SaveSettingsResponseDTO struct {
 	RestartRequired bool `json:"restart_required"`
 }
 
+type DateRequestDTO struct {
+	Date string `json:"date"`
+}
+
 type SessionDTO struct {
 	ID             int64    `json:"id"`
 	Date           string   `json:"date"`

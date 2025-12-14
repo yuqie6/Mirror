@@ -51,30 +51,26 @@ func NewSiliconFlowClient(cfg *SiliconFlowConfig) *SiliconFlowClient {
 	}
 }
 
-// EmbeddingRequest 嵌入请求
-type SFEmbeddingRequest struct {
+type sfEmbeddingRequest struct {
 	Model          string   `json:"model"`
 	Input          []string `json:"input"`
 	EncodingFormat string   `json:"encoding_format,omitempty"`
 }
 
-// EmbeddingResponse 嵌入响应
-type SFEmbeddingResponse struct {
+type sfEmbeddingResponse struct {
 	Object string            `json:"object"`
-	Data   []SFEmbeddingData `json:"data"`
+	Data   []sfEmbeddingData `json:"data"`
 	Model  string            `json:"model"`
-	Usage  SFEmbeddingUsage  `json:"usage"`
+	Usage  sfEmbeddingUsage  `json:"usage"`
 }
 
-// EmbeddingData 嵌入数据
-type SFEmbeddingData struct {
+type sfEmbeddingData struct {
 	Object    string    `json:"object"`
 	Index     int       `json:"index"`
 	Embedding []float32 `json:"embedding"`
 }
 
-// EmbeddingUsage 用量
-type SFEmbeddingUsage struct {
+type sfEmbeddingUsage struct {
 	PromptTokens int `json:"prompt_tokens"`
 	TotalTokens  int `json:"total_tokens"`
 }
@@ -85,7 +81,7 @@ func (c *SiliconFlowClient) Embed(ctx context.Context, texts []string) ([][]floa
 		return nil, fmt.Errorf("SiliconFlow API 未配置")
 	}
 
-	req := SFEmbeddingRequest{
+	req := sfEmbeddingRequest{
 		Model: c.embeddingModel,
 		Input: texts,
 	}
@@ -119,7 +115,7 @@ func (c *SiliconFlowClient) Embed(ctx context.Context, texts []string) ([][]floa
 		return nil, fmt.Errorf("API 错误: %s", resp.Status)
 	}
 
-	var embResp SFEmbeddingResponse
+	var embResp sfEmbeddingResponse
 	if err := json.Unmarshal(respBody, &embResp); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %w", err)
 	}
@@ -134,16 +130,14 @@ func (c *SiliconFlowClient) Embed(ctx context.Context, texts []string) ([][]floa
 	return embeddings, nil
 }
 
-// RerankRequest 重排请求
-type SFRerankRequest struct {
+type sfRerankRequest struct {
 	Model     string   `json:"model"`
 	Query     string   `json:"query"`
 	Documents []string `json:"documents"`
 	TopN      int      `json:"top_n,omitempty"`
 }
 
-// RerankResponse 重排响应
-type SFRerankResponse struct {
+type sfRerankResponse struct {
 	Model   string           `json:"model"`
 	Results []SFRerankResult `json:"results"`
 }
@@ -165,7 +159,7 @@ func (c *SiliconFlowClient) Rerank(ctx context.Context, query string, documents 
 		topN = 5
 	}
 
-	req := SFRerankRequest{
+	req := sfRerankRequest{
 		Model:     c.rerankerModel,
 		Query:     query,
 		Documents: documents,
@@ -201,7 +195,7 @@ func (c *SiliconFlowClient) Rerank(ctx context.Context, query string, documents 
 		return nil, fmt.Errorf("API 错误: %s", resp.Status)
 	}
 
-	var rerankResp SFRerankResponse
+	var rerankResp sfRerankResponse
 	if err := json.Unmarshal(respBody, &rerankResp); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %w", err)
 	}

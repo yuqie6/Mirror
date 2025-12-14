@@ -114,9 +114,9 @@ func (r *EventRepository) GetAppStats(ctx context.Context, startTime, endTime in
 
 // AppStat 应用使用统计
 type AppStat struct {
-	AppName       string `json:"app_name"`
-	TotalDuration int    `json:"total_duration"` // 总时长（秒）
-	EventCount    int64  `json:"event_count"`    // 事件数
+	AppName       string
+	TotalDuration int   // 总时长（秒）
+	EventCount    int64 // 事件数
 }
 
 // DeleteOldEvents 删除旧事件（保留最近 N 天）

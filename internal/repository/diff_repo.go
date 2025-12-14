@@ -163,10 +163,10 @@ func (r *DiffRepository) GetLanguageStats(ctx context.Context, startTime, endTim
 
 // LanguageStat 语言统计
 type LanguageStat struct {
-	Language     string `json:"language"`
-	DiffCount    int64  `json:"diff_count"`
-	LinesAdded   int64  `json:"lines_added"`
-	LinesDeleted int64  `json:"lines_deleted"`
+	Language     string
+	DiffCount    int64
+	LinesAdded   int64
+	LinesDeleted int64
 }
 
 // CountByDateRange 统计日期范围内的 Diff 数量

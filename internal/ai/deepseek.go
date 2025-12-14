@@ -46,8 +46,7 @@ func NewDeepSeekClient(cfg *DeepSeekConfig) *DeepSeekClient {
 	}
 }
 
-// ChatRequest 聊天请求
-type ChatRequest struct {
+type chatRequest struct {
 	Model       string    `json:"model"`
 	Messages    []Message `json:"messages"`
 	Temperature float64   `json:"temperature,omitempty"`
@@ -60,22 +59,19 @@ type Message struct {
 	Content string `json:"content"`
 }
 
-// ChatResponse 聊天响应
-type ChatResponse struct {
-	ID      string   `json:"id"`
-	Choices []Choice `json:"choices"`
-	Usage   Usage    `json:"usage"`
+type chatResponse struct {
+	ID      string       `json:"id"`
+	Choices []chatChoice `json:"choices"`
+	Usage   chatUsage    `json:"usage"`
 }
 
-// Choice 选择
-type Choice struct {
+type chatChoice struct {
 	Index        int     `json:"index"`
 	Message      Message `json:"message"`
 	FinishReason string  `json:"finish_reason"`
 }
 
-// Usage 用量
-type Usage struct {
+type chatUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
@@ -88,7 +84,7 @@ func (c *DeepSeekClient) Chat(ctx context.Context, messages []Message) (string, 
 
 // ChatWithOptions 带参数的聊天请求
 func (c *DeepSeekClient) ChatWithOptions(ctx context.Context, messages []Message, temperature float64, maxTokens int) (string, error) {
-	req := ChatRequest{
+	req := chatRequest{
 		Model:       c.model,
 		Messages:    messages,
 		Temperature: temperature,
@@ -124,7 +120,7 @@ func (c *DeepSeekClient) ChatWithOptions(ctx context.Context, messages []Message
 		return "", fmt.Errorf("API 错误: %s", resp.Status)
 	}
 
-	var chatResp ChatResponse
+	var chatResp chatResponse
 	if err := json.Unmarshal(respBody, &chatResp); err != nil {
 		return "", fmt.Errorf("解析响应失败: %w", err)
 	}

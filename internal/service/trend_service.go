@@ -43,37 +43,37 @@ const (
 
 // SkillTrend 技能趋势
 type SkillTrend struct {
-	SkillKey    string  `json:"skill_key"`
-	SkillName   string  `json:"skill_name"`
-	Category    string  `json:"category"`
-	Changes     int     `json:"changes"`       // 活动次数（skill_activities events）
-	ExpGain     float64 `json:"exp_gain"`      // 当前期经验增量
-	PrevExpGain float64 `json:"prev_exp_gain"` // 上一期经验增量
-	GrowthRate  float64 `json:"growth_rate"`   // 增长率（相对上期经验增量）
-	Status      string  `json:"status"`        // growing, stable, declining
-	DaysActive  int     `json:"days_active"`   // 活跃天数（按 skill_activities 统计）
+	SkillKey    string
+	SkillName   string
+	Category    string
+	Changes     int     // 活动次数（skill_activities events）
+	ExpGain     float64 // 当前期经验增量
+	PrevExpGain float64 // 上一期经验增量
+	GrowthRate  float64 // 增长率（相对上期经验增量）
+	Status      string  // growing, stable, declining
+	DaysActive  int     // 活跃天数（按 skill_activities 统计）
 }
 
 // LanguageTrend 语言趋势
 type LanguageTrend struct {
-	Language     string  `json:"language"`
-	DiffCount    int64   `json:"diff_count"`
-	LinesAdded   int64   `json:"lines_added"`
-	LinesDeleted int64   `json:"lines_deleted"`
-	Percentage   float64 `json:"percentage"`
+	Language     string
+	DiffCount    int64
+	LinesAdded   int64
+	LinesDeleted int64
+	Percentage   float64
 }
 
 // TrendReport 趋势报告
 type TrendReport struct {
-	Period          TrendPeriod     `json:"period"`
-	StartDate       string          `json:"start_date"`
-	EndDate         string          `json:"end_date"`
-	TopSkills       []SkillTrend    `json:"top_skills"`
-	TopLanguages    []LanguageTrend `json:"top_languages"`
-	TotalDiffs      int64           `json:"total_diffs"`
-	TotalCodingMins int64           `json:"total_coding_mins"`
-	AvgDiffsPerDay  float64         `json:"avg_diffs_per_day"`
-	Bottlenecks     []string        `json:"bottlenecks"`
+	Period          TrendPeriod
+	StartDate       string
+	EndDate         string
+	TopSkills       []SkillTrend
+	TopLanguages    []LanguageTrend
+	TotalDiffs      int64
+	TotalCodingMins int64
+	AvgDiffsPerDay  float64
+	Bottlenecks     []string
 }
 
 // GetTrendReport 获取趋势报告

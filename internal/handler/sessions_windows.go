@@ -15,9 +15,7 @@ import (
 )
 
 func (a *API) HandleBuildSessionsForDate(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Date string `json:"date"`
-	}
+	var req dto.DateRequestDTO
 	if err := readJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -42,9 +40,7 @@ func (a *API) HandleBuildSessionsForDate(w http.ResponseWriter, r *http.Request)
 }
 
 func (a *API) HandleRebuildSessionsForDate(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Date string `json:"date"`
-	}
+	var req dto.DateRequestDTO
 	if err := readJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -76,9 +72,7 @@ func (a *API) HandleRebuildSessionsForDate(w http.ResponseWriter, r *http.Reques
 }
 
 func (a *API) HandleEnrichSessionsForDate(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Date string `json:"date"`
-	}
+	var req dto.DateRequestDTO
 	if err := readJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

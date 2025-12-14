@@ -221,10 +221,10 @@ func (s *RAGService) Query(ctx context.Context, query string, topK int) ([]Memor
 
 // MemoryResult 记忆查询结果
 type MemoryResult struct {
-	Content    string  `json:"content"`
-	Similarity float32 `json:"similarity"`
-	Type       string  `json:"type"`
-	Date       string  `json:"date"`
+	Content    string
+	Similarity float32
+	Type       string
+	Date       string
 }
 
 // Close 关闭服务

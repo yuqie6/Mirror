@@ -244,8 +244,8 @@ func (t *TrackerService) Stats() TrackerStats {
 
 // TrackerStats 追踪服务统计
 type TrackerStats struct {
-	BufferSize    int  `json:"buffer_size"`
-	WriteQueueLen int  `json:"write_queue_len"`
-	WriteQueueCap int  `json:"write_queue_cap"`
-	Running       bool `json:"running"`
+	BufferSize    int
+	WriteQueueLen int
+	WriteQueueCap int
+	Running       bool
 }

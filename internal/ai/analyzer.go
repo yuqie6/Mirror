@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+
+	"github.com/yuqie6/mirror/internal/ai/prompts"
 )
 
 // DiffAnalyzer Diff 分析器
@@ -16,28 +18,6 @@ type DiffAnalyzer struct {
 // NewDiffAnalyzer 创建 Diff 分析器
 func NewDiffAnalyzer(client *DeepSeekClient) *DiffAnalyzer {
 	return &DiffAnalyzer{client: client}
-}
-
-// SkillWithCategory 带分类的技能（AI 返回）
-type SkillWithCategory struct {
-	Name     string `json:"name"`             // 技能名称（标准名称如 Go, React）
-	Category string `json:"category"`         // 分类: language/framework/database/devops/tool/concept/other
-	Parent   string `json:"parent,omitempty"` // 父技能名（AI 决定），如 Gin → Go
-}
-
-// SkillInfo 简化的技能信息（传给 AI 作为上下文）
-type SkillInfo struct {
-	Name     string `json:"name"`
-	Category string `json:"category"`
-	Parent   string `json:"parent,omitempty"`
-}
-
-// DiffInsight Diff 解读结果
-type DiffInsight struct {
-	Insight    string              `json:"insight"`    // AI 解读
-	Skills     []SkillWithCategory `json:"skills"`     // 涉及技能（带分类和层级）
-	Difficulty float64             `json:"difficulty"` // 难度 0-1
-	Category   string              `json:"category"`   // 代码变更分类: learning, refactoring, bugfix, feature
 }
 
 // AnalyzeDiff 分析单个 Diff（传入当前技能树作为上下文）
@@ -65,33 +45,10 @@ func (a *DiffAnalyzer) AnalyzeDiff(ctx context.Context, filePath, language, diff
 		skillTreeContext.WriteString("\n")
 	}
 
-	prompt := fmt.Sprintf(`分析以下代码变更，推断开发者学习或实践了什么。
-
-文件: %s
-语言: %s
-%s
-Diff:
-%s
-
-请用 JSON 格式返回（不要 markdown 代码块）:
-{
-  "insight": "一句话描述这次修改学到了什么或做了什么（中文）",
-  "skills": [
-    {"name": "技能名", "category": "分类", "parent": "父技能名（可选）"}
-  ],
-  "difficulty": 0.3,
-  "category": "learning"
-}
-
-技能层级规则：
-1. 如果技能已存在于技能树中，使用**完全相同的名称**
-2. 编程语言是顶级技能（parent 留空）
-3. 框架/库归属到对应语言（如 Gin → Go, React → JavaScript）
-4. category 可选值: language/framework/database/devops/tool/concept/other
-5. 变更分类: learning/refactoring/bugfix/feature`, filePath, language, skillTreeContext.String(), diffContent)
+	prompt := prompts.DiffAnalysisUser(filePath, language, skillTreeContext.String(), diffContent)
 
 	messages := []Message{
-		{Role: "system", Content: "你是一个代码分析助手，擅长从代码变更中推断开发者的学习和成长。你能看到用户当前的技能树，请合理判断技能归属。回复必须是纯 JSON，不要 markdown。"},
+		{Role: "system", Content: prompts.DiffAnalysisSystem},
 		{Role: "user", Content: prompt},
 	}
 
@@ -116,65 +73,6 @@ Diff:
 	}
 
 	return &insight, nil
-}
-
-// DailySummaryRequest 每日总结请求
-type DailySummaryRequest struct {
-	Date            string            // 日期
-	WindowEvents    []WindowEventInfo // 窗口事件摘要
-	Diffs           []DiffInfo        // Diff 摘要
-	HistoryMemories []string          // 相关历史记忆（来自 RAG）
-}
-
-// WindowEventInfo 窗口事件信息
-type WindowEventInfo struct {
-	AppName  string
-	Duration int // 分钟
-}
-
-// DiffInfo Diff 信息
-type DiffInfo struct {
-	FileName     string
-	Language     string
-	Insight      string // 预分析的解读（可能为空）
-	DiffContent  string // 原始 diff 内容
-	LinesChanged int
-}
-
-// DailySummaryResult 每日总结结果
-type DailySummaryResult struct {
-	Summary      string   `json:"summary"`       // 总结
-	Highlights   string   `json:"highlights"`    // 亮点
-	Struggles    string   `json:"struggles"`     // 困难
-	SkillsGained []string `json:"skills_gained"` // 获得技能
-	Suggestions  string   `json:"suggestions"`   // 建议
-}
-
-// SessionSummaryRequest 会话摘要请求
-type SessionSummaryRequest struct {
-	SessionID  int64             `json:"session_id"`
-	Date       string            `json:"date"`
-	TimeRange  string            `json:"time_range"`
-	PrimaryApp string            `json:"primary_app"`
-	AppUsage   []WindowEventInfo `json:"app_usage"`
-	Diffs      []DiffInfo        `json:"diffs"`
-	Browser    []BrowserInfo     `json:"browser"`
-	SkillsHint []string          `json:"skills_hint"`
-	Memories   []string          `json:"memories"`
-}
-
-type BrowserInfo struct {
-	Domain string `json:"domain"`
-	Title  string `json:"title"`
-	URL    string `json:"url"`
-}
-
-// SessionSummaryResult 会话摘要结果
-type SessionSummaryResult struct {
-	Summary        string   `json:"summary"`
-	Category       string   `json:"category"` // technical/learning/exploration/other
-	SkillsInvolved []string `json:"skills_involved"`
-	Tags           []string `json:"tags"`
 }
 
 // GenerateDailySummary 生成每日总结
@@ -241,31 +139,20 @@ func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySumma
 		}
 	}
 
-	prompt := fmt.Sprintf(`根据以下行为数据，生成今日工作/学习总结。
-	%s
-	日期: %s
-
-	统计概览:
-	- 应用使用总时长: %d 分钟（下方仅展示 Top %d）
-	- 代码变更: %d 次（共 %d 行变更；下方仅展示前 %d 条）
-
-	应用使用时长:
-	%s
-
-	代码变更:
-	%s
-
-	请用 JSON 格式返回（不要 markdown 代码块）:
-	{
-	  "summary": "今日总结（请根据数据量自适应篇幅：轻量日 2-3 句；中等 5-8 句；高强度/多变更 10-16 句。尽量引用具体证据：应用名/文件名/语言/技能，避免套话。）",
-	  "highlights": "今日亮点（2-6 条要点，用换行分隔；每条尽量具体。若确实没有，写'无'）",
-	  "struggles": "今日困难（0-5 条要点，用换行分隔；没有就写'无'）",
-	  "skills_gained": ["今日涉及的技能（按重要性排序，允许 0-12 个）"],
-	  "suggestions": "明日建议（2-6 条要点，用换行分隔；优先给可执行的小动作）"
-	}`, historySummary.String(), req.Date, windowTotal, len(windowEvents), diffCountTotal, linesChangedTotal, len(diffs), windowSummary.String(), diffSummary.String())
+	prompt := prompts.DailySummaryUser(
+		req.Date,
+		windowTotal,
+		len(windowEvents),
+		diffCountTotal,
+		linesChangedTotal,
+		len(diffs),
+		windowSummary.String(),
+		diffSummary.String(),
+		historySummary.String(),
+	)
 
 	messages := []Message{
-		{Role: "system", Content: "你是一个个人成长助手，帮助用户回顾每天的工作和学习，提供有建设性的反馈。回复必须是纯 JSON。"},
+		{Role: "system", Content: prompts.DailySummarySystem},
 		{Role: "user", Content: prompt},
 	}
 
@@ -321,79 +208,60 @@ func (a *DiffAnalyzer) GenerateSessionSummary(ctx context.Context, req *SessionS
 		summaryGuidance = "2-3 句话（概括主要活动和技术点）"
 	}
 
-	var b strings.Builder
-	b.WriteString("请基于以下本地行为证据，生成一个可解释的会话摘要。\n")
-	b.WriteString("要求：\n")
-	b.WriteString(fmt.Sprintf("1) summary 用中文 %s（尽量具体，避免空泛；引用具体的文件名、技术名称、网站等证据）\n", summaryGuidance))
-	b.WriteString("2) category 只能是 technical/learning/exploration/other\n")
-	b.WriteString("3) skills_involved 最多 8 个，尽量使用用户已有技能树中的标准名称（如 Go、Redis、React）\n")
-	b.WriteString("4) tags 最多 6 个，用中文短标签（如 并发、性能、数据库、文档阅读）\n")
-	b.WriteString("5) 必须可追溯：summary 应对应下面的 diff/browser/app 证据，不要胡编\n\n")
-
-	b.WriteString(fmt.Sprintf("日期: %s\n时间: %s\n主应用: %s\n\n", req.Date, req.TimeRange, req.PrimaryApp))
-
-	if len(apps) > 0 {
-		b.WriteString("应用使用:\n")
-		for _, a := range apps {
-			b.WriteString(fmt.Sprintf("- %s: %d 分钟\n", a.AppName, a.Duration))
-		}
-		b.WriteString("\n")
+	appLines := make([]string, 0, len(apps))
+	for _, a := range apps {
+		appLines = append(appLines, fmt.Sprintf("%s: %d 分钟", a.AppName, a.Duration))
 	}
 
-	if len(diffs) > 0 {
-		b.WriteString("代码变更:\n")
-		for _, d := range diffs {
-			desc := strings.TrimSpace(d.Insight)
-			if desc == "" {
-				desc = fmt.Sprintf("%d行变更", d.LinesChanged)
-			}
-			b.WriteString(fmt.Sprintf("- %s (%s): %s\n", d.FileName, d.Language, desc))
+	diffLines := make([]string, 0, len(diffs))
+	for _, d := range diffs {
+		desc := strings.TrimSpace(d.Insight)
+		if desc == "" {
+			desc = fmt.Sprintf("%d行变更", d.LinesChanged)
 		}
-		b.WriteString("\n")
+		diffLines = append(diffLines, fmt.Sprintf("%s (%s): %s", d.FileName, d.Language, desc))
 	}
 
-	if len(browser) > 0 {
-		b.WriteString("浏览记录:\n")
-		for _, it := range browser {
-			title := strings.TrimSpace(it.Title)
-			if title == "" {
-				title = it.Domain
-			}
-			b.WriteString(fmt.Sprintf("- %s: %s\n", it.Domain, title))
+	browserLines := make([]string, 0, len(browser))
+	for _, it := range browser {
+		title := strings.TrimSpace(it.Title)
+		if title == "" {
+			title = it.Domain
 		}
-		b.WriteString("\n")
+		browserLines = append(browserLines, fmt.Sprintf("%s: %s", it.Domain, title))
 	}
 
-	if len(req.SkillsHint) > 0 {
-		b.WriteString("技能提示（可参考）:\n")
-		for _, s := range req.SkillsHint {
-			if strings.TrimSpace(s) == "" {
-				continue
-			}
-			b.WriteString("- " + strings.TrimSpace(s) + "\n")
+	skillsHintLines := make([]string, 0, len(req.SkillsHint))
+	for _, s := range req.SkillsHint {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			skillsHintLines = append(skillsHintLines, s)
 		}
-		b.WriteString("\n")
 	}
 
-	if len(mem) > 0 {
-		b.WriteString("相关历史记忆（可参考，不要编造不存在的内容）:\n")
-		for _, m := range mem {
-			b.WriteString("- " + strings.TrimSpace(m) + "\n")
+	memLines := make([]string, 0, len(mem))
+	for _, m := range mem {
+		m = strings.TrimSpace(m)
+		if m != "" {
+			memLines = append(memLines, m)
 		}
-		b.WriteString("\n")
 	}
 
-	b.WriteString("请用 JSON 格式返回（不要 markdown 代码块）:\n")
-	b.WriteString("{\n")
-	b.WriteString("  \"summary\": \"...\",\n")
-	b.WriteString("  \"category\": \"technical\",\n")
-	b.WriteString("  \"skills_involved\": [\"...\"],\n")
-	b.WriteString("  \"tags\": [\"...\"]\n")
-	b.WriteString("}\n")
+	prompt := prompts.SessionSummaryUser(prompts.SessionSummaryUserInput{
+		Date:            req.Date,
+		TimeRange:       req.TimeRange,
+		PrimaryApp:      req.PrimaryApp,
+		SummaryGuidance: summaryGuidance,
+		AppLines:        appLines,
+		DiffLines:       diffLines,
+		BrowserLines:    browserLines,
+		SkillsHintLines: skillsHintLines,
+		MemoryLines:     memLines,
+	})
 
 	messages := []Message{
-		{Role: "system", Content: "你是一个本地优先的个人成长分析助手。你必须严格基于证据生成摘要，回复必须是纯 JSON。"},
-		{Role: "user", Content: b.String()},
+		{Role: "system", Content: prompts.SessionSummarySystem},
+		{Role: "user", Content: prompt},
 	}
 
 	response, err := a.client.ChatWithOptions(ctx, messages, 0.3, 600)
@@ -452,33 +320,6 @@ func cleanJSONResponse(response string) string {
 	return strings.TrimSpace(response)
 }
 
-// WeeklySummaryRequest 周报请求
-type WeeklySummaryRequest struct {
-	PeriodType     string // week/month（为空按 week）
-	StartDate      string
-	EndDate        string
-	DailySummaries []DailySummaryInfo
-	TotalCoding    int
-	TotalDiffs     int
-}
-
-// DailySummaryInfo 日报信息
-type DailySummaryInfo struct {
-	Date       string
-	Summary    string
-	Highlights string
-	Skills     []string
-}
-
-// WeeklySummaryResult 周报结果
-type WeeklySummaryResult struct {
-	Overview     string   `json:"overview"`     // 本周整体概述
-	Achievements []string `json:"achievements"` // 主要成就
-	Patterns     string   `json:"patterns"`     // 学习模式分析
-	Suggestions  string   `json:"suggestions"`  // 下周建议
-	TopSkills    []string `json:"top_skills"`   // 本周重点技能
-}
-
 // GenerateWeeklySummary 生成周报
 func (a *DiffAnalyzer) GenerateWeeklySummary(ctx context.Context, req *WeeklySummaryRequest) (*WeeklySummaryResult, error) {
 	var dailyDetails strings.Builder
@@ -487,36 +328,10 @@ func (a *DiffAnalyzer) GenerateWeeklySummary(ctx context.Context, req *WeeklySum
 	}
 
 	periodType := strings.ToLower(strings.TrimSpace(req.PeriodType))
-	periodLabel := "本周"
-	nextLabel := "下周"
-	periodScope := "一周"
-	if periodType == "month" {
-		periodLabel = "本月"
-		nextLabel = "下月"
-		periodScope = "一个月"
-	}
-
-	prompt := fmt.Sprintf(`请分析以下%s的工作记录，生成阶段汇总：
-
-时间范围: %s 至 %s
-总编码时长: %d 分钟
-总代码变更: %d 次
-
-每日记录:
-%s
-
-	请用 JSON 格式返回（不要 markdown 代码块）:
-	{
-	  "overview": "%s整体概述（请根据数据量自适应：轻量期 3-5 句；中等 6-10 句；高强度 10-16 句。尽量引用具体证据：哪几天在做什么、主要语言/主题变化、节奏变化。）",
-	  "achievements": ["主要成就（请按重要性给 3-8 条，不要固定 3 条；每条尽量具体）"],
-	  "patterns": "学习模式分析（请写成一段有观点的分析：投入/产出、节奏、语言/技能迁移、反复出现的问题）",
-	  "suggestions": "%s建议（请给 3-7 条可执行建议；如果数据偏少，也要说明原因并给出补数据/改流程建议）",
-	  "top_skills": ["%s重点技能（按重要性排序，允许 3-12 个；不要固定数量）"]
-	}
-	注意：如果这是月汇总，请不要使用“本周/下周”的措辞。`, periodScope, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String(), periodLabel, nextLabel, periodLabel)
+	prompt := prompts.WeeklySummaryUser(periodType, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String())
 
 	messages := []Message{
-		{Role: "system", Content: fmt.Sprintf("你是一个个人成长助手，帮助用户回顾%s的工作和学习，提供有深度的分析和建设性的反馈。回复必须是纯 JSON。", periodScope)},
+		{Role: "system", Content: prompts.WeeklySummarySystem(periodType)},
 		{Role: "user", Content: prompt},
 	}
 

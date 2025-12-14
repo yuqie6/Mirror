@@ -117,9 +117,9 @@ func (r *BrowserEventRepository) GetDomainStats(ctx context.Context, startTime, 
 
 // DomainStat 域名统计
 type DomainStat struct {
-	Domain        string `json:"domain"`
-	VisitCount    int64  `json:"visit_count"`
-	TotalDuration int    `json:"total_duration"`
+	Domain        string
+	VisitCount    int64
+	TotalDuration int
 }
 
 // CountByDateRange 统计日期范围内的事件数量

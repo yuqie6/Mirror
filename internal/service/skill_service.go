@@ -324,12 +324,12 @@ func (s *SkillService) GetSkillTree(ctx context.Context) (*SkillTree, error) {
 
 // SkillEvidence 技能证据（Phase B drill-down 最小返回）
 type SkillEvidence struct {
-	Source              string `json:"source"`
-	EvidenceID          int64  `json:"evidence_id"`
-	Timestamp           int64  `json:"timestamp"`
-	ContributionContext string `json:"contribution_context"`
-	FileName            string `json:"file_name,omitempty"`
-	Insight             string `json:"insight,omitempty"`
+	Source              string
+	EvidenceID          int64
+	Timestamp           int64
+	ContributionContext string
+	FileName            string
+	Insight             string
 }
 
 // GetSkillEvidence 获取某技能最近的贡献证据（当前仅 Diff）
@@ -388,22 +388,22 @@ func (s *SkillService) GetSkillEvidence(ctx context.Context, skillKey string, li
 
 // SkillTree 技能树视图
 type SkillTree struct {
-	Categories  map[string][]SkillNodeView `json:"categories"`
-	TotalSkills int                        `json:"total_skills"`
-	UpdatedAt   time.Time                  `json:"updated_at"`
+	Categories  map[string][]SkillNodeView
+	TotalSkills int
+	UpdatedAt   time.Time
 }
 
 // SkillNodeView 技能节点视图
 type SkillNodeView struct {
-	Key        string    `json:"key"`
-	Name       string    `json:"name"`
-	ParentKey  string    `json:"parent_key"` // 父技能 Key
-	Level      int       `json:"level"`
-	Exp        float64   `json:"exp"`
-	ExpToNext  float64   `json:"exp_to_next"`
-	Progress   float64   `json:"progress"`
-	LastActive time.Time `json:"last_active"`
-	Trend      string    `json:"trend"` // up, down, stable
+	Key        string
+	Name       string
+	ParentKey  string // 父技能 Key
+	Level      int
+	Exp        float64
+	ExpToNext  float64
+	Progress   float64
+	LastActive time.Time
+	Trend      string // up, down, stable
 }
 
 // calculateTrend 计算技能趋势
