@@ -363,7 +363,7 @@ func buildRuleBasedDailySummary(date string, diffs []schema.Diff, appStats []rep
 		}
 		langCount[lang]++
 	}
-	topLangs := topKeysByIntCount(langCount, 2)
+	topLangs := topKeysByCount(langCount, 2)
 
 	// 技能（来自 diffs.skills_detected，证据链优先）
 	skillCount := make(map[string]int)
@@ -376,7 +376,7 @@ func buildRuleBasedDailySummary(date string, diffs []schema.Diff, appStats []rep
 			skillCount[name]++
 		}
 	}
-	topSkills := topKeysByIntCount(skillCount, 8)
+	topSkills := topKeysByCount(skillCount, 8)
 
 	// 亮点：选择变更量最高的 diffs
 	type diffRank struct {
@@ -471,7 +471,7 @@ func buildRuleBasedPeriodSummary(req *ai.WeeklySummaryRequest) *ai.WeeklySummary
 			skillCount[name]++
 		}
 	}
-	topSkills := topKeysByIntCount(skillCount, 10)
+	topSkills := topKeysByCount(skillCount, 10)
 
 	label := "本周"
 	scope := "一周"
@@ -511,32 +511,4 @@ func buildRuleBasedPeriodSummary(req *ai.WeeklySummaryRequest) *ai.WeeklySummary
 		Suggestions:  suggestions,
 		TopSkills:    topSkills,
 	}
-}
-
-func topKeysByIntCount(m map[string]int, limit int) []string {
-	type kv struct {
-		k string
-		v int
-	}
-	items := make([]kv, 0, len(m))
-	for k, v := range m {
-		if strings.TrimSpace(k) == "" || v <= 0 {
-			continue
-		}
-		items = append(items, kv{k: k, v: v})
-	}
-	sort.Slice(items, func(i, j int) bool {
-		if items[i].v == items[j].v {
-			return items[i].k < items[j].k
-		}
-		return items[i].v > items[j].v
-	})
-	if limit <= 0 || limit > len(items) {
-		limit = len(items)
-	}
-	out := make([]string, 0, limit)
-	for i := 0; i < limit; i++ {
-		out = append(out, items[i].k)
-	}
-	return out
 }

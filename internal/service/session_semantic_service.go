@@ -435,35 +435,6 @@ func fallbackSessionSummary(sess *schema.Session, diffs []schema.Diff, topDomain
 	return strings.Join(parts, "，") + "。"
 }
 
-// topKeysByCount 返回按计数排序的 TopN 键
-func topKeysByCount(m map[string]int, limit int) []string {
-	type kv struct {
-		k string
-		v int
-	}
-	items := make([]kv, 0, len(m))
-	for k, v := range m {
-		if strings.TrimSpace(k) == "" {
-			continue
-		}
-		items = append(items, kv{k: k, v: v})
-	}
-	sort.Slice(items, func(i, j int) bool {
-		if items[i].v == items[j].v {
-			return items[i].k < items[j].k
-		}
-		return items[i].v > items[j].v
-	})
-	if limit <= 0 || limit > len(items) {
-		limit = len(items)
-	}
-	out := make([]string, 0, limit)
-	for i := 0; i < limit; i++ {
-		out = append(out, items[i].k)
-	}
-	return out
-}
-
 // uniqueNonEmpty 去重并过滤空字符串
 func uniqueNonEmpty(in []string, limit int) []string {
 	seen := make(map[string]struct{}, len(in))
