@@ -179,6 +179,13 @@ type SessionBrowserEventDTO struct {
 	URL       string `json:"url"`
 }
 
+type SessionWindowEventDTO struct {
+	Timestamp int64  `json:"timestamp"`
+	AppName   string `json:"app_name"`
+	Title     string `json:"title"`
+	Duration  int    `json:"duration"`
+}
+
 type SessionDetailDTO struct {
 	SessionDTO
 	Tags     []string                 `json:"tags"`

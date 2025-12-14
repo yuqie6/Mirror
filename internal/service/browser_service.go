@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/yuqie6/mirror/internal/collector"
+	"github.com/yuqie6/mirror/internal/pkg/privacy"
 	"github.com/yuqie6/mirror/internal/schema"
 )
 
@@ -22,6 +23,7 @@ type BrowserService struct {
 	wg          sync.WaitGroup
 	running     bool
 	onPersisted func(count int)
+	sanitizer   *privacy.Sanitizer
 }
 
 // NewBrowserService 创建浏览器服务
@@ -41,6 +43,10 @@ func NewBrowserService(
 // SetOnPersisted 设置持久化后的回调函数
 func (s *BrowserService) SetOnPersisted(fn func(count int)) {
 	s.onPersisted = fn
+}
+
+func (s *BrowserService) SetSanitizer(z *privacy.Sanitizer) {
+	s.sanitizer = z
 }
 
 // Start 启动服务
@@ -105,6 +111,11 @@ func (s *BrowserService) processLoop(ctx context.Context) {
 
 // handleEvent 处理事件
 func (s *BrowserService) handleEvent(ctx context.Context, event *schema.BrowserEvent) {
+	if s.sanitizer != nil && event != nil {
+		event.Title = s.sanitizer.SanitizeBrowserTitle(event.Title)
+		event.URL = s.sanitizer.SanitizeURL(event.URL)
+	}
+
 	s.mu.Lock()
 	s.buffer = append(s.buffer, event)
 	shouldFlush := len(s.buffer) >= s.bufferSize

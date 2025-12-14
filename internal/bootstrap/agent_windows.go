@@ -8,6 +8,7 @@ import (
 
 	"github.com/yuqie6/mirror/internal/collector"
 	"github.com/yuqie6/mirror/internal/eventbus"
+	"github.com/yuqie6/mirror/internal/pkg/privacy"
 	"github.com/yuqie6/mirror/internal/service"
 )
 
@@ -39,6 +40,8 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 
 	rt := &AgentRuntime{Core: core, Hub: eventbus.NewHub()}
 
+	sanitizer := privacy.New(core.Cfg.Privacy.Enabled, core.Cfg.Privacy.Patterns)
+
 	// Window collector + tracker
 	rt.Collectors.Window = collector.NewWindowCollector(&collector.CollectorConfig{
 		PollIntervalMs: core.Cfg.Collector.PollIntervalMs,
@@ -49,6 +52,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 	rt.Services.Tracker = service.NewTrackerService(rt.Collectors.Window, core.Repos.Event, &service.TrackerConfig{
 		FlushBatchSize:   core.Cfg.Collector.FlushBatchSize,
 		FlushIntervalSec: core.Cfg.Collector.FlushIntervalSec,
+		Sanitizer:        sanitizer,
 		OnWriteSuccess: func(count int) {
 			rt.Hub.Publish(eventbus.Event{
 				Type: "data_changed",
@@ -111,6 +115,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		if err == nil {
 			rt.Collectors.Browser = bc
 			rt.Services.Browser = service.NewBrowserService(bc, core.Repos.Browser)
+			rt.Services.Browser.SetSanitizer(sanitizer)
 			rt.Services.Browser.SetOnPersisted(func(count int) {
 				rt.Hub.Publish(eventbus.Event{
 					Type: "data_changed",
@@ -134,6 +139,13 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 	// Session 语义补全（用于证据链，DeepSeek 未配置时自动降级为规则摘要）
 	if core.Services.SessionSemantic != nil {
 		go runPeriodic(ctx, 10*time.Minute, func() { enrichWithRetry(ctx, core.Services.SessionSemantic) })
+	}
+
+	// Skill 衰减（本地规则，可离线）
+	if core.Services.Skills != nil {
+		go runPeriodic(ctx, 24*time.Hour, func() {
+			_ = core.Services.Skills.ApplyDecayToAll(context.Background())
+		})
 	}
 
 	return rt, nil

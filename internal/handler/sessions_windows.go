@@ -236,3 +236,69 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, resp)
 }
+
+func (a *API) HandleSessionEvents(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimSpace(r.URL.Query().Get("id"))
+	id, err := parseInt64Param(idStr)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "id 无效")
+		return
+	}
+
+	limit := 200
+	if s := strings.TrimSpace(r.URL.Query().Get("limit")); s != "" {
+		if n, err := strconvAtoiSafe(s); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	offset := 0
+	if s := strings.TrimSpace(r.URL.Query().Get("offset")); s != "" {
+		if n, err := strconvAtoiSafe(s); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	if a.rt == nil || a.rt.Repos.Session == nil || a.rt.Repos.Event == nil {
+		WriteError(w, http.StatusBadRequest, "仓储未初始化")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	sess, err := a.rt.Repos.Session.GetByID(ctx, id)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if sess == nil {
+		WriteError(w, http.StatusNotFound, "session not found")
+		return
+	}
+
+	events, err := a.rt.Repos.Event.GetByTimeRange(ctx, sess.StartTime, sess.EndTime)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if offset >= len(events) {
+		WriteJSON(w, http.StatusOK, []dto.SessionWindowEventDTO{})
+		return
+	}
+	events = events[offset:]
+	if limit > 0 && limit < len(events) {
+		events = events[:limit]
+	}
+
+	out := make([]dto.SessionWindowEventDTO, 0, len(events))
+	for _, e := range events {
+		out = append(out, dto.SessionWindowEventDTO{
+			Timestamp: e.Timestamp,
+			AppName:   e.AppName,
+			Title:     e.Title,
+			Duration:  e.Duration,
+		})
+	}
+	WriteJSON(w, http.StatusOK, out)
+}

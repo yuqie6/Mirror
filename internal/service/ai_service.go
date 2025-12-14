@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/ai"
+	"github.com/yuqie6/mirror/internal/repository"
 	"github.com/yuqie6/mirror/internal/schema"
 )
 
@@ -266,7 +268,13 @@ func (s *AIService) GenerateDailySummaryWithOptions(ctx context.Context, date st
 			slog.Error("生成总结失败，降级返回缓存", "error", err)
 			return cached, nil
 		}
-		return nil, err
+		// 离线/降级：生成一个纯规则总结，保证产品可用性（Local-first）
+		slog.Warn("AI 总结不可用，使用规则总结降级", "date", date, "error", err)
+		summary := buildRuleBasedDailySummary(date, diffs, appStats)
+		if upsertErr := s.summaryRepo.Upsert(ctx, summary); upsertErr != nil {
+			return nil, upsertErr
+		}
+		return summary, nil
 	}
 
 	// 保存到数据库
@@ -329,5 +337,206 @@ func (s *AIService) GeneratePeriodSummary(ctx context.Context, periodType, start
 		req.TotalDiffs += sum.TotalDiffs
 	}
 
-	return s.analyzer.GenerateWeeklySummary(ctx, req)
+	res, err := s.analyzer.GenerateWeeklySummary(ctx, req)
+	if err == nil && res != nil {
+		return res, nil
+	}
+	slog.Warn("AI 阶段汇总不可用，使用规则汇总降级", "type", periodType, "start", startDate, "end", endDate, "error", err)
+	return buildRuleBasedPeriodSummary(req), nil
+}
+
+func buildRuleBasedDailySummary(date string, diffs []schema.Diff, appStats []repository.AppStat) *schema.DailySummary {
+	// 统计编码时长（分钟）
+	totalCoding := 0
+	for _, stat := range appStats {
+		if IsCodeEditor(stat.AppName) {
+			totalCoding += SecondsToMinutesFloor(stat.TotalDuration)
+		}
+	}
+
+	// 语言分布
+	langCount := make(map[string]int)
+	for _, d := range diffs {
+		lang := strings.TrimSpace(d.Language)
+		if lang == "" {
+			continue
+		}
+		langCount[lang]++
+	}
+	topLangs := topKeysByIntCount(langCount, 2)
+
+	// 技能（来自 diffs.skills_detected，证据链优先）
+	skillCount := make(map[string]int)
+	for _, d := range diffs {
+		for _, sk := range d.SkillsDetected {
+			name := strings.TrimSpace(sk)
+			if name == "" {
+				continue
+			}
+			skillCount[name]++
+		}
+	}
+	topSkills := topKeysByIntCount(skillCount, 8)
+
+	// 亮点：选择变更量最高的 diffs
+	type diffRank struct {
+		file    string
+		lang    string
+		insight string
+		changed int
+	}
+	ranks := make([]diffRank, 0, len(diffs))
+	for _, d := range diffs {
+		ranks = append(ranks, diffRank{
+			file:    strings.TrimSpace(d.FileName),
+			lang:    strings.TrimSpace(d.Language),
+			insight: strings.TrimSpace(d.AIInsight),
+			changed: d.LinesAdded + d.LinesDeleted,
+		})
+	}
+	sort.Slice(ranks, func(i, j int) bool {
+		if ranks[i].changed != ranks[j].changed {
+			return ranks[i].changed > ranks[j].changed
+		}
+		return ranks[i].file < ranks[j].file
+	})
+	highlights := make([]string, 0, 2)
+	for i := 0; i < len(ranks) && len(highlights) < 2; i++ {
+		if ranks[i].file == "" {
+			continue
+		}
+		if ranks[i].insight != "" {
+			highlights = append(highlights, ranks[i].file+"："+ranks[i].insight)
+			continue
+		}
+		if ranks[i].lang != "" {
+			highlights = append(highlights, ranks[i].file+"（"+ranks[i].lang+"）有较多变更")
+		} else {
+			highlights = append(highlights, ranks[i].file+" 有较多变更")
+		}
+	}
+
+	// 总结文案（保持可解释/可追溯，不做凭空推断）
+	parts := make([]string, 0, 6)
+	if totalCoding > 0 {
+		parts = append(parts, fmt.Sprintf("编码约 %d 分钟", totalCoding))
+	}
+	if len(diffs) > 0 {
+		parts = append(parts, fmt.Sprintf("记录到 %d 次代码变更", len(diffs)))
+	}
+	if len(topLangs) > 0 {
+		parts = append(parts, "主要语言："+strings.Join(topLangs, "、"))
+	}
+	if len(topSkills) > 0 {
+		parts = append(parts, "涉及技能："+strings.Join(topSkills[:minInt(3, len(topSkills))], "、"))
+	}
+	summaryText := "今日暂无足够证据生成总结。"
+	if len(parts) > 0 {
+		summaryText = strings.Join(parts, "，") + "。"
+	}
+
+	return &schema.DailySummary{
+		Date:         date,
+		Summary:      summaryText,
+		Highlights:   strings.Join(highlights, "\n"),
+		Struggles:    "",
+		SkillsGained: schema.JSONArray(topSkills),
+		TotalCoding:  totalCoding,
+		TotalDiffs:   len(diffs),
+	}
+}
+
+func buildRuleBasedPeriodSummary(req *ai.WeeklySummaryRequest) *ai.WeeklySummaryResult {
+	if req == nil {
+		return &ai.WeeklySummaryResult{
+			Overview:     "暂无足够数据生成阶段汇总。",
+			Achievements: []string{},
+			Patterns:     "",
+			Suggestions:  "",
+			TopSkills:    []string{},
+		}
+	}
+
+	skillCount := make(map[string]int)
+	activeDays := 0
+	for _, d := range req.DailySummaries {
+		if strings.TrimSpace(d.Summary) != "" {
+			activeDays++
+		}
+		for _, sk := range d.Skills {
+			name := strings.TrimSpace(sk)
+			if name == "" {
+				continue
+			}
+			skillCount[name]++
+		}
+	}
+	topSkills := topKeysByIntCount(skillCount, 10)
+
+	label := "本周"
+	scope := "一周"
+	if strings.ToLower(strings.TrimSpace(req.PeriodType)) == "month" {
+		label = "本月"
+		scope = "一个月"
+	}
+
+	overviewParts := []string{
+		fmt.Sprintf("%s（%s ~ %s）累计编码 %d 分钟，代码变更 %d 次。", label, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs),
+	}
+	if activeDays > 0 {
+		overviewParts = append(overviewParts, fmt.Sprintf("记录覆盖 %d 天（%s口径）。", activeDays, scope))
+	}
+	if len(topSkills) > 0 {
+		overviewParts = append(overviewParts, "重点技能："+strings.Join(topSkills[:minInt(5, len(topSkills))], "、")+"。")
+	}
+
+	achievements := make([]string, 0, 6)
+	if req.TotalDiffs > 0 {
+		achievements = append(achievements, fmt.Sprintf("完成 %d 次代码变更，并形成可追溯的证据链。", req.TotalDiffs))
+	}
+	if req.TotalCoding > 0 {
+		achievements = append(achievements, fmt.Sprintf("累计编码 %d 分钟，保持持续投入。", req.TotalCoding))
+	}
+	if len(topSkills) > 0 {
+		achievements = append(achievements, "主要聚焦："+strings.Join(topSkills[:minInt(3, len(topSkills))], "、")+"。")
+	}
+
+	patterns := "当前为离线/降级汇总：建议先完善 Diff 采集与 AI 分析（或保持日报生成），以提升技能归因与趋势洞察的可信度。"
+	suggestions := "建议：\n- 保持每日生成一次日报（即使离线也可），确保记录连续性\n- 对重要项目目录启用 Diff 监控，尽量覆盖主要工作流\n- 定期重建/补全会话语义（用于 Skill → Session 的证据追溯）"
+
+	return &ai.WeeklySummaryResult{
+		Overview:     strings.Join(overviewParts, ""),
+		Achievements: achievements,
+		Patterns:     patterns,
+		Suggestions:  suggestions,
+		TopSkills:    topSkills,
+	}
+}
+
+func topKeysByIntCount(m map[string]int, limit int) []string {
+	type kv struct {
+		k string
+		v int
+	}
+	items := make([]kv, 0, len(m))
+	for k, v := range m {
+		if strings.TrimSpace(k) == "" || v <= 0 {
+			continue
+		}
+		items = append(items, kv{k: k, v: v})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].v == items[j].v {
+			return items[i].k < items[j].k
+		}
+		return items[i].v > items[j].v
+	})
+	if limit <= 0 || limit > len(items) {
+		limit = len(items)
+	}
+	out := make([]string, 0, limit)
+	for i := 0; i < limit; i++ {
+		out = append(out, items[i].k)
+	}
+	return out
 }

@@ -125,6 +125,7 @@ func registerRoutes(mux *http.ServeMux, api *handler.API) {
 
 	mux.HandleFunc("/api/sessions/by-date", requireMethod(http.MethodGet, api.HandleSessionsByDate))
 	mux.HandleFunc("/api/sessions/detail", requireMethod(http.MethodGet, api.HandleSessionDetail))
+	mux.HandleFunc("/api/sessions/events", requireMethod(http.MethodGet, api.HandleSessionEvents))
 	mux.HandleFunc("/api/sessions/build", requireMethod(http.MethodPost, api.HandleBuildSessionsForDate))
 	mux.HandleFunc("/api/sessions/rebuild", requireMethod(http.MethodPost, api.HandleRebuildSessionsForDate))
 	mux.HandleFunc("/api/sessions/enrich", requireMethod(http.MethodPost, api.HandleEnrichSessionsForDate))

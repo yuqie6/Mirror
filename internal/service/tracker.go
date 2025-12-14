@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/collector"
+	"github.com/yuqie6/mirror/internal/pkg/privacy"
 	"github.com/yuqie6/mirror/internal/schema"
 )
 
@@ -25,6 +26,7 @@ type TrackerService struct {
 	wg             sync.WaitGroup
 	running        atomic.Bool // 并发安全的状态标识
 	onWriteSuccess func(count int)
+	sanitizer      *privacy.Sanitizer
 
 	// 有界写入队列
 	writeChan     chan []schema.Event
@@ -37,6 +39,7 @@ type TrackerConfig struct {
 	FlushBatchSize   int // 批量写入阈值
 	FlushIntervalSec int // 强制刷新间隔（秒）
 	OnWriteSuccess   func(count int)
+	Sanitizer        *privacy.Sanitizer
 }
 
 // DefaultTrackerConfig 默认配置
@@ -71,6 +74,7 @@ func NewTrackerService(
 		writerDone:     make(chan struct{}),
 		writeQueueCap:  writeQueueCap,
 		onWriteSuccess: cfg.OnWriteSuccess,
+		sanitizer:      cfg.Sanitizer,
 	}
 }
 
@@ -186,6 +190,10 @@ func (t *TrackerService) processLoop(ctx context.Context) {
 
 // handleEvent 处理单个事件
 func (t *TrackerService) handleEvent(event *schema.Event) {
+	if t.sanitizer != nil && event != nil {
+		event.Title = t.sanitizer.SanitizeWindowTitle(event.Title)
+	}
+
 	t.bufferMu.Lock()
 	defer t.bufferMu.Unlock()
 

@@ -89,6 +89,14 @@ export async function GetSessionDetail(id: number): Promise<any> {
     return requestJSON(`/api/sessions/detail?id=${encodeURIComponent(String(id))}`);
 }
 
+export async function GetSessionEvents(id: number, limit?: number, offset?: number): Promise<any> {
+    const qs = new URLSearchParams();
+    qs.set("id", String(id));
+    if (Number.isFinite(limit) && (limit as number) > 0) qs.set("limit", String(Math.floor(limit as number)));
+    if (Number.isFinite(offset) && (offset as number) >= 0) qs.set("offset", String(Math.floor(offset as number)));
+    return requestJSON(`/api/sessions/events?${qs.toString()}`);
+}
+
 export async function BuildSessionsForDate(date: string): Promise<any> {
     return requestJSON("/api/sessions/build", {
         method: "POST",

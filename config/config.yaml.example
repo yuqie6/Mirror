@@ -68,4 +68,9 @@ ai:
 # 隐私配置 (Phase 2)
 privacy:
   enabled: false
+  # patterns 为正则表达式列表；匹配到的内容会被替换为 "***"
+  # 示例：
+  # - "(?i)password=[^&\\s]+"        # URL/文本中的 password 参数
+  # - "\\b\\d{11}\\b"               # 11 位手机号
+  # - "(?i)(token|apikey)=[^&\\s]+" # 常见 token
   patterns: []

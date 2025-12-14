@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { GetSessionDetail, GetDiffDetail } from '../../api/app';
+import { GetSessionDetail, GetDiffDetail, GetSessionEvents } from '../../api/app';
 
 export interface SessionDTO {
     id: number;
@@ -38,6 +38,13 @@ interface SessionBrowserEventDTO {
     domain: string;
     title: string;
     url: string;
+}
+
+interface SessionWindowEventDTO {
+    timestamp: number;
+    app_name: string;
+    title: string;
+    duration: number;
 }
 
 export interface SessionDetailDTO extends SessionDTO {
@@ -83,6 +90,9 @@ const SessionDetailModal: React.FC<{ sessionId: number; onClose: () => void; }> 
     const [error, setError] = useState<string | null>(null);
     const [diffDetail, setDiffDetail] = useState<DiffDetailDTO | null>(null);
     const [diffLoading, setDiffLoading] = useState(false);
+    const [windowEvents, setWindowEvents] = useState<SessionWindowEventDTO[]>([]);
+    const [windowEventsLoading, setWindowEventsLoading] = useState(false);
+    const [windowEventsError, setWindowEventsError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!sessionId) return;
@@ -90,12 +100,30 @@ const SessionDetailModal: React.FC<{ sessionId: number; onClose: () => void; }> 
         setLoading(true);
         setError(null);
         setData(null);
+        setWindowEvents([]);
+        setWindowEventsError(null);
         void (async () => {
             try {
-                const res = await GetSessionDetail(sessionId);
-                if (!cancelled) setData(res);
+                const [detail, events] = await Promise.all([
+                    GetSessionDetail(sessionId),
+                    (async () => {
+                        setWindowEventsLoading(true);
+                        try {
+                            return await GetSessionEvents(sessionId, 300, 0);
+                        } finally {
+                            setWindowEventsLoading(false);
+                        }
+                    })(),
+                ]);
+                if (!cancelled) {
+                    setData(detail);
+                    setWindowEvents((events || []) as SessionWindowEventDTO[]);
+                }
             } catch (e: any) {
-                if (!cancelled) setError(e?.message || '获取会话详情失败');
+                if (!cancelled) {
+                    setError(e?.message || '获取会话详情失败');
+                    setWindowEventsError(e?.message || '获取窗口证据失败');
+                }
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -173,6 +201,47 @@ const SessionDetailModal: React.FC<{ sessionId: number; onClose: () => void; }> 
                                     </div>
                                 </div>
                             )}
+
+                            <div className="card">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                                        <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+                                        </svg>
+                                        窗口证据
+                                    </h3>
+                                    <span className="text-xs text-gray-400">{windowEvents?.length || 0}</span>
+                                </div>
+                                {windowEventsLoading && (
+                                    <div className="text-sm text-gray-400">加载窗口证据中...</div>
+                                )}
+                                {!windowEventsLoading && windowEventsError && (
+                                    <div className="text-sm text-red-500">{windowEventsError}</div>
+                                )}
+                                {!windowEventsLoading && !windowEventsError && (windowEvents?.length ? (
+                                    <div className="space-y-2">
+                                        {windowEvents.slice(0, 30).map((e, i) => (
+                                            <div key={`${e.timestamp}_${i}`} className="p-3 rounded-xl border border-gray-100">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm font-medium text-gray-900 truncate">{e.app_name}</div>
+                                                        <div className="text-xs text-gray-400 line-clamp-2">{e.title || '（空标题）'}</div>
+                                                    </div>
+                                                    <div className="text-right flex-shrink-0">
+                                                        <div className="text-xs text-gray-500">{Math.max(0, Math.round((e.duration || 0)))}s</div>
+                                                        <div className="text-[11px] text-gray-300">{formatTs(e.timestamp)}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {windowEvents.length > 30 && (
+                                            <div className="text-xs text-gray-400">仅展示前 30 条窗口事件</div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-gray-400">暂无窗口证据</div>
+                                ))}
+                            </div>
 
                             <div className="grid grid-cols-12 gap-5">
                                 <div className="col-span-7 card">
