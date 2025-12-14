@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { GetSkillTree, GetSkillEvidence, GetSkillSessions } from '@/api/app';
 import { ISkillNode, SkillNodeDTO, buildSkillTree } from '@/types/skill';
+import { useTranslation } from '@/lib/i18n';
 
 interface SkillEvidence {
   source: string;
@@ -210,6 +211,7 @@ function findSkillNodeByID(nodes: ISkillNode[], id: string): ISkillNode | null {
 }
 
 export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateToSession }: SkillViewProps) {
+  const { t } = useTranslation();
   const [skills, setSkills] = useState<ISkillNode[]>([]);
   const [selectedSkill, setSelectedSkill] = useState<ISkillNode | null>(null);
   const [loading, setLoading] = useState(false);
@@ -306,9 +308,9 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
   }, []);
 
   const getTrendText = (trend: string) => {
-    if (trend === 'up') return '↗ 上升中';
-    if (trend === 'down') return '↘ 下降中';
-    return '→ 稳定';
+    if (trend === 'up') return t('skills.trendUp');
+    if (trend === 'down') return t('skills.trendDown');
+    return t('skills.trendStable');
   };
 
   const formatTimestamp = (ts: number): string => {
@@ -330,7 +332,7 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-zinc-500">加载技能树中...</div>;
+    return <div className="flex items-center justify-center h-64 text-zinc-500">{t('skills.loading')}</div>;
   }
 
   const handleSelectSkill = (node: ISkillNode) => {
@@ -379,19 +381,19 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
 
                 <div className="flex gap-8 mb-6">
                   <div>
-                    <div className="text-xs text-zinc-500 uppercase">总经验值</div>
+                    <div className="text-xs text-zinc-500 uppercase">{t('skills.totalExp')}</div>
                     <div className="text-2xl font-mono text-indigo-400">
                       {selectedSkill.xp} <span className="text-sm text-zinc-600">({selectedSkill.progress}%)</span>
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-zinc-500 uppercase">趋势</div>
+                    <div className="text-xs text-zinc-500 uppercase">{t('skills.trend')}</div>
                     <div className={cn('text-2xl font-mono', selectedSkill.trend === 'up' ? 'text-emerald-500' : 'text-zinc-400')}>
                       {getTrendText(selectedSkill.trend)}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-zinc-500 uppercase">最近活跃</div>
+                    <div className="text-xs text-zinc-500 uppercase">{t('skills.lastActive')}</div>
                     <div className="text-2xl font-mono text-zinc-300">{selectedSkill.lastActive}</div>
                   </div>
                 </div>
@@ -406,12 +408,12 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
             <Card className="bg-zinc-900 border-zinc-800 mb-6">
               <CardHeader>
                 <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                  <History size={14} /> 相关会话
+                  <History size={14} /> {t('skills.relatedSessions')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {loadingEvidence ? (
-                  <div className="text-zinc-500 text-sm">加载中...</div>
+                  <div className="text-zinc-500 text-sm">{t('common.loading')}</div>
                 ) : sessions.length > 0 ? (
                   sessions.slice(0, 5).map((session) => (
                     <div
@@ -430,7 +432,7 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
                     </div>
                   ))
                 ) : (
-                  <div className="text-zinc-500 text-sm italic">暂无相关会话</div>
+                  <div className="text-zinc-500 text-sm italic">{t('skills.noRelatedSessions')}</div>
                 )}
               </CardContent>
             </Card>
@@ -439,12 +441,12 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader>
                 <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                  <FileCode size={14} /> 代码证据
+                  <FileCode size={14} /> {t('skills.codeEvidence')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {loadingEvidence ? (
-                  <div className="text-zinc-500 text-sm">加载中...</div>
+                  <div className="text-zinc-500 text-sm">{t('common.loading')}</div>
                 ) : evidence.length > 0 ? (
                   evidence.slice(0, 10).map((ev) => (
                     <Collapsible key={ev.evidence_id}>
@@ -461,13 +463,13 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
                           <div className="border-t border-zinc-800 p-3">
                             {ev.contribution_context && (
                               <div className="mb-2 p-2 bg-indigo-500/10 border border-indigo-500/20 rounded text-sm text-indigo-200">
-                                <span className="text-indigo-400 font-medium">上下文：</span> {ev.contribution_context}
+                                <span className="text-indigo-400 font-medium">{t('skills.context')}</span> {ev.contribution_context}
                               </div>
                             )}
                             <div className="text-xs text-zinc-500">
-                              来源 ID: {ev.evidence_id}
+                              {t('skills.sourceId')}: {ev.evidence_id}
                               <br />
-                              时间: {formatTimestamp(ev.timestamp)}
+                              {t('skills.time')}: {formatTimestamp(ev.timestamp)}
                             </div>
                           </div>
                         </CollapsibleContent>
@@ -475,13 +477,13 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
                     </Collapsible>
                   ))
                 ) : (
-                  <div className="text-zinc-500 text-sm italic">暂无代码证据</div>
+                  <div className="text-zinc-500 text-sm italic">{t('skills.noCodeEvidence')}</div>
                 )}
               </CardContent>
             </Card>
           </>
         ) : (
-          <div className="text-zinc-500 text-center mt-20">选择一个技能查看详情</div>
+          <div className="text-zinc-500 text-center mt-20">{t('skills.selectSkill')}</div>
         )}
       </div>
     </div>

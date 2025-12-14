@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Settings as SettingsIcon, Moon, Shield, Save, RefreshCw, Plus, X, Key, Server, Database, Eye } from 'lucide-react';
 import { GetSettings, SaveSettings } from '@/api/app';
+import { useTranslation } from '@/lib/i18n';
 
 // 匹配后端 dto/httpapi.go SettingsDTO 完整字段
 interface SettingsData {
@@ -50,6 +51,7 @@ interface SaveSettingsRequest {
 }
 
 export default function SettingsView() {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -85,15 +87,15 @@ export default function SettingsView() {
     try {
       const resp = await SaveSettings(pendingChanges as any);
       if (resp.restart_required) {
-        alert('设置已保存，部分更改需要重启应用后生效');
+        alert(t('settings.settingsSavedRestart'));
       } else {
-        alert('设置已保存');
+        alert(t('settings.settingsSaved'));
       }
       setPendingChanges({});
       const data = await GetSettings();
       setSettings(data);
     } catch (e) {
-      alert(`保存失败: ${e}`);
+      alert(`${t('settings.saveFailed')}: ${e}`);
     } finally {
       setSaving(false);
     }
@@ -150,28 +152,28 @@ export default function SettingsView() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-zinc-500">加载设置中...</div>;
+    return <div className="flex items-center justify-center h-64 text-zinc-500">{t('settings.loadingSettings')}</div>;
   }
 
   if (!settings) {
-    return <div className="flex items-center justify-center h-64 text-zinc-500">无法加载设置</div>;
+    return <div className="flex items-center justify-center h-64 text-zinc-500">{t('settings.loadFailed')}</div>;
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-zinc-100">设置</h2>
+        <h2 className="text-xl font-semibold text-zinc-100">{t('settings.title')}</h2>
         <button
           onClick={handleSave}
           disabled={saving || !hasPendingChanges}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-            hasPendingChanges 
-              ? 'bg-indigo-500 hover:bg-indigo-600 text-white' 
+            hasPendingChanges
+              ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
               : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
           } disabled:opacity-50`}
         >
           {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-          {hasPendingChanges ? '保存更改' : '无修改'}
+          {hasPendingChanges ? t('settings.saveChanges') : t('settings.noChanges')}
         </button>
       </div>
 
@@ -181,12 +183,12 @@ export default function SettingsView() {
           <Card className="bg-amber-500/10 border-amber-500/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-amber-300 flex items-center gap-2">
-                <Eye size={14} /> 首次使用：请先配置 Diff 监控路径
+                <Eye size={14} /> {t('settings.firstTimeSetup')}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-amber-200/80 space-y-2">
-              <div>没有监控路径会导致“会话/技能/报告”缺少关键证据链（Diff）。</div>
-              <div>建议填写你的 Git 项目根目录（可多个），保存后按提示重启 Agent。</div>
+              <div>{t('settings.firstTimeHint')}</div>
+              <div>{t('settings.firstTimeAdvice')}</div>
             </CardContent>
           </Card>
         )}
@@ -195,19 +197,19 @@ export default function SettingsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
-            <Server size={18} /> DeepSeek AI 配置
+            <Server size={18} /> {t('settings.deepseekConfig')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">API Key</div>
+            <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
             <div className="flex items-center gap-2">
               {settings.deepseek_api_key_set ? (
-                <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> 已设置</Badge>
+                <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
               ) : (
                 <input
                   type="password"
-                  placeholder="输入 API Key"
+                  placeholder={t('settings.enterApiKey')}
                   value={newDeepSeekApiKey}
                   onChange={(e) => setNewDeepSeekApiKey(e.target.value)}
                   onBlur={() => { if (newDeepSeekApiKey) updatePending('deepseek_api_key', newDeepSeekApiKey); }}
@@ -217,7 +219,7 @@ export default function SettingsView() {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">Base URL</div>
+            <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
             <input
               type="text"
               defaultValue={settings.deepseek_base_url}
@@ -226,7 +228,7 @@ export default function SettingsView() {
             />
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">模型</div>
+            <div className="text-sm text-zinc-300">{t('settings.model')}</div>
             <input
               type="text"
               defaultValue={settings.deepseek_model}
@@ -241,19 +243,19 @@ export default function SettingsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
-            <Server size={18} /> SiliconFlow 配置
+            <Server size={18} /> {t('settings.siliconflowConfig')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">API Key</div>
+            <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
             <div className="flex items-center gap-2">
               {settings.siliconflow_api_key_set ? (
-                <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> 已设置</Badge>
+                <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
               ) : (
                 <input
                   type="password"
-                  placeholder="输入 API Key"
+                  placeholder={t('settings.enterApiKey')}
                   value={newSiliconFlowApiKey}
                   onChange={(e) => setNewSiliconFlowApiKey(e.target.value)}
                   onBlur={() => { if (newSiliconFlowApiKey) updatePending('siliconflow_api_key', newSiliconFlowApiKey); }}
@@ -263,7 +265,7 @@ export default function SettingsView() {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">Base URL</div>
+            <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
             <input
               type="text"
               defaultValue={settings.siliconflow_base_url}
@@ -272,7 +274,7 @@ export default function SettingsView() {
             />
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">Embedding 模型</div>
+            <div className="text-sm text-zinc-300">{t('settings.embeddingModel')}</div>
             <input
               type="text"
               defaultValue={settings.siliconflow_embedding_model}
@@ -281,7 +283,7 @@ export default function SettingsView() {
             />
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">Reranker 模型</div>
+            <div className="text-sm text-zinc-300">{t('settings.rerankerModel')}</div>
             <input
               type="text"
               defaultValue={settings.siliconflow_reranker_model}
@@ -296,14 +298,14 @@ export default function SettingsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
-            <Moon size={18} /> 数据采集
+            <Moon size={18} /> {t('settings.dataCollection')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-zinc-300">Diff 监控</div>
-              <div className="text-xs text-zinc-500">监控 Git 代码变更</div>
+              <div className="text-sm text-zinc-300">{t('settings.diffMonitor')}</div>
+              <div className="text-xs text-zinc-500">{t('settings.diffMonitorHint')}</div>
             </div>
             <Switch
               checked={pendingChanges.diff_enabled ?? settings.diff_enabled}
@@ -312,7 +314,7 @@ export default function SettingsView() {
           </div>
           
           <div>
-            <div className="text-sm text-zinc-300 mb-2">监控路径</div>
+            <div className="text-sm text-zinc-300 mb-2">{t('settings.watchPaths')}</div>
             <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
               {displayWatchPaths.map((path) => (
                 <div key={path} className="flex items-center justify-between bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs">
@@ -324,7 +326,7 @@ export default function SettingsView() {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="添加监控路径"
+                placeholder={t('settings.addWatchPath')}
                 value={newWatchPath}
                 onChange={(e) => setNewWatchPath(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') addWatchPath(); }}
@@ -336,8 +338,8 @@ export default function SettingsView() {
 
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-zinc-300">浏览器监控</div>
-              <div className="text-xs text-zinc-500">采集浏览器历史</div>
+              <div className="text-sm text-zinc-300">{t('settings.browserMonitor')}</div>
+              <div className="text-xs text-zinc-500">{t('settings.browserMonitorHint')}</div>
             </div>
             <Switch
               checked={pendingChanges.browser_enabled ?? settings.browser_enabled}
@@ -345,7 +347,7 @@ export default function SettingsView() {
             />
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">浏览器历史路径</div>
+            <div className="text-sm text-zinc-300">{t('settings.browserHistoryPath')}</div>
             <input
               type="text"
               defaultValue={settings.browser_history_path}
@@ -360,14 +362,14 @@ export default function SettingsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
-            <Shield size={18} /> 隐私
+            <Shield size={18} /> {t('settings.privacy')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-zinc-300">隐私过滤</div>
-              <div className="text-xs text-zinc-500">脱敏敏感 URL 和内容</div>
+              <div className="text-sm text-zinc-300">{t('settings.privacyFilter')}</div>
+              <div className="text-xs text-zinc-500">{t('settings.privacyFilterHint')}</div>
             </div>
             <Switch
               checked={pendingChanges.privacy_enabled ?? settings.privacy_enabled}
@@ -377,7 +379,7 @@ export default function SettingsView() {
           
           <div>
             <div className="text-sm text-zinc-300 mb-2 flex items-center gap-2">
-              <Eye size={14} /> 隐私过滤规则 (正则)
+              <Eye size={14} /> {t('settings.privacyRules')}
             </div>
             <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
               {displayPrivacyPatterns.map((pattern, idx) => (
@@ -390,7 +392,7 @@ export default function SettingsView() {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="添加正则规则，如: password|secret|token"
+                placeholder={t('settings.addRegexRule')}
                 value={newPrivacyPattern}
                 onChange={(e) => setNewPrivacyPattern(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') addPrivacyPattern(); }}
@@ -403,18 +405,18 @@ export default function SettingsView() {
           {/* 脱敏预览（P0 验收点：可预览规则效果） */}
           <div className="space-y-2">
             <div className="text-sm text-zinc-300 flex items-center gap-2">
-              <Eye size={14} /> 脱敏预览
+              <Eye size={14} /> {t('settings.privacyPreview')}
             </div>
             <textarea
               value={privacySample}
               onChange={(e) => setPrivacySample(e.target.value)}
               rows={3}
               className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs text-zinc-300 font-mono"
-              placeholder="输入一段包含 URL/token/邮箱等的示例文本"
+              placeholder={t('settings.privacyPreviewHint')}
             />
-            <div className="text-xs text-zinc-500">结果（本地预览口径，保存后由后端统一执行脱敏）</div>
+            <div className="text-xs text-zinc-500">{t('settings.privacyPreviewResult')}</div>
             <pre className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs text-zinc-200 whitespace-pre-wrap break-words">
-              {previewPrivacy(privacySample) || '（空）'}
+              {previewPrivacy(privacySample) || t('settings.empty')}
             </pre>
           </div>
         </CardContent>
@@ -424,16 +426,16 @@ export default function SettingsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
-            <Database size={18} /> 数据与存储
+            <Database size={18} /> {t('settings.dataStorage')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">配置文件</div>
+            <div className="text-sm text-zinc-300">{t('settings.configFile')}</div>
             <span className="text-xs font-mono text-zinc-500 truncate max-w-[250px]">{settings.config_path}</span>
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">数据库路径</div>
+            <div className="text-sm text-zinc-300">{t('settings.databasePath')}</div>
             <span className="text-xs font-mono text-zinc-500 truncate max-w-[250px]">{settings.db_path}</span>
           </div>
         </CardContent>
@@ -443,14 +445,14 @@ export default function SettingsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
-            <SettingsIcon size={18} /> 关于
+            <SettingsIcon size={18} /> {t('settings.about')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-sm text-zinc-400">
-            复盘镜 v0.2-alpha
+            {t('app.name')} {t('app.version')}
             <br />
-            <span className="text-zinc-600">构建日期: 2024-12-14</span>
+            <span className="text-zinc-600">{t('settings.buildDate')}: 2024-12-14</span>
           </div>
         </CardContent>
       </Card>

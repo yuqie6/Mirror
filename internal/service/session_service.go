@@ -29,7 +29,8 @@ type SessionService struct {
 
 // SessionServiceConfig 会话服务配置
 type SessionServiceConfig struct {
-	IdleGapMinutes int // 空闲间隔分钟数，超过则切分会话
+	IdleGapMinutes    int // 空闲间隔分钟数，超过则切分会话
+	MinSessionMinutes int // 会话最小时长（分钟），低于此值的会话将被过滤
 }
 
 // NewSessionService 创建会话服务
@@ -42,10 +43,16 @@ func NewSessionService(
 	cfg *SessionServiceConfig,
 ) *SessionService {
 	if cfg == nil {
-		cfg = &SessionServiceConfig{IdleGapMinutes: 6}
+		cfg = &SessionServiceConfig{
+			IdleGapMinutes:    10, // 增加到10分钟，减少碎片化
+			MinSessionMinutes: 2,  // 过滤掉小于2分钟的碎片会话
+		}
 	}
 	if cfg.IdleGapMinutes <= 0 {
-		cfg.IdleGapMinutes = 6
+		cfg.IdleGapMinutes = 10
+	}
+	if cfg.MinSessionMinutes <= 0 {
+		cfg.MinSessionMinutes = 2
 	}
 	return &SessionService{
 		eventRepo:       eventRepo,
@@ -417,14 +424,20 @@ func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Dif
 
 	closeSession(lastActivityEnd)
 
-	// 过滤空洞会话（无窗口且无 diff）
+	// 过滤空洞会话（无窗口且无 diff）并过滤碎片会话（时长过短）
 	filtered := sessions[:0]
+	minDurationMs := int64(s.cfg.MinSessionMinutes) * 60 * 1000
 	for _, sess := range sessions {
 		if sess == nil {
 			continue
 		}
 		hasDiffs := sess.Metadata != nil && len(getSessionDiffIDs(sess.Metadata)) > 0
 		if sess.PrimaryApp == "" && !hasDiffs {
+			continue
+		}
+		// 过滤时长过短的碎片会话（避免1-2分钟的无意义会话）
+		duration := sess.EndTime - sess.StartTime
+		if duration < minDurationMs {
 			continue
 		}
 		filtered = append(filtered, sess)

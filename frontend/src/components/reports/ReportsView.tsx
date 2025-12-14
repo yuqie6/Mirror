@@ -5,6 +5,7 @@ import { CheckCircle2, TrendingUp, Sparkles, ChevronLeft, ChevronRight, Calendar
 import { GetTodaySummary, GetDailySummary, GetPeriodSummary, ListSummaryIndex, ListPeriodSummaryIndex, GetSessionsByDate } from '@/api/app';
 import { SessionDTO } from '@/types/session';
 import { formatLocalISODate, parseLocalISODate, todayLocalISODate } from '@/lib/date';
+import { useTranslation } from '@/lib/i18n';
 
 // 匹配后端 DailySummaryDTO
 interface DailySummary {
@@ -103,15 +104,16 @@ function listDatesInclusive(startISO: string, endISO: string): string[] {
   return out;
 }
 
-function getEvidenceStrengthLabel(s: SessionDTO): { label: string; color: string } {
+function getEvidenceStrengthLabel(s: SessionDTO, t: (key: string) => string): { label: string; color: string } {
   const hasDiff = (s.diff_count || 0) > 0;
   const hasBrowser = (s.browser_count || 0) > 0;
-  if (hasDiff && hasBrowser) return { label: '证据充足', color: 'text-emerald-400 border-emerald-500/20' };
-  if (hasDiff || hasBrowser) return { label: '证据一般', color: 'text-amber-400 border-amber-500/20' };
-  return { label: '证据不足', color: 'text-rose-400 border-rose-500/20' };
+  if (hasDiff && hasBrowser) return { label: t('reports.evidenceSufficient'), color: 'text-emerald-400 border-emerald-500/20' };
+  if (hasDiff || hasBrowser) return { label: t('reports.evidenceModerate'), color: 'text-amber-400 border-amber-500/20' };
+  return { label: t('reports.evidenceWeak'), color: 'text-rose-400 border-rose-500/20' };
 }
 
 export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
+  const { t } = useTranslation();
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [periodSummary, setPeriodSummary] = useState<PeriodSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -171,7 +173,7 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
         setDailySummary(data);
       } catch (e: any) {
         console.error('Failed to load daily summary:', e);
-        setError(e?.message || '加载失败');
+        setError(e?.message || t('common.error'));
         setDailySummary(null);
       } finally {
         setLoading(false);
@@ -225,7 +227,7 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
         }
         setRelatedByDate(next);
       } catch (e: unknown) {
-        setRelatedError(e instanceof Error ? e.message : '加载关联会话失败');
+        setRelatedError(e instanceof Error ? e.message : t('common.error'));
         setRelatedByDate({});
       } finally {
         setRelatedLoading(false);
@@ -243,7 +245,7 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
       const isToday = dailyDate === todayLocalISODate();
       (isToday ? GetTodaySummary(true) : GetDailySummary(dailyDate, true))
         .then(setDailySummary)
-        .catch((e) => setError(e?.message || '生成失败'))
+        .catch((e) => setError(e?.message || t('common.error')))
         .finally(() => setLoading(false));
     } else {
       loadPeriodSummary(true);
@@ -314,22 +316,35 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
     if (list.length === 0) {
       return (
         <div className="mt-2 text-[11px] text-zinc-600">
-          暂无可跳转的来源会话（可能是证据不足或语义未补全）
+          {t('reports.noSourceSessions')}
         </div>
       );
     }
     return (
       <div className="mt-2 flex flex-wrap gap-2">
-        {list.slice(0, 4).map((s) => (
-          <button
-            key={`${s.date}-${s.id}`}
-            onClick={() => onNavigateToSession?.(s.id, s.date)}
-            className="px-2 py-1 rounded border border-zinc-800 bg-zinc-950/40 hover:bg-zinc-900 transition-colors text-[11px] text-zinc-300 font-mono"
-            title={`${s.date} ${s.time_range || ''} ${s.category || ''}`.trim()}
-          >
-            #{s.id}{s.time_range ? ` ${s.time_range}` : ''}
-          </button>
-        ))}
+        {list.slice(0, 4).map((s) => {
+          // 优先显示类别和摘要，而非仅ID
+          const displayText = s.category || s.summary || `#${s.id}`;
+          const truncatedText = displayText.length > 20 ? displayText.slice(0, 20) + '...' : displayText;
+          const tooltipText = [
+            `#${s.id}`,
+            s.date,
+            s.time_range,
+            s.category,
+            s.summary
+          ].filter(Boolean).join(' | ');
+
+          return (
+            <button
+              key={`${s.date}-${s.id}`}
+              onClick={() => onNavigateToSession?.(s.id, s.date)}
+              className="px-2 py-1 rounded border border-zinc-800 bg-zinc-950/40 hover:bg-zinc-900 transition-colors text-[11px] text-zinc-300"
+              title={tooltipText}
+            >
+              {truncatedText}
+            </button>
+          );
+        })}
         {list.length > 4 && (
           <span className="px-2 py-1 rounded border border-zinc-800 bg-zinc-950/20 text-[11px] text-zinc-600 font-mono">
             +{list.length - 4}
@@ -357,19 +372,19 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
           <button
             onClick={() => { setViewType('daily'); setShowIndex(false); setError(null); }}
             className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${viewType === 'daily' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >日报</button>
+          >{t('reports.daily')}</button>
           <button
             onClick={() => { setViewType('week'); setShowIndex(false); setError(null); }}
             className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${viewType === 'week' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >周报</button>
+          >{t('reports.weekly')}</button>
           <button
             onClick={() => { setViewType('month'); setShowIndex(false); setError(null); }}
             className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${viewType === 'month' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >月报</button>
+          >{t('reports.monthly')}</button>
         </div>
         
         <div className="flex items-center gap-2">
-          <button onClick={toggleIndex} className={`p-2 rounded-lg border transition-colors ${showIndex ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:text-zinc-300'}`} title="历史索引">
+          <button onClick={toggleIndex} className={`p-2 rounded-lg border transition-colors ${showIndex ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:text-zinc-300'}`} title={t('reports.historyIndex')}>
             <List size={16} />
           </button>
           
@@ -388,8 +403,8 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center h-64 text-zinc-500">
-          <RefreshCw size={20} className="animate-spin mr-2" /> 
-          {viewType === 'daily' ? '生成日报中...' : viewType === 'week' ? '生成周报中...' : '生成月报中...'}
+          <RefreshCw size={20} className="animate-spin mr-2" />
+          {viewType === 'daily' ? t('reports.generatingDaily') : viewType === 'week' ? t('reports.generatingWeekly') : t('reports.generatingMonthly')}
         </div>
       )}
 
@@ -402,10 +417,10 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
               onClick={handleForceGenerate}
               className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 mx-auto"
             >
-              <RefreshCw size={14} /> 点击生成{viewType === 'daily' ? '日报' : viewType === 'week' ? '周报' : '月报'}
+              <RefreshCw size={14} /> {t('reports.clickToGenerate')} {viewType === 'daily' ? t('reports.daily') : viewType === 'week' ? t('reports.weekly') : t('reports.monthly')}
             </button>
             <div className="text-xs text-zinc-500 mt-4">
-              {viewType !== 'daily' && '需要先有该周期内的日报数据'}
+              {viewType !== 'daily' && t('reports.needPeriodData')}
             </div>
           </CardContent>
         </Card>
@@ -416,19 +431,19 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-zinc-300 flex items-center gap-2">
-              <CheckCircle2 size={14} className="text-emerald-400" /> 本期会话（全部）
+              <CheckCircle2 size={14} className="text-emerald-400" /> {t('reports.allSessions')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="text-xs text-zinc-500">
-              用于全量浏览该时间范围的会话；每条结论下方的“来源会话”用于快速回到对应证据。
+              {t('reports.allSessionsHint')}
             </div>
             {relatedLoading ? (
-              <div className="text-zinc-500 text-sm">加载中...</div>
+              <div className="text-zinc-500 text-sm">{t('common.loading')}</div>
             ) : relatedError ? (
               <div className="text-amber-500 text-sm">{relatedError}</div>
             ) : Object.keys(relatedByDate).length === 0 ? (
-              <div className="text-zinc-500 text-sm">该时间范围内暂无会话（可去“系统诊断”页构建/重建）</div>
+              <div className="text-zinc-500 text-sm">{t('reports.noSessionsInRange')}</div>
             ) : (
               Object.entries(relatedByDate)
                 .sort(([a], [b]) => (a < b ? 1 : -1))
@@ -436,14 +451,14 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
                   <details key={date} className="rounded-lg border border-zinc-800 bg-zinc-950/40">
                     <summary className="cursor-pointer select-none px-3 py-2 text-xs text-zinc-400 font-mono flex items-center justify-between">
                       <span>{date}</span>
-                      <span className="text-zinc-600">{sessions.length} 会话</span>
+                      <span className="text-zinc-600">{sessions.length} {t('common.sessions')}</span>
                     </summary>
                     <div className="p-2 space-y-1 border-t border-zinc-800">
                       {sessions
                         .slice()
                         .sort((a, b) => (a.start_time || 0) - (b.start_time || 0))
                         .map((s) => {
-                          const strength = getEvidenceStrengthLabel(s);
+                          const strength = getEvidenceStrengthLabel(s, t);
                           return (
                             <button
                               key={s.id}
@@ -453,7 +468,7 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <Badge variant="secondary" className="text-[10px]">
-                                    {s.category || '未分类'}
+                                    {s.category || t('reports.uncategorized')}
                                   </Badge>
                                   <span className="text-[10px] text-zinc-600 font-mono">{s.time_range}</span>
                                   <span
@@ -464,7 +479,7 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
                                   </span>
                                 </div>
                                 <div className="text-sm text-zinc-200 mt-1 line-clamp-1">
-                                  {s.summary || s.primary_app || '（无摘要）'}
+                                  {s.summary || s.primary_app || t('reports.noSummary')}
                                 </div>
                               </div>
                               <span className="text-[10px] text-zinc-600 font-mono">#{s.id}</span>
@@ -484,12 +499,12 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-zinc-400">
-              {viewType === 'daily' ? '日报历史' : viewType === 'week' ? '周报历史' : '月报历史'}
+              {viewType === 'daily' ? t('reports.dailyHistory') : viewType === 'week' ? t('reports.weeklyHistory') : t('reports.monthlyHistory')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loadingIndex ? (
-              <div className="text-zinc-500 text-sm">加载中...</div>
+              <div className="text-zinc-500 text-sm">{t('common.loading')}</div>
             ) : viewType === 'daily' ? (
               <div className="grid grid-cols-5 gap-2 max-h-48 overflow-y-auto">
                 {dailyIndex.map((item) => (
@@ -506,7 +521,7 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {periodIndex.length === 0 ? (
-                  <div className="text-zinc-500 text-sm">暂无历史记录</div>
+                  <div className="text-zinc-500 text-sm">{t('reports.noHistory')}</div>
                 ) : periodIndex.map((item, idx) => (
                   <button
                     key={idx}
@@ -529,10 +544,10 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
             <div className="flex justify-between items-start mb-6">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20"><Sparkles size={12} className="mr-1" /> AI 生成</Badge>
+                  <Badge className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20"><Sparkles size={12} className="mr-1" /> {t('reports.aiGenerated')}</Badge>
                   <span className="text-zinc-500 text-sm">{summary.date}</span>
                 </div>
-                <CardTitle className="text-2xl font-bold text-white">每日工作回顾</CardTitle>
+                <CardTitle className="text-2xl font-bold text-white">{t('reports.dailyReview')}</CardTitle>
               </div>
             </div>
             <p className="text-zinc-300 text-lg leading-relaxed">{summary.summary}</p>
@@ -542,13 +557,13 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
 	          <div className="grid grid-cols-1 md:grid-cols-2">
 	            <div className="p-8 border-r border-zinc-800">
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-500" /> 主要成就
+                <CheckCircle2 size={16} className="text-emerald-500" /> {t('reports.mainAchievements')}
               </h3>
 	              <div className="space-y-4">
 	                {(() => {
                     const items = parseList(summary.highlights);
                     const evidenceMap = buildClaimToSessionsMap(summary.evidence?.highlights);
-                    if (items.length === 0) return <p className="text-zinc-500 italic">无成就记录</p>;
+                    if (items.length === 0) return <p className="text-zinc-500 italic">{t('reports.noAchievements')}</p>;
                     return items.map((item, idx) => (
                       <div key={idx} className="flex items-start gap-3">
                         <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
@@ -564,12 +579,12 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
 	              {summary.struggles && (
 	                <div className="mt-6">
 	                  <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-	                    <Target size={16} className="text-amber-500" /> 挑战与困难
+	                    <Target size={16} className="text-amber-500" /> {t('reports.challenges')}
 	                  </h3>
                     {(() => {
                       const items = parseList(summary.struggles);
                       const evidenceMap = buildClaimToSessionsMap(summary.evidence?.struggles);
-                      if (items.length === 0) return <p className="text-zinc-500 italic">无</p>;
+                      if (items.length === 0) return <p className="text-zinc-500 italic">{t('common.noData')}</p>;
                       return (
                         <div className="space-y-3">
                           {items.map((item, idx) => (
@@ -587,25 +602,25 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
 
             <div className="p-8">
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-                <TrendingUp size={16} className="text-indigo-500" /> 技能增长
+                <TrendingUp size={16} className="text-indigo-500" /> {t('reports.skillGrowth')}
               </h3>
               <div className="space-y-4 mb-8">
                 {summary.skills_gained?.length > 0 ? summary.skills_gained.map((skill, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <span className="text-zinc-300">{skill}</span>
-                    <div className="text-sm text-emerald-400">+经验</div>
+                    <div className="text-sm text-emerald-400">{t('reports.expGain')}</div>
                   </div>
-                )) : <p className="text-zinc-500 italic">无技能记录</p>}
+                )) : <p className="text-zinc-500 italic">{t('reports.noSkillRecords')}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">
-                  <div className="text-2xl font-bold text-indigo-400">{Math.round((summary.total_coding || 0) / 60)}小时</div>
-                  <div className="text-xs text-zinc-500">编码时间</div>
+                  <div className="text-2xl font-bold text-indigo-400">{Math.round((summary.total_coding || 0) / 60)}{t('common.hours')}</div>
+                  <div className="text-xs text-zinc-500">{t('reports.codingTime')}</div>
                 </div>
                 <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">
                   <div className="text-2xl font-bold text-emerald-400">{summary.total_diffs || 0}</div>
-                  <div className="text-xs text-zinc-500">代码变更</div>
+                  <div className="text-xs text-zinc-500">{t('reports.codeChanges')}</div>
                 </div>
               </div>
             </div>
@@ -621,12 +636,12 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20">
-                    <Sparkles size={12} className="mr-1" /> {viewType === 'week' ? '周报' : '月报'}
+                    <Sparkles size={12} className="mr-1" /> {viewType === 'week' ? t('reports.weekly') : t('reports.monthly')}
                   </Badge>
                   <span className="text-zinc-500 text-sm">{period.start_date} ~ {period.end_date}</span>
                 </div>
                 <CardTitle className="text-2xl font-bold text-white">
-                  {viewType === 'week' ? '本周工作回顾' : '本月工作回顾'}
+                  {viewType === 'week' ? t('reports.weeklyReview') : t('reports.monthlyReview')}
                 </CardTitle>
               </div>
             </div>
@@ -637,13 +652,13 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
 	          <div className="grid grid-cols-1 md:grid-cols-2">
 	            <div className="p-8 border-r border-zinc-800">
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-500" /> 
-                {viewType === 'week' ? '本周成就' : '本月成就'}
+                <CheckCircle2 size={16} className="text-emerald-500" />
+                {viewType === 'week' ? t('reports.weeklyAchievements') : t('reports.monthlyAchievements')}
               </h3>
 	              <div className="space-y-4">
 	                {(() => {
                     const evidenceMap = buildClaimToSessionsMap(period.evidence?.achievements);
-                    if (!period.achievements || period.achievements.length === 0) return <p className="text-zinc-500 italic">无成就记录</p>;
+                    if (!period.achievements || period.achievements.length === 0) return <p className="text-zinc-500 italic">{t('reports.noAchievements')}</p>;
                     return period.achievements.map((item, idx) => (
                       <div key={idx} className="flex items-start gap-3">
                         <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-purple-500"></div>
@@ -659,7 +674,7 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
 	              {period.patterns && (
 	                <div className="mt-6">
 	                  <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-	                    <Target size={16} className="text-sky-500" /> 工作模式
+	                    <Target size={16} className="text-sky-500" /> {t('reports.workPatterns')}
 	                  </h3>
 	                  <p className="text-zinc-400 text-sm">{period.patterns}</p>
                     <EvidenceChips sessions={period.evidence?.patterns?.sessions} />
@@ -669,21 +684,21 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
 
             <div className="p-8">
               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2">
-                <TrendingUp size={16} className="text-indigo-500" /> 核心技能
+                <TrendingUp size={16} className="text-indigo-500" /> {t('reports.coreSkills')}
               </h3>
               <div className="space-y-4 mb-6">
                 {period.top_skills?.length > 0 ? period.top_skills.map((skill, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <span className="text-zinc-300">{skill}</span>
-                    <div className="text-sm text-purple-400">重点</div>
+                    <div className="text-sm text-purple-400">{t('reports.focus')}</div>
                   </div>
-                )) : <p className="text-zinc-500 italic">无技能记录</p>}
+                )) : <p className="text-zinc-500 italic">{t('reports.noSkillRecords')}</p>}
               </div>
 
 	              {period.suggestions && (
 	                <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded">
 	                  <h4 className="text-xs font-semibold text-indigo-400 uppercase mb-2 flex items-center gap-1">
-	                    <Lightbulb size={12} /> 建议
+	                    <Lightbulb size={12} /> {t('reports.suggestions')}
 	                  </h4>
                     {(() => {
                       const items = parseList(period.suggestions);
@@ -707,12 +722,12 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
 
               <div className="grid grid-cols-2 gap-4 text-center mt-6">
                 <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">
-                  <div className="text-2xl font-bold text-indigo-400">{Math.round((period.total_coding || 0) / 60)}小时</div>
-                  <div className="text-xs text-zinc-500">编码时间</div>
+                  <div className="text-2xl font-bold text-indigo-400">{Math.round((period.total_coding || 0) / 60)}{t('common.hours')}</div>
+                  <div className="text-xs text-zinc-500">{t('reports.codingTime')}</div>
                 </div>
                 <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">
                   <div className="text-2xl font-bold text-emerald-400">{period.total_diffs || 0}</div>
-                  <div className="text-xs text-zinc-500">代码变更</div>
+                  <div className="text-xs text-zinc-500">{t('reports.codeChanges')}</div>
                 </div>
               </div>
             </div>

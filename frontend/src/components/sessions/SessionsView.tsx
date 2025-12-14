@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { GetSessionsByDate, GetSessionDetail, GetSessionEvents, GetDiffDetail } from '@/api/app';
 import { ISession, SessionDTO, SessionDetailDTO, SessionWindowEventDTO, toISession } from '@/types/session';
 import { parseLocalISODate, todayLocalISODate } from '@/lib/date';
+import { useTranslation } from '@/lib/i18n';
 
 interface DiffDetail {
   id: number;
@@ -55,6 +56,7 @@ export default function SessionsView({
   const [selectedSession, setSelectedSession] = useState<SessionDetailDTO | null>(null);
   const [expandedDiffs, setExpandedDiffs] = useState<Set<number>>(new Set());
   const [currentDate, setCurrentDate] = useState(() => parseOrToday(initialDate));
+  const { t } = useTranslation();
   
   // 窗口事件
   const [windowEvents, setWindowEvents] = useState<SessionWindowEventDTO[]>([]);
@@ -202,7 +204,7 @@ export default function SessionsView({
   }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-zinc-500">加载会话中...</div>;
+    return <div className="flex items-center justify-center h-64 text-zinc-500">{t('sessions.loading')}</div>;
   }
 
   return (
@@ -211,7 +213,7 @@ export default function SessionsView({
       <div style={{ width: `${leftWidth}%` }} className="pr-2 overflow-y-auto border-r border-zinc-800">
         {/* 日期选择 */}
         <div className="flex justify-between items-center mb-4 sticky top-0 bg-zinc-950 py-2 z-10">
-          <h3 className="text-zinc-200 font-medium">时间轴</h3>
+          <h3 className="text-zinc-200 font-medium">{t('sessions.timeline')}</h3>
           <div className="flex items-center gap-2 text-zinc-400 bg-zinc-900 px-2 py-1 rounded-lg border border-zinc-800">
             <button onClick={() => navigateDate(-1)} className="p-1 hover:text-white transition-colors">
               <ChevronRight size={14} className="rotate-180" />
@@ -230,7 +232,7 @@ export default function SessionsView({
         </div>
 
         {sessions.length === 0 ? (
-          <div className="text-center text-zinc-500 py-12">当前日期无会话记录</div>
+          <div className="text-center text-zinc-500 py-12">{t('sessions.noRecords')}</div>
         ) : (
           <div className="space-y-2">
             {sessions.map((session) => (
@@ -246,7 +248,7 @@ export default function SessionsView({
                 <div className="flex justify-between items-start mb-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono text-zinc-500">{session.duration}</span>
-                    <span title={session.type === 'ai' ? 'AI 分析' : '规则生成'}>
+                    <span title={session.type === 'ai' ? t('sessions.aiAnalysis') : t('sessions.ruleGenerated')}>
                       {session.type === 'ai' ? <Sparkles size={12} className="text-indigo-400" /> : <Cog size={12} className="text-zinc-600" />}
                     </span>
                   </div>
@@ -257,10 +259,10 @@ export default function SessionsView({
                 <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{session.summary}</p>
                 {session.evidenceStrength === 'weak' && (
                   <div
-                    title="证据不足：该会话缺少 Diff/浏览等可追溯证据（仍可查看应用时间线）"
+                    title={t('sessions.weakEvidenceHint')}
                     className="mt-1 text-[10px] text-amber-500 flex items-center gap-1"
                   >
-                    <AlertTriangle size={10} /> 证据不足
+                    <AlertTriangle size={10} /> {t('sessions.weakEvidence')}
                   </div>
                 )}
               </div>
@@ -291,16 +293,16 @@ export default function SessionsView({
                   }}
                   className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
                 >
-                  返回列表
+                  {t('sessions.backToList')}
                 </button>
               </div>
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant={selectedSession.summary ? 'default' : 'secondary'}>
-                  {selectedSession.summary ? 'AI 分析' : '规则生成'}
+                  {selectedSession.summary ? t('sessions.aiAnalysis') : t('sessions.ruleGenerated')}
                 </Badge>
                 <Badge variant="outline">{selectedSession.time_range}</Badge>
               </div>
-              <h2 className="text-xl font-bold text-white">{selectedSession.category || '会话详情'}</h2>
+              <h2 className="text-xl font-bold text-white">{selectedSession.category || t('sessions.sessionDetail')}</h2>
               <p className="text-zinc-400 text-sm mt-2">{selectedSession.summary}</p>
             </div>
 
@@ -308,13 +310,13 @@ export default function SessionsView({
             <Tabs defaultValue="diffs" className="w-full">
               <TabsList className="w-full bg-zinc-900 border border-zinc-800 p-1">
                 <TabsTrigger value="diffs" className="flex-1 text-xs">
-                  <FileCode size={12} className="mr-1" /> 代码变更
+                  <FileCode size={12} className="mr-1" /> {t('sessions.codeChanges')}
                 </TabsTrigger>
                 <TabsTrigger value="timeline" className="flex-1 text-xs">
-                  <Clock size={12} className="mr-1" /> 活动时间轴
+                  <Clock size={12} className="mr-1" /> {t('sessions.activityTimeline')}
                 </TabsTrigger>
                 <TabsTrigger value="apps" className="flex-1 text-xs">
-                  <MonitorSmartphone size={12} className="mr-1" /> 应用使用
+                  <MonitorSmartphone size={12} className="mr-1" /> {t('sessions.appUsage')}
                 </TabsTrigger>
               </TabsList>
 
@@ -343,12 +345,12 @@ export default function SessionsView({
                             <CollapsibleContent>
                               <div className="border-t border-zinc-800 p-3 bg-zinc-950">
                                 {loadingDiff === diff.id ? (
-                                  <div className="text-zinc-500 text-sm">加载中...</div>
+                                  <div className="text-zinc-500 text-sm">{t('common.loading')}</div>
                                 ) : (
                                   <>
                                     {(detail?.insight || diff.insight) && (
                                       <div className="mb-3 p-2 bg-indigo-500/10 border border-indigo-500/20 rounded text-sm text-indigo-200">
-                                        <span className="text-indigo-400 font-medium">AI 洞察：</span> {detail?.insight || diff.insight}
+                                        <span className="text-indigo-400 font-medium">{t('sessions.aiInsight')}</span> {detail?.insight || diff.insight}
                                       </div>
                                     )}
                                     {detail?.diff_content && (
@@ -369,7 +371,7 @@ export default function SessionsView({
                                     )}
                                     {diff.skills && diff.skills.length > 0 && (
                                       <div className="mt-2 flex gap-1 flex-wrap">
-                                        <span className="text-zinc-500 text-xs">涉及技能：</span>
+                                        <span className="text-zinc-500 text-xs">{t('sessions.relatedSkills')}</span>
                                         {diff.skills.map((skill: string) => (
                                           <span key={skill} className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded text-[10px]">{skill}</span>
                                         ))}
@@ -385,14 +387,14 @@ export default function SessionsView({
                     })}
                   </div>
                 ) : (
-                  <div className="text-zinc-500 text-sm italic text-center py-8">无 Diff 记录</div>
+                  <div className="text-zinc-500 text-sm italic text-center py-8">{t('sessions.noDiffRecords')}</div>
                 )}
               </TabsContent>
 
               {/* 活动时间轴 */}
               <TabsContent value="timeline" className="mt-4">
                 {loadingEvents ? (
-                  <div className="text-zinc-500 text-sm text-center py-8">加载中...</div>
+                  <div className="text-zinc-500 text-sm text-center py-8">{t('common.loading')}</div>
                 ) : windowEvents.length > 0 ? (
                   <div className="space-y-1">
                     {windowEvents.map((evt, idx) => (
@@ -401,17 +403,17 @@ export default function SessionsView({
                         <MonitorSmartphone size={12} className="text-zinc-500" />
                         <span className="text-zinc-300 truncate flex-1">{evt.app_name}</span>
                         <span className="text-xs text-zinc-500 truncate max-w-[150px]">{evt.title}</span>
-                        {evt.duration > 0 && <span className="text-xs text-zinc-600">{Math.round(evt.duration / 60)}分钟</span>}
+                        {evt.duration > 0 && <span className="text-xs text-zinc-600">{Math.round(evt.duration / 60)}{t('common.minutes')}</span>}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-zinc-500 text-sm italic text-center py-8">无窗口事件记录</div>
+                  <div className="text-zinc-500 text-sm italic text-center py-8">{t('sessions.noWindowEvents')}</div>
                 )}
 
                 {selectedSession.browser && selectedSession.browser.length > 0 && (
                   <div className="mt-4">
-                    <h4 className="text-xs text-zinc-500 uppercase tracking-wider mb-2">浏览器活动</h4>
+                    <h4 className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{t('sessions.browserActivity')}</h4>
                     <div className="space-y-1">
                       {selectedSession.browser.slice(0, 20).map((evt, idx) => (
                         <div key={idx} className="flex items-center gap-3 p-2 bg-zinc-900 border border-zinc-800 rounded text-sm">
@@ -438,20 +440,20 @@ export default function SessionsView({
                           <div className="flex-1 text-sm text-zinc-400 text-right w-24">{app.app_name}</div>
                           <div className="flex-[3]"><Progress value={percent} className="h-2" /></div>
                           <div className="w-12 text-xs text-zinc-500">{percent}%</div>
-                          <div className="w-16 text-xs text-zinc-600 text-right">{Math.round(app.total_duration / 60)}分钟</div>
+                          <div className="w-16 text-xs text-zinc-600 text-right">{Math.round(app.total_duration / 60)}{t('common.minutes')}</div>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="text-zinc-500 text-sm italic text-center py-8">无应用使用数据</div>
+                  <div className="text-zinc-500 text-sm italic text-center py-8">{t('sessions.noAppUsageData')}</div>
                 )}
               </TabsContent>
             </Tabs>
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-zinc-500">
-            选择一个会话查看详情
+            {t('sessions.selectSession')}
           </div>
         )}
       </div>

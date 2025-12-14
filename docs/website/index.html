@@ -116,21 +116,21 @@
                         </linearGradient>
                     </defs>
                 </svg>
-                <span class="font-bold text-lg tracking-tight text-white">复盘镜</span>
+                <span class="font-bold text-lg tracking-tight text-white" data-i18n="nav.brand">复盘镜</span>
                 <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700">v0.2</span>
             </div>
             <div class="flex items-center gap-6">
                 <!-- Logic: 'Features' only scrolls if on home view, otherwise switches to home -->
-                <button onclick="handleNavClick('features')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">特性</button>
-                <button onclick="switchView('docs', 'privacy')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">隐私</button>
-                <button onclick="switchView('docs', 'overview')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">文档</button>
+                <button onclick="handleNavClick('features')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block" data-i18n="nav.features">特性</button>
+                <button onclick="switchView('docs', 'privacy')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block" data-i18n="nav.privacy">隐私</button>
+                <button onclick="switchView('docs', 'overview')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block" data-i18n="nav.docs">文档</button>
                 <a href="https://github.com/yuqie6/WorkMirror" target="_blank" rel="noopener noreferrer" class="text-zinc-400 hover:text-white transition-colors">
                     <!-- Fixed GitHub Icon (Solid Octocat) -->
                     <svg height="20" viewBox="0 0 16 16" version="1.1" width="20" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
                 </a>
                 <!-- Language Switch -->
                 <button id="lang-switch" onclick="toggleLanguage()" class="px-2 py-1 text-sm text-zinc-400 hover:text-white transition-colors rounded hover:bg-zinc-800 font-medium">EN</button>
-                <a href="https://github.com/yuqie6/WorkMirror/releases" target="_blank" rel="noopener noreferrer" class="bg-white text-zinc-950 px-4 py-2 rounded font-medium text-sm hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]">下载 Windows 版</a>
+                <a href="https://github.com/yuqie6/WorkMirror/releases" target="_blank" rel="noopener noreferrer" class="bg-white text-zinc-950 px-4 py-2 rounded font-medium text-sm hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]" data-i18n="nav.download">下载 Windows 版</a>
             </div>
         </div>
     </nav>
@@ -145,25 +145,25 @@
             <div class="max-w-7xl mx-auto px-6 relative z-10 flex flex-col items-center text-center">
                 <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 mb-8 animate-fade-in">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span class="text-xs text-zinc-400 font-medium">Local-first & Privacy by default</span>
+                    <span class="text-xs text-zinc-400 font-medium" data-i18n="hero.tagline">Local-first & Privacy by default</span>
                 </div>
 
                 <h1 class="text-5xl md:text-7xl font-bold text-white tracking-tight mb-6 max-w-4xl leading-tight animate-slide-up">
-                    每天自动复盘你的工作<br>
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">一键生成日报</span>
+                    <span data-i18n="hero.title1">每天自动复盘你的工作</span><br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400" data-i18n="hero.title2">一键生成日报</span>
                 </h1>
 
                 <p class="text-lg text-zinc-400 max-w-2xl mb-10 animate-slide-up" style="animation-delay: 0.1s;">
-                    复盘镜在后台自动记录你一天的工作痕迹，生成日报/周报与复盘总结。
-                    <span class="text-zinc-500">减少手写记录与回忆成本；每条结论都能点开回溯到来源证据；默认本地、可离线。</span>
+                    <span data-i18n="hero.desc">复盘镜在后台自动记录你一天的工作痕迹，生成日报/周报与复盘总结。</span>
+                    <span class="text-zinc-500" data-i18n="hero.desc2">减少手写记录与回忆成本；每条结论都能点开回溯到来源证据；默认本地、可离线。</span>
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-4 mb-20 animate-slide-up" style="animation-delay: 0.2s;">
                     <a href="https://github.com/yuqie6/WorkMirror/releases" target="_blank" rel="noopener noreferrer" class="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 group">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-y-0.5 transition-transform"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                        下载 Windows 版（Releases）
+                        <span data-i18n="hero.downloadBtn">下载 Windows 版（Releases）</span>
                     </a>
-                    <button onclick="switchView('docs', 'install')" class="px-8 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg font-medium transition-colors text-sm">
+                    <button onclick="switchView('docs', 'install')" class="px-8 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg font-medium transition-colors text-sm" data-i18n="hero.quickstart">
                         3 分钟上手
                     </button>
                 </div>
@@ -175,7 +175,7 @@
                         <div class="flex items-center gap-4">
                             <span class="font-bold text-white text-sm tracking-tight flex items-center gap-2">
                                 <div class="w-1 h-4 bg-indigo-500 rounded-full"></div>
-                                复盘镜
+                                <span data-i18n="mockup.brand">复盘镜</span>
                             </span>
                             <span class="text-[10px] text-zinc-500 font-mono">v0.2</span>
                         </div>
@@ -192,31 +192,31 @@
                             <div class="space-y-1">
                                 <div class="flex items-center gap-3 px-3 py-2 bg-zinc-800/50 text-white rounded-md text-sm font-medium border border-zinc-700/50">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-                                    仪表盘
+                                    <span data-i18n="mockup.dashboard">仪表盘</span>
                                 </div>
                                 <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                                    片段流
+                                    <span data-i18n="mockup.sessions">片段流</span>
                                 </div>
                                 <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                                    技能树
+                                    <span data-i18n="mockup.skills">技能树</span>
                                 </div>
                                 <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                                    报告
+                                    <span data-i18n="mockup.reports">报告</span>
                                 </div>
                                 <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                                    系统诊断
+                                    <span data-i18n="mockup.diagnostics">系统诊断</span>
                                 </div>
                             </div>
 
                             <!-- Bottom System Status (Matches Screenshot) -->
                             <div class="border-t border-zinc-800 pt-4 mt-auto">
                                 <div class="text-[10px] text-zinc-500 mb-2 flex justify-between">
-                                    <span>系统健康</span>
-                                    <span class="font-mono">心跳: 1s</span>
+                                    <span data-i18n="mockup.systemHealth">系统健康</span>
+                                    <span class="font-mono"><span data-i18n="mockup.heartbeat">心跳</span>: 1s</span>
                                 </div>
                                 <div class="flex gap-3 text-[10px] font-mono mb-4">
                                     <span class="flex items-center gap-1 text-zinc-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> WIN</span>
@@ -225,7 +225,7 @@
                                 </div>
                                 <div class="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 text-sm cursor-pointer">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                                    设置
+                                    <span data-i18n="mockup.settings">设置</span>
                                 </div>
                             </div>
                         </div>
@@ -234,10 +234,10 @@
                         <div class="col-span-10 bg-zinc-950 p-6 overflow-hidden">
                             <!-- Header Line -->
                             <div class="flex justify-between items-center mb-6">
-                                <h2 class="text-sm font-bold text-white">仪表盘</h2>
+                                <h2 class="text-sm font-bold text-white" data-i18n="mockup.dashboardTitle">仪表盘</h2>
                                 <div class="flex gap-3">
                                     <div class="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-500 font-mono flex items-center gap-2">
-                                        ⌘K 搜索证据...
+                                        <span data-i18n="mockup.searchEvidence">⌘K 搜索证据...</span>
                                     </div>
                                     <div class="w-6 h-6 rounded bg-indigo-500"></div>
                                 </div>
@@ -247,25 +247,25 @@
                             <div class="grid grid-cols-3 gap-4 mb-4">
                                 <!-- Card 1: Today Sessions -->
                                 <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
-                                    <div class="text-xs text-zinc-400 mb-2">今日工作片段</div>
+                                    <div class="text-xs text-zinc-400 mb-2" data-i18n="mockup.todaySessions">今日工作片段</div>
                                     <div class="flex items-baseline gap-2 mb-2">
                                         <span class="text-4xl font-bold text-white">57</span>
-                                        <span class="text-xs text-zinc-500">/ 30天共 0</span>
+                                        <span class="text-xs text-zinc-500" data-i18n="mockup.thirtyDayTotal">/ 30天共 0</span>
                                     </div>
-                                    <div class="text-xs text-zinc-500">30天代码变更: 791 次</div>
+                                    <div class="text-xs text-zinc-500"><span data-i18n="mockup.thirtyDayChanges">30天代码变更</span>: 791 <span data-i18n="mockup.times">次</span></div>
                                 </div>
                                 <!-- Card 2: Coverage -->
                                 <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
-                                    <div class="text-xs text-zinc-400 mb-2">证据覆盖率</div>
+                                    <div class="text-xs text-zinc-400 mb-2" data-i18n="mockup.evidenceCoverage">证据覆盖率</div>
                                     <div class="flex items-baseline gap-2 mb-2">
                                         <span class="text-4xl font-bold text-amber-500">61%</span>
-                                        <span class="text-xs text-zinc-500">中等</span>
+                                        <span class="text-xs text-zinc-500" data-i18n="mockup.medium">中等</span>
                                     </div>
                                     <div class="text-xs text-amber-500 mb-2 flex items-center gap-1">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
-                                        22 个弱证据片段
+                                        <span>22 <span data-i18n="mockup.weakEvidenceSessions">个弱证据片段</span></span>
                                     </div>
-                                    <div class="text-[10px] text-zinc-600">24h: 57 片段 | 有Diff: 35 | 有浏览: 0</div>
+                                    <div class="text-[10px] text-zinc-600">24h: 57 <span data-i18n="mockup.sessions2">片段</span> | <span data-i18n="mockup.withDiff">有Diff</span>: 35 | <span data-i18n="mockup.withBrowser">有浏览</span>: 0</div>
                                 </div>
                                 <!-- Card 3: Focus Distribution -->
                                 <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5 flex items-center gap-4">
@@ -274,17 +274,17 @@
                                         <div class="w-10 h-10 bg-zinc-900 rounded-full"></div>
                                     </div>
                                     <div class="space-y-1 text-[10px] text-zinc-400 flex-1">
-                                        <div class="text-xs text-zinc-400 mb-1">专注分布</div>
+                                        <div class="text-xs text-zinc-400 mb-1" data-i18n="mockup.focusDistribution">专注分布</div>
                                         <div class="flex justify-between">
-                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Coding</span>
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> <span data-i18n="mockup.coding">Coding</span></span>
                                             <span class="font-mono">58%</span>
                                         </div>
                                         <div class="flex justify-between">
-                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> Reading</span>
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> <span data-i18n="mockup.reading">Reading</span></span>
                                             <span class="font-mono">24%</span>
                                         </div>
                                         <div class="flex justify-between">
-                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Meeting</span>
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> <span data-i18n="mockup.meeting">Meeting</span></span>
                                             <span class="font-mono">18%</span>
                                         </div>
                                     </div>
@@ -298,8 +298,8 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                                     </div>
                                     <div>
-                                        <h3 class="text-indigo-100 font-bold text-sm">每日总结已生成</h3>
-                                        <p class="text-xs text-indigo-300/70">查看今日自动生成的工作回顾</p>
+                                        <h3 class="text-indigo-100 font-bold text-sm" data-i18n="mockup.dailySummaryReady">每日总结已生成</h3>
+                                        <p class="text-xs text-indigo-300/70" data-i18n="mockup.viewTodaySummary">查看今日自动生成的工作回顾</p>
                                     </div>
                                 </div>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-400"><line x1="5" x2="19" y1="12" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -308,8 +308,8 @@
                             <!-- Bottom Heatmap -->
                             <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
                                 <div class="flex justify-between items-end mb-4">
-                                    <div class="text-xs text-zinc-400 font-bold">活动热力图</div>
-                                    <div class="text-[10px] text-zinc-600">最近 30 天</div>
+                                    <div class="text-xs text-zinc-400 font-bold" data-i18n="mockup.activityHeatmap">活动热力图</div>
+                                    <div class="text-[10px] text-zinc-600" data-i18n="mockup.last30Days">最近 30 天</div>
                                 </div>
                                 <div class="flex gap-1.5 flex-wrap opacity-50">
                                     <!-- Fake Heatmap Boxes -->
@@ -320,8 +320,8 @@
                                     </script>
                                 </div>
                                 <div class="flex justify-between text-[10px] text-zinc-600 mt-2">
-                                    <span>30天前</span>
-                                    <span>今天</span>
+                                    <span data-i18n="mockup.thirtyDaysAgo">30天前</span>
+                                    <span data-i18n="mockup.today">今天</span>
                                 </div>
                             </div>
 
@@ -334,17 +334,17 @@
         <!-- Features Grid (Bento) -->
         <section id="features" class="py-24 bg-zinc-950 relative">
             <div class="max-w-7xl mx-auto px-6">
-                <h2 class="text-3xl font-bold text-white mb-12 text-center">把 <span class="text-indigo-500">日报与复盘</span> 写得有据可查</h2>
-                
+                <h2 class="text-3xl font-bold text-white mb-12 text-center"><span data-i18n="features.title1">把 </span><span class="text-indigo-500" data-i18n="features.title2">日报与复盘</span><span data-i18n="features.title3"> 写得有据可查</span></h2>
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <!-- Card 1: Daily/Weekly -->
                     <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-indigo-500/30 transition-colors group">
                         <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-6 text-indigo-500 group-hover:scale-110 transition-transform">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-3">自动日报/周报与复盘</h3>
-                        <p class="text-zinc-400 leading-relaxed">
-                            不靠记忆拼凑“今天做了什么”。系统会把一天拆成多个工作片段并生成摘要，也支持按周/周期聚合回顾，帮助你快速回看投入、成果与变化。
+                        <h3 class="text-xl font-bold text-white mb-3" data-i18n="feature1.title">自动日报/周报与复盘</h3>
+                        <p class="text-zinc-400 leading-relaxed" data-i18n="feature1.desc">
+                            不靠记忆拼凑"今天做了什么"。系统会把一天拆成多个工作片段并生成摘要，也支持按周/周期聚合回顾，帮助你快速回看投入、成果与变化。
                         </p>
                     </div>
 
@@ -353,9 +353,9 @@
                         <div class="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center mb-6 text-emerald-500 group-hover:scale-110 transition-transform">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-3">每条结论都能回溯</h3>
-                        <p class="text-zinc-400 leading-relaxed">
-                            不是“凭感觉”的总结。你可以点开看到每个工作片段的证据覆盖率与明细（代码变更、窗口行为、浏览历史等），把复盘变得可验证。
+                        <h3 class="text-xl font-bold text-white mb-3" data-i18n="feature2.title">每条结论都能回溯</h3>
+                        <p class="text-zinc-400 leading-relaxed" data-i18n="feature2.desc">
+                            不是"凭感觉"的总结。你可以点开看到每个工作片段的证据覆盖率与明细（代码变更、窗口行为、浏览历史等），把复盘变得可验证。
                         </p>
                     </div>
 
@@ -364,8 +364,8 @@
                         <div class="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center mb-6 text-amber-500 group-hover:scale-110 transition-transform">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-3">默认本地，离线也能用</h3>
-                        <p class="text-zinc-400 leading-relaxed">
+                        <h3 class="text-xl font-bold text-white mb-3" data-i18n="feature3.title">默认本地，离线也能用</h3>
+                        <p class="text-zinc-400 leading-relaxed" data-i18n="feature3.desc">
                             所有数据默认写入本地 SQLite；本地服务仅监听 <span class="font-mono text-zinc-300">127.0.0.1</span>。不配 AI Key 也能生成规则版摘要；配置 AI 后再获得更强的语义化总结与建议。
                         </p>
                     </div>
@@ -378,23 +378,23 @@
             <div class="max-w-5xl mx-auto px-6">
                 <div class="flex flex-col md:flex-row gap-12 items-center">
                     <div class="flex-1">
-                        <h2 class="text-3xl font-bold text-white mb-6">为 <span class="font-mono text-indigo-400">Windows</span> 工程师打造</h2>
+                        <h2 class="text-3xl font-bold text-white mb-6"><span data-i18n="tech.title">为 </span><span class="font-mono text-indigo-400">Windows</span><span data-i18n="tech.titleSuffix"> 工程师打造</span></h2>
                         <ul class="space-y-4">
                             <li class="flex items-start gap-3">
                                 <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300"><strong>系统托盘常驻:</strong> 极低资源占用，静默运行于后台。</span>
+                                <span class="text-zinc-300" data-i18n="tech1"><strong>系统托盘常驻:</strong> 极低资源占用，静默运行于后台。</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300"><strong>Git Diff 采集:</strong> 监听你配置的项目目录，捕获保存到磁盘的变更（无需 Commit）。</span>
+                                <span class="text-zinc-300" data-i18n="tech2"><strong>Git Diff 采集:</strong> 监听你配置的项目目录，捕获保存到磁盘的变更（无需 Commit）。</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300"><strong>本地 API + SSE:</strong> 内置本地 HTTP Server（随机端口），UI 与状态页实时刷新，便于二次集成。</span>
+                                <span class="text-zinc-300" data-i18n="tech3"><strong>本地 API + SSE:</strong> 内置本地 HTTP Server（随机端口），UI 与状态页实时刷新，便于二次集成。</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300"><strong>拒绝沉默失败:</strong> 内置状态页与诊断包导出，空态/异常会告诉你缺口在哪一层，以及下一步怎么修。</span>
+                                <span class="text-zinc-300" data-i18n="tech4"><strong>拒绝沉默失败:</strong> 内置状态页与诊断包导出，空态/异常会告诉你缺口在哪一层，以及下一步怎么修。</span>
                             </li>
                         </ul>
                     </div>
@@ -432,34 +432,34 @@
         <div class="flex max-w-7xl mx-auto">
             <!-- Sidebar -->
 	            <aside class="w-64 fixed h-[calc(100vh-4rem)] overflow-y-auto border-r border-zinc-800 bg-zinc-950 p-6 hidden lg:block">
-	                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">使用指南</div>
+	                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4" data-i18n="docs.userGuide">使用指南</div>
 	                <div class="space-y-1 mb-8">
-	                    <button onclick="showDoc('overview')" id="nav-overview" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">了解复盘镜</button>
-	                    <button onclick="showDoc('architecture')" id="nav-architecture" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">工作原理（高级）</button>
-	                    <button onclick="showDoc('install')" id="nav-install" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">快速开始</button>
-	                    <button onclick="showDoc('config')" id="nav-config" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">设置与隐私</button>
-	                    <button onclick="showDoc('api')" id="nav-api" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">本地接口（高级）</button>
-	                    <button onclick="showDoc('faq')" id="nav-faq" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">常见问题</button>
+	                    <button onclick="showDoc('overview')" id="nav-overview" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors" data-i18n="docs.overview">了解复盘镜</button>
+	                    <button onclick="showDoc('architecture')" id="nav-architecture" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors" data-i18n="docs.architecture">工作原理（高级）</button>
+	                    <button onclick="showDoc('install')" id="nav-install" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors" data-i18n="docs.install">快速开始</button>
+	                    <button onclick="showDoc('config')" id="nav-config" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors" data-i18n="docs.config">设置与隐私</button>
+	                    <button onclick="showDoc('api')" id="nav-api" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors" data-i18n="docs.api">本地接口（高级）</button>
+	                    <button onclick="showDoc('faq')" id="nav-faq" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors" data-i18n="docs.faq">常见问题</button>
 	                </div>
 
-                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Legal</div>
+                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4" data-i18n="docs.legal">Legal</div>
                 <div class="space-y-1">
-                    <button onclick="showDoc('privacy')" id="nav-privacy" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">隐私策略</button>
-                    <button onclick="showDoc('terms')" id="nav-terms" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">服务条款</button>
+                    <button onclick="showDoc('privacy')" id="nav-privacy" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors" data-i18n="docs.privacyPolicy">隐私策略</button>
+                    <button onclick="showDoc('terms')" id="nav-terms" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors" data-i18n="docs.terms">服务条款</button>
                 </div>
             </aside>
 
             <!-- Mobile Nav Toggle (Visible only on small screens) -->
 	            <div class="lg:hidden p-4 border-b border-zinc-800 bg-zinc-950 w-full sticky top-16 z-40">
-	                <select onchange="showDoc(this.value)" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded p-2 text-sm">
-	                    <option value="overview">了解复盘镜</option>
-	                    <option value="architecture">工作原理（高级）</option>
-	                    <option value="install">快速开始</option>
-	                    <option value="config">设置与隐私</option>
-	                    <option value="api">本地接口（高级）</option>
-	                    <option value="faq">常见问题</option>
-	                    <option value="privacy">隐私策略</option>
-	                    <option value="terms">服务条款</option>
+	                <select onchange="showDoc(this.value)" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded p-2 text-sm" id="mobile-doc-select">
+	                    <option value="overview" data-i18n="docs.overview">了解复盘镜</option>
+	                    <option value="architecture" data-i18n="docs.architecture">工作原理（高级）</option>
+	                    <option value="install" data-i18n="docs.install">快速开始</option>
+	                    <option value="config" data-i18n="docs.config">设置与隐私</option>
+	                    <option value="api" data-i18n="docs.api">本地接口（高级）</option>
+	                    <option value="faq" data-i18n="docs.faq">常见问题</option>
+	                    <option value="privacy" data-i18n="docs.privacyPolicy">隐私策略</option>
+	                    <option value="terms" data-i18n="docs.terms">服务条款</option>
 	                </select>
 	            </div>
 
@@ -467,8 +467,8 @@
             <div class="flex-1 lg:pl-64 w-full">
                 <div class="max-w-3xl mx-auto px-6 py-12 prose">
                     
-	                    <!-- DOC: INSTALL -->
-	                    <article id="doc-overview" class="doc-content hidden">
+	                    <!-- DOC: OVERVIEW (ZH) -->
+	                    <article id="doc-overview" class="doc-content hidden" data-lang="zh">
 	                        <h1>了解复盘镜</h1>
 	                        <p>复盘镜（WorkMirror）是一个 Windows 托盘常驻的本地回顾工具：自动收集你电脑上的工作“痕迹”（窗口、代码变更、浏览历史），整理成可追溯的工作片段，并生成日报/周报与技能变化。</p>
 
@@ -506,7 +506,7 @@
 	                        </ul>
 	                    </article>
 
-	                    <article id="doc-architecture" class="doc-content hidden">
+	                    <article id="doc-architecture" class="doc-content hidden" data-lang="zh">
 	                        <h1>工作原理（高级）</h1>
 	                        <p>下面两张图展示复盘镜在本机如何运行，以及“证据 → 工作片段（会话） → 回顾/技能”的口径链路。</p>
 
@@ -629,7 +629,7 @@
 	                        <p>当数据为空/不可信时，优先从状态页定位缺口（采集/切分/分析/配置），并按提示执行：补配 watch paths、重建某天会话、导出诊断包等。</p>
 	                    </article>
 
-                    <article id="doc-install" class="doc-content">
+                    <article id="doc-install" class="doc-content" data-lang="zh">
                         <div class="flex items-center gap-2 text-emerald-500 text-sm font-medium mb-2">
                             <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 推荐阅读
                         </div>
@@ -656,8 +656,8 @@
                         <p>可选：启用浏览器采集（自动探测 Chrome/Edge History 路径），并保持隐私脱敏默认开启。</p>
                     </article>
 
-	                    <!-- DOC: API -->
-	                    <article id="doc-api" class="doc-content hidden">
+	                    <!-- DOC: API (ZH) -->
+	                    <article id="doc-api" class="doc-content hidden" data-lang="zh">
 	                        <h1>本地接口（高级）</h1>
 	                        <p>本地 HTTP 仅监听 <code>127.0.0.1</code>，端口随机分配（见 <code>./data/http_base_url.txt</code>）。</p>
 
@@ -675,8 +675,8 @@
                         </ul>
                     </article>
 
-                    <!-- DOC: FAQ -->
-                    <article id="doc-faq" class="doc-content hidden">
+                    <!-- DOC: FAQ (ZH) -->
+                    <article id="doc-faq" class="doc-content hidden" data-lang="zh">
                         <h1>常见问题</h1>
 
                         <h2>需要联网吗？</h2>
@@ -696,8 +696,8 @@
                         <p>在状态页使用“导出诊断包”，或访问 <code>/api/diagnostics/export</code> 下载脱敏后的 zip。</p>
                     </article>
 
-                    <!-- DOC: PRIVACY -->
-                    <article id="doc-privacy" class="doc-content hidden">
+                    <!-- DOC: PRIVACY (ZH) -->
+                    <article id="doc-privacy" class="doc-content hidden" data-lang="zh">
                         <h1>隐私策略</h1>
                         <p>最后更新：2025年12月</p>
                         <p>复盘镜遵循 <strong>Local-first &amp; Privacy by default</strong>：默认本地存储、默认脱敏、默认可离线。</p>
@@ -712,8 +712,8 @@
                         <p>不配置任何 Key 时，不会调用外部 AI。启用 AI 后，仅在需要生成语义摘要/建议时发送经脱敏的最小必要文本到你配置的提供商（例如 DeepSeek / SiliconFlow）。</p>
                     </article>
 
-                    <!-- DOC: CONFIG -->
-                    <article id="doc-config" class="doc-content hidden">
+                    <!-- DOC: CONFIG (ZH) -->
+                    <article id="doc-config" class="doc-content hidden" data-lang="zh">
                         <h1>设置与隐私</h1>
                         <p>配置文件为 YAML：默认路径 <code>./config/config.yaml</code>（首次启动会自动生成）。可以参考模板 <code>./config/config.yaml.example</code>。</p>
 
@@ -737,11 +737,292 @@ privacy:
                         <p>建议通过环境变量注入 Key（避免写入磁盘/提交仓库），例如 <code>DEEPSEEK_API_KEY</code>、<code>SILICONFLOW_API_KEY</code>。</p>
                     </article>
 
-                    <!-- DOC: TERMS -->
-                    <article id="doc-terms" class="doc-content hidden">
+                    <!-- DOC: TERMS (ZH) -->
+                    <article id="doc-terms" class="doc-content hidden" data-lang="zh">
                         <h1>服务条款</h1>
-                        <p>复盘镜（WorkMirror）是开源软件（MIT License），按“现状”提供，不对适用性或无缺陷作任何保证。你在本机使用时产生的任何数据与后果由你自行承担。</p>
+                        <p>复盘镜（WorkMirror）是开源软件（MIT License），按"现状"提供，不对适用性或无缺陷作任何保证。你在本机使用时产生的任何数据与后果由你自行承担。</p>
                         <p>本项目不提供云服务、不提供账号体系；本地 HTTP 服务仅用于本机 UI 与本地集成。</p>
+                    </article>
+
+                    <!-- ==================== ENGLISH DOCS ==================== -->
+
+                    <!-- DOC: OVERVIEW (EN) -->
+                    <article id="doc-overview-en" class="doc-content hidden" data-lang="en">
+                        <h1>About WorkMirror</h1>
+                        <p>WorkMirror is a Windows system tray resident local review tool: automatically collects your work "traces" (windows, code changes, browser history), organizes them into traceable work sessions, and generates daily/weekly reports and skill evolution.</p>
+
+                        <h2>What You Get</h2>
+                        <ul>
+                            <li>Daily/weekly reviews: Every conclusion can be clicked to see evidence coverage and details.</li>
+                            <li>Skill tree and capability evolution: Growth sources can be traced back to contributing work sessions.</li>
+                            <li>Works offline: Rule-based summaries and reviews work without AI Key.</li>
+                            <li>No need to contact the author when you see "blank page/no data": The status page tells you where the gap is and what to do next.</li>
+                        </ul>
+
+                        <h2>Privacy & Local-first</h2>
+                        <ul>
+                            <li>Data is stored in local SQLite by default (<code>./data/workmirror.db</code>), no cloud sync or account system.</li>
+                            <li>Local HTTP only listens on <code>127.0.0.1</code>, port randomly assigned.</li>
+                            <li>When AI is enabled, only the minimum necessary desensitized text is sent for generating summaries and suggestions.</li>
+                        </ul>
+
+                        <h2>How It Runs (v0.2)</h2>
+                        <ul>
+                            <li><code>workmirror.exe</code> (Windows 10/11 system tray resident)</li>
+                            <li>Built-in local HTTP Server (random port, only listens on <code>127.0.0.1</code>)</li>
+                            <li>Built-in Web UI (React/Vite SPA, prioritizes loading from <code>frontend/dist/</code> in the same directory, otherwise falls back to embedded resources)</li>
+                            <li>Port discovery: Written to <code>./data/http_base_url.txt</code></li>
+                        </ul>
+
+                        <h2>How It Works (Brief)</h2>
+                        <p>Collection → Generate work sessions (segmentation/aggregation/summary) → Aggregate to skills and reviews → Each conclusion can be clicked to view evidence chain.</p>
+
+                        <h2>What's Not Included</h2>
+                        <ul>
+                            <li>Cloud sync/account system/team collaboration</li>
+                            <li>macOS/Linux (at this stage)</li>
+                            <li>Complex goal management (TODO/OKR/habits)</li>
+                        </ul>
+                    </article>
+
+                    <!-- DOC: ARCHITECTURE (EN) -->
+                    <article id="doc-architecture-en" class="doc-content hidden" data-lang="en">
+                        <h1>How It Works (Advanced)</h1>
+                        <p>The diagrams below show how WorkMirror runs locally and the evidence → work sessions → reviews/skills pipeline.</p>
+
+                        <h2>Runtime Component Diagram</h2>
+                        <figure>
+                            <svg viewBox="0 0 900 360" width="100%" role="img" aria-label="WorkMirror Runtime Component Diagram">
+                                <rect x="20" y="20" width="520" height="320" rx="14" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="40" y="52" fill="#ffffff" font-size="18" font-family="Inter, sans-serif" font-weight="700">workmirror.exe (Windows System Tray Resident)</text>
+                                <text x="40" y="78" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Single process: Collection → DB → Session/Attribution → Local HTTP (API + SSE + UI)</text>
+
+                                <rect x="40" y="110" width="240" height="90" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="56" y="140" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Collectors</text>
+                                <text x="56" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Window / GitDiff / BrowserHistory</text>
+
+                                <rect x="300" y="110" width="220" height="90" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="316" y="140" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">SQLite (WAL)</text>
+                                <text x="316" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">repository + schema_version gate</text>
+
+                                <rect x="40" y="220" width="240" height="90" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="56" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Services</text>
+                                <text x="56" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Session Segmentation / Skill Attribution / Review</text>
+
+                                <rect x="300" y="220" width="220" height="90" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="316" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Local HTTP</text>
+                                <text x="316" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">JSON API + SSE + Static UI</text>
+
+                                <defs>
+                                    <marker id="arrow-en" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                                        <path d="M0,0 L0,6 L8,3 z" fill="#52525b"></path>
+                                    </marker>
+                                </defs>
+
+                                <path d="M280 155 L300 155" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+                                <path d="M160 220 L160 200" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+                                <path d="M280 265 L300 265" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+                                <path d="M410 200 L410 220" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+
+                                <rect x="580" y="110" width="300" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="600" y="140" fill="#ffffff" font-size="14" font-family="Inter, sans-serif" font-weight="600">Browser / WebView (Local UI)</text>
+                                <text x="600" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Reads local API + SSE, displays Dashboard/Sessions/Skills/Status</text>
+
+                                <path d="M520 265 L580 155" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+
+                                <rect x="580" y="220" width="300" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" stroke-dasharray="6 6" />
+                                <text x="600" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">UI Static Asset Loading Priority</text>
+                                <text x="600" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">frontend/dist/ in same dir → embedded internal/uiassets</text>
+                                <path d="M520 290 L580 265" stroke="#52525b" stroke-width="2" marker-end="url(#arrow-en)" />
+                            </svg>
+                            <figcaption>Fig: Single-process local architecture (only listens on 127.0.0.1), UI and API served from same origin.</figcaption>
+                        </figure>
+
+                        <h2>Evidence Chain Pipeline Diagram</h2>
+                        <figure>
+                            <svg viewBox="0 0 900 300" width="100%" role="img" aria-label="WorkMirror Evidence Chain Pipeline Diagram">
+                                <defs>
+                                    <marker id="arrow2-en" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                                        <path d="M0,0 L0,6 L8,3 z" fill="#52525b"></path>
+                                    </marker>
+                                </defs>
+
+                                <rect x="20" y="30" width="210" height="70" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="40" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Raw Evidence</text>
+                                <text x="40" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">WindowEvent / Diff / BrowserEvent</text>
+
+                                <rect x="260" y="30" width="200" height="70" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="280" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Sessionization</text>
+                                <text x="280" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Segmentation + Aggregation + Coverage</text>
+
+                                <rect x="490" y="30" width="190" height="70" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="510" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Sessions (Source of Truth)</text>
+                                <text x="510" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Unified input for all upstream</text>
+
+                                <rect x="710" y="20" width="170" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="728" y="52" fill="#ffffff" font-size="14" font-family="Inter, sans-serif" font-weight="600">Outputs</text>
+                                <text x="728" y="76" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Skill / Daily / Weekly</text>
+                                <text x="728" y="98" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Click to view evidence chain</text>
+
+                                <path d="M230 65 L260 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+                                <path d="M460 65 L490 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+                                <path d="M680 65 L710 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+
+                                <rect x="260" y="150" width="200" height="60" rx="12" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="280" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">Offline Rule-based (Default)</text>
+                                <text x="280" y="200" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Works without AI Key</text>
+
+                                <rect x="490" y="150" width="200" height="60" rx="12" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="510" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">AI Enhanced (Optional)</text>
+                                <text x="510" y="200" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Semantic summaries/tags (desensitized)</text>
+
+                                <path d="M360 100 L360 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+                                <path d="M590 100 L590 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+                                <path d="M460 180 L490 180" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+
+                                <rect x="20" y="150" width="210" height="120" rx="12" fill="#0b0b0f" stroke="#27272a" stroke-dasharray="6 6" />
+                                <text x="40" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">Observability / Diagnostics</text>
+                                <text x="40" y="204" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">/api/status</text>
+                                <text x="40" y="228" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">/api/diagnostics/export</text>
+                                <text x="40" y="252" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Rebuild sessions / Enrich semantics</text>
+                                <path d="M125 100 L125 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2-en)" />
+                            </svg>
+                            <figcaption>Fig: Sessions are the authoritative input; offline rules work by default, AI as optional enhancement; failure paths exposed via status and diagnostic actions.</figcaption>
+                        </figure>
+
+                        <details>
+                            <summary>Developers: Directory Structure (Go / React)</summary>
+                            <ul>
+                                <li><code>cmd/workmirror-agent/</code>: Windows Agent entry (tray, collectors, HTTP API/UI)</li>
+                                <li><code>internal/collector/</code>: Collectors (window/Diff/browser history)</li>
+                                <li><code>internal/server/</code>: Local HTTP Server (JSON API + SSE + static UI)</li>
+                                <li><code>internal/service/</code>: Session/Skill/review business logic</li>
+                                <li><code>internal/repository/</code>: SQLite data access and migration gate (<code>schema_version</code>)</li>
+                                <li><code>frontend/</code>: Frontend source (during development, use <code>VITE_API_TARGET</code> to point to local Agent)</li>
+                            </ul>
+                        </details>
+
+                        <h2>Pipeline Explanation</h2>
+                        <p>Upper-level skills/reviews don't count directly from raw data, but uniformly use sessions as input, ensuring "same numbers, same evidence chain".</p>
+
+                        <h2>Self-troubleshooting</h2>
+                        <p>When data is empty/unreliable, first locate the gap from the status page (collection/segmentation/analysis/config), and follow the prompts: add watch paths, rebuild sessions for a day, export diagnostic package, etc.</p>
+                    </article>
+
+                    <!-- DOC: INSTALL (EN) -->
+                    <article id="doc-install-en" class="doc-content hidden" data-lang="en">
+                        <div class="flex items-center gap-2 text-emerald-500 text-sm font-medium mb-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Recommended Reading
+                        </div>
+                        <h1>Quick Start</h1>
+                        <p>WorkMirror is a Windows system tray resident Agent + local Web UI. The goal is to let new users complete the loop in <strong>10 minutes</strong>: configure watch paths → see today's sessions → click to view evidence.</p>
+
+                        <h2>1. Get the Program</h2>
+                        <p>Recommended to download from GitHub Releases; or build from source (requires Go 1.25.4, Windows only).</p>
+                        <pre>go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\workmirror.exe .\cmd\workmirror-agent\</pre>
+                        <p>Note: The above command builds as GUI subsystem, no foreground console window will pop up when running.</p>
+
+                        <h2>2. Initialization</h2>
+                        <p>After first run, WorkMirror minimizes to system tray. Right-click the icon and select <strong>"Open Panel"</strong>.</p>
+                        <ul>
+                            <li>Default database: <code>./data/workmirror.db</code> (relative to executable directory)</li>
+                            <li>Local HTTP: Only listens on <code>127.0.0.1</code>, randomly assigned port</li>
+                            <li>Port discovery: Written to <code>./data/http_base_url.txt</code> on startup</li>
+                        </ul>
+                        <p>Recommended "portable distribution": One <code>workmirror.exe</code> + <code>config/</code> and <code>data/</code> in the same directory.</p>
+
+                        <h2>3. Configure Watch Directories</h2>
+                        <p>To enable Diff Collector, add your Git project directories (watch paths) in the settings page:</p>
+                        <pre>C:\Users\Dev\Projects\Go-Backend</pre>
+                        <p>Optional: Enable browser collection (auto-detect Chrome/Edge History path), and keep privacy desensitization enabled by default.</p>
+                    </article>
+
+                    <!-- DOC: API (EN) -->
+                    <article id="doc-api-en" class="doc-content hidden" data-lang="en">
+                        <h1>Local API (Advanced)</h1>
+                        <p>Local HTTP only listens on <code>127.0.0.1</code>, port randomly assigned (see <code>./data/http_base_url.txt</code>).</p>
+
+                        <h2>Status & Observability (P0)</h2>
+                        <ul>
+                            <li><code>GET /api/status</code>: Summary snapshot of collection/pipeline/AI/recent errors</li>
+                            <li><code>GET /api/events</code>: SSE (data changes/config changes events)</li>
+                        </ul>
+
+                        <h2>Maintenance Actions</h2>
+                        <ul>
+                            <li><code>POST /api/maintenance/sessions/rebuild</code>: Rebuild sessions by date</li>
+                            <li><code>POST /api/maintenance/sessions/enrich</code>: Enrich semantics by date (when AI enabled)</li>
+                            <li><code>GET /api/diagnostics/export</code>: Export desensitized diagnostic package (zip)</li>
+                        </ul>
+                    </article>
+
+                    <!-- DOC: FAQ (EN) -->
+                    <article id="doc-faq-en" class="doc-content hidden" data-lang="en">
+                        <h1>FAQ</h1>
+
+                        <h2>Do I need internet?</h2>
+                        <p>No. Without AI Key configured, WorkMirror generates session summaries and reviews using rule-based approach; with AI configured, external providers are only called when semantic summaries/suggestions are needed.</p>
+
+                        <h2>Why is the page empty/no data?</h2>
+                        <ul>
+                            <li>First check <code>/status</code> (or status page entry) for collection health and recent errors.</li>
+                            <li>Diff collection requires configuring <code>diff.watch_paths</code> (or select project directories in settings/onboarding).</li>
+                            <li>Browser collection depends on local History file path; check auto-detection results in settings and specify manually if needed.</li>
+                        </ul>
+
+                        <h2>Does it support macOS/Linux/mobile?</h2>
+                        <p>Currently only Windows 10/11 is supported, with no cloud sync or account system.</p>
+
+                        <h2>How to export diagnostic info?</h2>
+                        <p>Use "Export Diagnostic Package" on the status page, or access <code>/api/diagnostics/export</code> to download desensitized zip.</p>
+                    </article>
+
+                    <!-- DOC: PRIVACY (EN) -->
+                    <article id="doc-privacy-en" class="doc-content hidden" data-lang="en">
+                        <h1>Privacy Policy</h1>
+                        <p>Last updated: December 2025</p>
+                        <p>WorkMirror follows <strong>Local-first &amp; Privacy by default</strong>: local storage by default, desensitization by default, offline-capable by default.</p>
+
+                        <h2>Data Storage</h2>
+                        <p>Collected data (window events, Diff, browser history, etc.) is written to local SQLite database (default <code>./data/workmirror.db</code>). Local HTTP only listens on <code>127.0.0.1</code>, not exposed to LAN/public network.</p>
+
+                        <h2>Default Desensitization</h2>
+                        <p>Desensitization is enabled by default: URLs have query/fragment cleared, keeping only domain and "path exists" fact; window/browser titles have sensitive fragments replaced by rules. You can adjust <code>privacy.patterns</code> in config.</p>
+
+                        <h2>AI Processing</h2>
+                        <p>Without any Key configured, no external AI is called. With AI enabled, desensitized minimum necessary text is sent to your configured provider (e.g., DeepSeek / SiliconFlow) only when semantic summaries/suggestions are needed.</p>
+                    </article>
+
+                    <!-- DOC: CONFIG (EN) -->
+                    <article id="doc-config-en" class="doc-content hidden" data-lang="en">
+                        <h1>Settings & Privacy</h1>
+                        <p>Config file is YAML: default path <code>./config/config.yaml</code> (auto-generated on first startup). Refer to template <code>./config/config.yaml.example</code>.</p>
+
+                        <h2>You Probably Only Need to Change These</h2>
+                        <pre>diff:
+  enabled: true
+  watch_paths:
+    - "C:\\Users\\Dev\\Projects\\Go-Backend"
+
+browser:
+  enabled: true
+  history_path: "" # empty for auto-detect
+
+storage:
+  db_path: "./data/workmirror.db"
+
+privacy:
+  enabled: true</pre>
+
+                        <h2>AI Key & Environment Variables</h2>
+                        <p>Recommended to inject Key via environment variables (avoid writing to disk/committing to repo), e.g., <code>DEEPSEEK_API_KEY</code>, <code>SILICONFLOW_API_KEY</code>.</p>
+                    </article>
+
+                    <!-- DOC: TERMS (EN) -->
+                    <article id="doc-terms-en" class="doc-content hidden" data-lang="en">
+                        <h1>Terms of Service</h1>
+                        <p>WorkMirror is open-source software (MIT License), provided "as is" without any warranty of fitness or defect-free. Any data and consequences generated from your local use are your own responsibility.</p>
+                        <p>This project does not provide cloud services or account system; local HTTP service is only for local UI and local integration.</p>
                     </article>
 
                 </div>
@@ -759,15 +1040,15 @@ privacy:
                     <rect x="11" y="5" width="2" height="14" rx="1"/>
                     <path d="M11 7.5L6.5 9.5V14.5L11 16.5V7.5Z" />
                 </svg>
-                <span class="font-bold text-zinc-500">复盘镜</span>
+                <span class="font-bold text-zinc-500" data-i18n="footer.brand">复盘镜</span>
             </div>
-            <div class="text-sm text-zinc-500">
+            <div class="text-sm text-zinc-500" data-i18n="footer.copyright">
                 &copy; 2025 复盘镜（WorkMirror）. Built for Engineers.
             </div>
             <div class="flex gap-6">
-                <a href="#" onclick="switchView('docs', 'overview')" class="text-zinc-500 hover:text-white transition-colors">Documentation</a>
+                <a href="#" onclick="switchView('docs', 'overview')" class="text-zinc-500 hover:text-white transition-colors" data-i18n="footer.docs">Documentation</a>
                 <a href="https://github.com/yuqie6/WorkMirror" target="_blank" rel="noopener noreferrer" class="text-zinc-500 hover:text-white transition-colors">GitHub</a>
-                <a href="#" onclick="switchView('docs', 'privacy')" class="text-zinc-500 hover:text-white transition-colors">Privacy Policy</a>
+                <a href="#" onclick="switchView('docs', 'privacy')" class="text-zinc-500 hover:text-white transition-colors" data-i18n="footer.privacy">Privacy Policy</a>
             </div>
         </div>
     </footer>
@@ -815,12 +1096,24 @@ privacy:
         }
 
         // Internal Doc Router
+        let currentDocId = 'install'; // Track current doc for language switching
+
         function showDoc(docId) {
+            currentDocId = docId;
             // Hide all docs
             document.querySelectorAll('.doc-content').forEach(el => el.classList.add('hidden'));
-            // Show target
-            document.getElementById(`doc-${docId}`).classList.remove('hidden');
-            
+
+            // Determine which version to show based on current language
+            const targetId = currentLang === 'en' ? `doc-${docId}-en` : `doc-${docId}`;
+            const targetDoc = document.getElementById(targetId);
+
+            // Fallback to Chinese if English version doesn't exist
+            if (targetDoc) {
+                targetDoc.classList.remove('hidden');
+            } else {
+                document.getElementById(`doc-${docId}`).classList.remove('hidden');
+            }
+
             // Update Sidebar Active State
             document.querySelectorAll('[id^="nav-"]').forEach(el => el.classList.remove('nav-active'));
             const navBtn = document.getElementById(`nav-${docId}`);
@@ -832,11 +1125,13 @@ privacy:
         // ===========================================
         const translations = {
             zh: {
+                // Nav
                 'nav.brand': '复盘镜',
                 'nav.features': '特性',
                 'nav.privacy': '隐私',
                 'nav.docs': '文档',
                 'nav.download': '下载 Windows 版',
+                // Hero
                 'hero.tagline': 'Local-first & Privacy by default',
                 'hero.title1': '每天自动复盘你的工作',
                 'hero.title2': '一键生成日报',
@@ -844,28 +1139,80 @@ privacy:
                 'hero.desc2': '减少手写记录与回忆成本；每条结论都能点开回溯到来源证据；默认本地、可离线。',
                 'hero.downloadBtn': '下载 Windows 版（Releases）',
                 'hero.quickstart': '3 分钟上手',
+                // Mockup
+                'mockup.brand': '复盘镜',
+                'mockup.dashboard': '仪表盘',
+                'mockup.sessions': '片段流',
+                'mockup.skills': '技能树',
+                'mockup.reports': '报告',
+                'mockup.diagnostics': '系统诊断',
+                'mockup.systemHealth': '系统健康',
+                'mockup.heartbeat': '心跳',
+                'mockup.settings': '设置',
+                'mockup.dashboardTitle': '仪表盘',
+                'mockup.searchEvidence': '⌘K 搜索证据...',
+                'mockup.todaySessions': '今日工作片段',
+                'mockup.thirtyDayTotal': '/ 30天共 0',
+                'mockup.thirtyDayChanges': '30天代码变更',
+                'mockup.times': '次',
+                'mockup.evidenceCoverage': '证据覆盖率',
+                'mockup.medium': '中等',
+                'mockup.weakEvidenceSessions': '个弱证据片段',
+                'mockup.sessions2': '片段',
+                'mockup.withDiff': '有Diff',
+                'mockup.withBrowser': '有浏览',
+                'mockup.focusDistribution': '专注分布',
+                'mockup.coding': 'Coding',
+                'mockup.reading': 'Reading',
+                'mockup.meeting': 'Meeting',
+                'mockup.dailySummaryReady': '每日总结已生成',
+                'mockup.viewTodaySummary': '查看今日自动生成的工作回顾',
+                'mockup.activityHeatmap': '活动热力图',
+                'mockup.last30Days': '最近 30 天',
+                'mockup.thirtyDaysAgo': '30天前',
+                'mockup.today': '今天',
+                // Features
                 'features.title1': '把 ',
                 'features.title2': '日报与复盘',
                 'features.title3': ' 写得有据可查',
                 'feature1.title': '自动日报/周报与复盘',
-                'feature1.desc': '不靠记忆拼凑“今天做了什么”。系统会把一天拆成多个工作片段并生成摘要，也支持按周/周期聚合回顾，帮助你快速回看投入、成果与变化。',
+                'feature1.desc': '不靠记忆拼凑"今天做了什么"。系统会把一天拆成多个工作片段并生成摘要，也支持按周/周期聚合回顾，帮助你快速回看投入、成果与变化。',
                 'feature2.title': '每条结论都能回溯',
-                'feature2.desc': '不是“凭感觉”的总结。你可以点开看到每个工作片段的证据覆盖率与明细（代码变更、窗口行为、浏览历史等），把复盘变得可验证。',
+                'feature2.desc': '不是"凭感觉"的总结。你可以点开看到每个工作片段的证据覆盖率与明细（代码变更、窗口行为、浏览历史等），把复盘变得可验证。',
                 'feature3.title': '默认本地，离线也能用',
                 'feature3.desc': '所有数据默认写入本地 SQLite；本地服务仅监听 127.0.0.1。不配 AI Key 也能生成规则版摘要；配置 AI 后再获得更强的语义化总结与建议。',
-                'tech.title': '为 Windows 工程师打造',
-                'tech1': '系统托盘常驻: 极低资源占用，静默运行于后台。',
-                'tech2': 'Git Diff 采集: 监听你配置的项目目录，捕获保存到磁盘的变更（无需 Commit）。',
-                'tech3': '本地 API + SSE: 内置本地 HTTP Server（随机端口），UI 与状态页实时刷新，便于二次集成。',
-                'tech4': '拒绝沉默失败: 内置状态页与诊断包导出，空态/异常会告诉你缺口在哪一层，以及下一步怎么修。',
+                // Tech specs
+                'tech.title': '为 ',
+                'tech.titleSuffix': ' 工程师打造',
+                'tech1': '<strong>系统托盘常驻:</strong> 极低资源占用，静默运行于后台。',
+                'tech2': '<strong>Git Diff 采集:</strong> 监听你配置的项目目录，捕获保存到磁盘的变更（无需 Commit）。',
+                'tech3': '<strong>本地 API + SSE:</strong> 内置本地 HTTP Server（随机端口），UI 与状态页实时刷新，便于二次集成。',
+                'tech4': '<strong>拒绝沉默失败:</strong> 内置状态页与诊断包导出，空态/异常会告诉你缺口在哪一层，以及下一步怎么修。',
+                // Docs sidebar
+                'docs.userGuide': '使用指南',
+                'docs.overview': '了解复盘镜',
+                'docs.architecture': '工作原理（高级）',
+                'docs.install': '快速开始',
+                'docs.config': '设置与隐私',
+                'docs.api': '本地接口（高级）',
+                'docs.faq': '常见问题',
+                'docs.legal': 'Legal',
+                'docs.privacyPolicy': '隐私策略',
+                'docs.terms': '服务条款',
+                // Footer
+                'footer.brand': '复盘镜',
                 'footer.copyright': '© 2025 复盘镜（WorkMirror）. Built for Engineers.',
+                'footer.docs': '文档',
+                'footer.privacy': '隐私策略',
             },
             en: {
+                // Nav
                 'nav.brand': 'WorkMirror',
                 'nav.features': 'Features',
                 'nav.privacy': 'Privacy',
                 'nav.docs': 'Docs',
                 'nav.download': 'Download for Windows',
+                // Hero
                 'hero.tagline': 'Local-first & Privacy by default',
                 'hero.title1': 'Auto-review your daily work',
                 'hero.title2': 'One-click daily reports',
@@ -873,6 +1220,39 @@ privacy:
                 'hero.desc2': 'No more manual logging; every conclusion links back to evidence; local-first and offline-ready.',
                 'hero.downloadBtn': 'Download for Windows (Releases)',
                 'hero.quickstart': 'Get Started in 3 min',
+                // Mockup
+                'mockup.brand': 'WorkMirror',
+                'mockup.dashboard': 'Dashboard',
+                'mockup.sessions': 'Sessions',
+                'mockup.skills': 'Skills',
+                'mockup.reports': 'Reports',
+                'mockup.diagnostics': 'Diagnostics',
+                'mockup.systemHealth': 'System Health',
+                'mockup.heartbeat': 'Heartbeat',
+                'mockup.settings': 'Settings',
+                'mockup.dashboardTitle': 'Dashboard',
+                'mockup.searchEvidence': '⌘K Search evidence...',
+                'mockup.todaySessions': "Today's Sessions",
+                'mockup.thirtyDayTotal': '/ 30d total 0',
+                'mockup.thirtyDayChanges': '30-day code changes',
+                'mockup.times': 'times',
+                'mockup.evidenceCoverage': 'Evidence Coverage',
+                'mockup.medium': 'Medium',
+                'mockup.weakEvidenceSessions': 'weak evidence sessions',
+                'mockup.sessions2': 'sessions',
+                'mockup.withDiff': 'w/ Diff',
+                'mockup.withBrowser': 'w/ Browser',
+                'mockup.focusDistribution': 'Focus Distribution',
+                'mockup.coding': 'Coding',
+                'mockup.reading': 'Reading',
+                'mockup.meeting': 'Meeting',
+                'mockup.dailySummaryReady': 'Daily Summary Ready',
+                'mockup.viewTodaySummary': "View today's auto-generated work review",
+                'mockup.activityHeatmap': 'Activity Heatmap',
+                'mockup.last30Days': 'Last 30 days',
+                'mockup.thirtyDaysAgo': '30 days ago',
+                'mockup.today': 'Today',
+                // Features
                 'features.title1': 'Write ',
                 'features.title2': 'daily reports',
                 'features.title3': ' with traceable evidence',
@@ -882,12 +1262,29 @@ privacy:
                 'feature2.desc': 'Not a "gut-feeling" summary. Click to see evidence coverage and details for each session (code changes, window behavior, browsing history, etc.), making reviews verifiable.',
                 'feature3.title': 'Local-first, Works Offline',
                 'feature3.desc': 'All data stored in local SQLite; local service listens only on 127.0.0.1. Rule-based summaries work without AI Key; configure AI for enhanced semantic summaries and suggestions.',
-                'tech.title': 'Built for Windows Engineers',
-                'tech1': 'System Tray Resident: Minimal resource usage, runs silently in background.',
-                'tech2': 'Git Diff Collection: Monitors your configured project directories, captures disk-saved changes (no commit needed).',
-                'tech3': 'Local API + SSE: Built-in local HTTP Server (random port), real-time UI and status updates, easy integration.',
-                'tech4': 'No Silent Failures: Built-in status page and diagnostic export; empty states/errors tell you where the gap is and how to fix it.',
+                // Tech specs
+                'tech.title': 'Built for ',
+                'tech.titleSuffix': ' Engineers',
+                'tech1': '<strong>System Tray Resident:</strong> Minimal resource usage, runs silently in background.',
+                'tech2': '<strong>Git Diff Collection:</strong> Monitors your configured project directories, captures disk-saved changes (no commit needed).',
+                'tech3': '<strong>Local API + SSE:</strong> Built-in local HTTP Server (random port), real-time UI and status updates, easy integration.',
+                'tech4': '<strong>No Silent Failures:</strong> Built-in status page and diagnostic export; empty states/errors tell you where the gap is and how to fix it.',
+                // Docs sidebar
+                'docs.userGuide': 'User Guide',
+                'docs.overview': 'About WorkMirror',
+                'docs.architecture': 'How It Works (Advanced)',
+                'docs.install': 'Quick Start',
+                'docs.config': 'Settings & Privacy',
+                'docs.api': 'Local API (Advanced)',
+                'docs.faq': 'FAQ',
+                'docs.legal': 'Legal',
+                'docs.privacyPolicy': 'Privacy Policy',
+                'docs.terms': 'Terms of Service',
+                // Footer
+                'footer.brand': 'WorkMirror',
                 'footer.copyright': '© 2025 WorkMirror. Built for Engineers.',
+                'footer.docs': 'Documentation',
+                'footer.privacy': 'Privacy Policy',
             }
         };
 
@@ -910,11 +1307,21 @@ privacy:
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (t[key]) {
-                    el.textContent = t[key];
+                    // For elements with HTML content (like tech specs), use innerHTML
+                    if (key.startsWith('tech') && key !== 'tech.title' && key !== 'tech.titleSuffix') {
+                        el.innerHTML = t[key];
+                    } else {
+                        el.textContent = t[key];
+                    }
                 }
             });
             // Update html lang attribute
             document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+
+            // Refresh current doc view if in docs view
+            if (currentDocId && !document.getElementById('view-docs').classList.contains('hidden')) {
+                showDoc(currentDocId);
+            }
         }
 
         // Initialize on page load

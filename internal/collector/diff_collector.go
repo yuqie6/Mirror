@@ -356,8 +356,13 @@ func (c *DiffCollector) gitDiff(ctx context.Context, repoRoot, filePath string) 
 		}
 	}
 
+	// Windows 下将路径转换为正斜杠（Git 兼容格式）
+	relPath = filepath.ToSlash(relPath)
+
 	checkCmd := exec.CommandContext(timeoutCtx, "git", "ls-files", "--", relPath)
 	checkCmd.Dir = dir
+	// 设置 UTF-8 环境变量，解决中文路径问题
+	checkCmd.Env = append(os.Environ(), "LC_ALL=C.UTF-8", "LANG=C.UTF-8")
 	hideWindow(checkCmd)
 	checkOutput, _ := checkCmd.Output()
 
@@ -384,12 +389,14 @@ func (c *DiffCollector) gitDiff(ctx context.Context, repoRoot, filePath string) 
 	// 获取未暂存的改动
 	cmd := exec.CommandContext(timeoutCtx, "git", "diff", "--", relPath)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "LC_ALL=C.UTF-8", "LANG=C.UTF-8")
 	hideWindow(cmd)
 	output, err := cmd.Output()
 	if err != nil {
 		// 尝试获取已暂存的改动
-		cmd = exec.Command("git", "diff", "--cached", "--", filePath)
+		cmd = exec.CommandContext(timeoutCtx, "git", "diff", "--cached", "--", relPath)
 		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "LC_ALL=C.UTF-8", "LANG=C.UTF-8")
 		hideWindow(cmd)
 		output, err = cmd.Output()
 		if err != nil {
