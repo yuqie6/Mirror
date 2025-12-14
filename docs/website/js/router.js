@@ -14,6 +14,25 @@ function toggleMobileMenu() {
     }
 }
 
+// Wrapper functions for mobile menu navigation
+function handleNavAndCloseMobile(sectionId) {
+    try {
+        handleNavClick(sectionId);
+        toggleMobileMenu();
+    } catch (error) {
+        console.error('Error navigating:', error);
+    }
+}
+
+function switchViewAndCloseMobile(viewName, docId) {
+    try {
+        switchView(viewName, docId);
+        toggleMobileMenu();
+    } catch (error) {
+        console.error('Error switching view:', error);
+    }
+}
+
 // 更新 URL 参数（不刷新页面）
 function updateUrlParams(params) {
     const url = new URL(window.location);
