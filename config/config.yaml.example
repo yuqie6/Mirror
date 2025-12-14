@@ -4,6 +4,7 @@ app:
   name: "workmirror-agent"
   version: "0.1.0"
   log_level: "info" # debug, info, warn, error
+  language: "zh" # 语言偏好：zh (中文) / en (English)，影响 AI prompt 和报告生成语言
   # 日志落盘路径（默认会写入用户目录，无需管理员权限）；相对路径以可执行文件目录为基准。
   # 如需仅输出到 stdout，请不要配置该字段。
   # log_path: "./logs/mirror.log"

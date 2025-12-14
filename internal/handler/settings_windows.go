@@ -39,6 +39,8 @@ func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, &dto.SettingsDTO{
 		ConfigPath: path,
 
+		Language: cfg.App.Language,
+
 		DeepSeekAPIKeySet: cfg.AI.DeepSeek.APIKey != "",
 		DeepSeekBaseURL:   cfg.AI.DeepSeek.BaseURL,
 		DeepSeekModel:     cfg.AI.DeepSeek.Model,
@@ -78,6 +80,12 @@ func (a *API) saveSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	next := *cur
+	if req.Language != nil {
+		lang := strings.ToLower(strings.TrimSpace(*req.Language))
+		if lang == "en" || lang == "zh" {
+			next.App.Language = lang
+		}
+	}
 	if req.DeepSeekAPIKey != nil {
 		next.AI.DeepSeek.APIKey = *req.DeepSeekAPIKey
 	}

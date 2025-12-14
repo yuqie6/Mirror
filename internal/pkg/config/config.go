@@ -28,6 +28,7 @@ type AppConfig struct {
 	Version  string `mapstructure:"version"`
 	LogLevel string `mapstructure:"log_level"`
 	LogPath  string `mapstructure:"log_path"`
+	Language string `mapstructure:"language"` // 用户语言偏好：zh, en
 }
 
 // CollectorConfig 采集器配置
@@ -155,6 +156,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.version", "0.1.0")
 	v.SetDefault("app.log_level", "info")
 	v.SetDefault("app.log_path", "./logs/workmirror.log")
+	v.SetDefault("app.language", "zh") // 默认中文，支持 zh/en
 
 	// Collector
 	v.SetDefault("collector.poll_interval_ms", 500)

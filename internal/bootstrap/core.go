@@ -85,7 +85,7 @@ func NewCore(cfgPath string) (*Core, error) {
 	})
 	var analyzer service.Analyzer
 	if c.Clients.DeepSeek != nil && c.Clients.DeepSeek.IsConfigured() {
-		analyzer = ai.NewDiffAnalyzer(c.Clients.DeepSeek)
+		analyzer = ai.NewDiffAnalyzer(c.Clients.DeepSeek, cfg.App.Language)
 	}
 
 	// Services

@@ -9,43 +9,47 @@ import { useTranslation } from '@/lib/i18n';
 // 匹配后端 dto/httpapi.go SettingsDTO 完整字段
 interface SettingsData {
   config_path: string;
-  
+
+  language: string; // AI Prompt 语言偏好：zh/en
+
   deepseek_api_key_set: boolean;
   deepseek_base_url: string;
   deepseek_model: string;
-  
+
   siliconflow_api_key_set: boolean;
   siliconflow_base_url: string;
   siliconflow_embedding_model: string;
   siliconflow_reranker_model: string;
-  
+
   db_path: string;
   diff_enabled: boolean;
   diff_watch_paths: string[];
   browser_enabled: boolean;
   browser_history_path: string;
-  
+
   privacy_enabled: boolean;
   privacy_patterns: string[];
 }
 
 // 匹配后端 SaveSettingsRequestDTO
 interface SaveSettingsRequest {
+  language?: string; // AI Prompt 语言偏好：zh/en
+
   deepseek_api_key?: string;
   deepseek_base_url?: string;
   deepseek_model?: string;
-  
+
   siliconflow_api_key?: string;
   siliconflow_base_url?: string;
   siliconflow_embedding_model?: string;
   siliconflow_reranker_model?: string;
-  
+
   db_path?: string;
   diff_enabled?: boolean;
   diff_watch_paths?: string[];
   browser_enabled?: boolean;
   browser_history_path?: string;
-  
+
   privacy_enabled?: boolean;
   privacy_patterns?: string[];
 }
@@ -192,6 +196,47 @@ export default function SettingsView() {
             </CardContent>
           </Card>
         )}
+
+      {/* AI Prompt 语言偏好 */}
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
+            <SettingsIcon size={18} /> AI Prompt {t('language.switch')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="text-sm text-zinc-300">AI 生成语言</div>
+              <div className="text-xs text-zinc-500">
+                控制日报、周报、会话摘要等 AI 生成内容的语言
+              </div>
+            </div>
+            <div className="flex gap-2 bg-zinc-950 p-1 rounded-lg border border-zinc-800">
+              <button
+                onClick={() => updatePending('language', 'zh')}
+                className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                  (pendingChanges.language ?? settings.language) === 'zh'
+                    ? 'bg-zinc-800 text-white shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                {t('language.zh')}
+              </button>
+              <button
+                onClick={() => updatePending('language', 'en')}
+                className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                  (pendingChanges.language ?? settings.language) === 'en'
+                    ? 'bg-zinc-800 text-white shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                {t('language.en')}
+              </button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* DeepSeek AI 配置 */}
       <Card className="bg-zinc-900 border-zinc-800">

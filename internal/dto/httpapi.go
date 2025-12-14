@@ -149,6 +149,8 @@ type DiffDetailDTO struct {
 type SettingsDTO struct {
 	ConfigPath string `json:"config_path"`
 
+	Language string `json:"language"` // AI Prompt 语言偏好：zh/en
+
 	DeepSeekAPIKeySet bool   `json:"deepseek_api_key_set"`
 	DeepSeekBaseURL   string `json:"deepseek_base_url"`
 	DeepSeekModel     string `json:"deepseek_model"`
@@ -169,6 +171,8 @@ type SettingsDTO struct {
 }
 
 type SaveSettingsRequestDTO struct {
+	Language *string `json:"language"` // AI Prompt 语言偏好：zh/en
+
 	DeepSeekAPIKey  *string `json:"deepseek_api_key"`
 	DeepSeekBaseURL *string `json:"deepseek_base_url"`
 	DeepSeekModel   *string `json:"deepseek_model"`

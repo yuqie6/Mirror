@@ -13,11 +13,18 @@ import (
 // DiffAnalyzer Diff 分析器
 type DiffAnalyzer struct {
 	client *DeepSeekClient
+	lang   string // 用户语言偏好：zh, en
 }
 
 // NewDiffAnalyzer 创建 Diff 分析器
-func NewDiffAnalyzer(client *DeepSeekClient) *DiffAnalyzer {
-	return &DiffAnalyzer{client: client}
+func NewDiffAnalyzer(client *DeepSeekClient, lang string) *DiffAnalyzer {
+	if lang != "en" && lang != "zh" {
+		lang = "zh" // 默认中文
+	}
+	return &DiffAnalyzer{
+		client: client,
+		lang:   lang,
+	}
 }
 
 // AnalyzeDiff 分析单个 Diff（传入当前技能树作为上下文）
@@ -45,10 +52,10 @@ func (a *DiffAnalyzer) AnalyzeDiff(ctx context.Context, filePath, language, diff
 		skillTreeContext.WriteString("\n")
 	}
 
-	prompt := prompts.DiffAnalysisUser(filePath, language, skillTreeContext.String(), diffContent)
+	prompt := prompts.DiffAnalysisUser(filePath, language, skillTreeContext.String(), diffContent, a.lang)
 
 	messages := []Message{
-		{Role: "system", Content: prompts.DiffAnalysisSystem},
+		{Role: "system", Content: prompts.DiffAnalysisSystem(a.lang)},
 		{Role: "user", Content: prompt},
 	}
 
@@ -149,10 +156,11 @@ func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySumma
 		windowSummary.String(),
 		diffSummary.String(),
 		historySummary.String(),
+		a.lang,
 	)
 
 	messages := []Message{
-		{Role: "system", Content: prompts.DailySummarySystem},
+		{Role: "system", Content: prompts.DailySummarySystem(a.lang)},
 		{Role: "user", Content: prompt},
 	}
 
@@ -257,10 +265,10 @@ func (a *DiffAnalyzer) GenerateSessionSummary(ctx context.Context, req *SessionS
 		BrowserLines:    browserLines,
 		SkillsHintLines: skillsHintLines,
 		MemoryLines:     memLines,
-	})
+	}, a.lang)
 
 	messages := []Message{
-		{Role: "system", Content: prompts.SessionSummarySystem},
+		{Role: "system", Content: prompts.SessionSummarySystem(a.lang)},
 		{Role: "user", Content: prompt},
 	}
 
@@ -328,10 +336,10 @@ func (a *DiffAnalyzer) GenerateWeeklySummary(ctx context.Context, req *WeeklySum
 	}
 
 	periodType := strings.ToLower(strings.TrimSpace(req.PeriodType))
-	prompt := prompts.WeeklySummaryUser(periodType, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String())
+	prompt := prompts.WeeklySummaryUser(periodType, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String(), a.lang)
 
 	messages := []Message{
-		{Role: "system", Content: prompts.WeeklySummarySystem(periodType)},
+		{Role: "system", Content: prompts.WeeklySummarySystem(periodType, a.lang)},
 		{Role: "user", Content: prompt},
 	}
 

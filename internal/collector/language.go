@@ -33,6 +33,8 @@ var LanguageExtensions = map[string]string{
 	".scss":  "SCSS",
 	".less":  "LESS",
 	".md":    "Markdown",
+	".zig":   "Zig",
+	".dart":  "Dart",
 }
 
 // GetLanguageFromExt 根据扩展名获取语言

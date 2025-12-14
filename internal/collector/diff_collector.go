@@ -322,7 +322,10 @@ func (c *DiffCollector) findGitRoot(filePath string) (string, bool) {
 
 	for {
 		gitPath := filepath.Join(dir, ".git")
-		if info, err := os.Stat(gitPath); err == nil && info.IsDir() {
+		// 兼容：
+		// - 常规仓库：.git 为目录
+		// - git worktree / submodule：.git 可能是文件（gitdir: ...）
+		if info, err := os.Stat(gitPath); err == nil && (info.IsDir() || info.Mode().IsRegular()) {
 			return dir, true
 		}
 
@@ -364,7 +367,10 @@ func (c *DiffCollector) gitDiff(ctx context.Context, repoRoot, filePath string) 
 	// 设置 UTF-8 环境变量，解决中文路径问题
 	checkCmd.Env = append(os.Environ(), "LC_ALL=C.UTF-8", "LANG=C.UTF-8")
 	hideWindow(checkCmd)
-	checkOutput, _ := checkCmd.Output()
+	checkOutput, err := checkCmd.CombinedOutput()
+	if err != nil {
+		return "", 0, 0, fmt.Errorf("执行 git ls-files 失败: %w: %s", err, strings.TrimSpace(string(checkOutput)))
+	}
 
 	isTracked := strings.TrimSpace(string(checkOutput)) != ""
 
