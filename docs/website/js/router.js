@@ -9,8 +9,12 @@ const docCache = {};
 // Mobile menu toggle
 function toggleMobileMenu() {
     const menu = document.getElementById('mobile-menu');
-    if (menu) {
+    const btn = document.getElementById('mobile-menu-btn');
+    if (menu && btn) {
+        const isHidden = menu.classList.contains('hidden');
         menu.classList.toggle('hidden');
+        // Update ARIA attribute for accessibility
+        btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
     }
 }
 

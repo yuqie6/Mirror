@@ -9,7 +9,7 @@
 /* Mobile-friendly touch targets for primary interactive elements */
 @media (max-width: 640px) {
     button:not(.inline-icon),
-    a.button,
+    a[class*='px-'][class*='py-'],
     [role="button"] {
         min-height: 44px;
     }
