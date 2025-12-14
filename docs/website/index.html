@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Mirror - 工程师的工作回顾与证据链工具</title>
+    <meta name="description" content="自动把你每天的真实工作行为整理成可追溯的证据链回顾。Local-first, Privacy-focused.">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        zinc: {
+                            850: '#1f1f22',
+                            900: '#18181b',
+                            950: '#09090b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.8s ease-out forwards',
+                        'slide-up': 'slideUp 0.8s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Engineer's Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        
+        /* Grid Pattern Background */
+        .bg-grid-pattern {
+            background-image: linear-gradient(to right, #27272a 1px, transparent 1px),
+                              linear-gradient(to bottom, #27272a 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
+        }
+
+        /* Mockup Specific Styles */
+        .mockup-font { font-family: 'Inter', sans-serif; }
+        .conic-gradient-chart {
+            background: conic-gradient(
+                #6366f1 0% 47%,   /* Indigo: Antigravity */
+                #0ea5e9 47% 74%,  /* Sky: ShellHost */
+                #f59e0b 74% 82%,  /* Amber: comet */
+                #10b981 82% 89%,  /* Emerald: mirror-ui */
+                #ef4444 89% 100%  /* Rose: Terminal */
+            );
+        }
+        
+        /* Docs Styles */
+        .prose h1 { @apply text-3xl font-bold text-white mb-6 mt-8; }
+        .prose h2 { @apply text-xl font-bold text-white mb-4 mt-8 pb-2 border-b border-zinc-800; }
+        .prose h3 { @apply text-lg font-semibold text-zinc-200 mb-3 mt-6; }
+        .prose p { @apply text-zinc-400 leading-relaxed mb-4; }
+        .prose ul { @apply list-disc list-outside pl-5 space-y-2 text-zinc-400 mb-4; }
+        .prose code { @apply font-mono text-sm bg-zinc-900 px-1.5 py-0.5 rounded text-zinc-300 border border-zinc-800; }
+        .prose pre { @apply bg-zinc-900 p-4 rounded-lg overflow-x-auto border border-zinc-800 mb-6 text-sm text-zinc-300 font-mono; }
+        
+        .nav-active { @apply text-indigo-400 bg-indigo-500/10 border-indigo-500/20; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200 font-sans antialiased selection:bg-indigo-500/30">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="switchView('home')">
+                <div class="w-8 h-8 bg-white rounded flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <div class="w-4 h-4 bg-zinc-950 rounded-full"></div>
+                </div>
+                <span class="font-bold text-lg tracking-tight text-white">Project Mirror</span>
+                <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700">v0.2-beta</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <!-- Logic: 'Features' only scrolls if on home view, otherwise switches to home -->
+                <button onclick="handleNavClick('features')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">特性</button>
+                <button onclick="switchView('docs', 'privacy')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">隐私</button>
+                <button onclick="switchView('docs', 'install')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">文档</button>
+                <a href="https://github.com/your-repo" target="_blank" class="text-zinc-400 hover:text-white transition-colors">
+                    <!-- Fixed GitHub Icon (Solid Octocat) -->
+                    <svg height="20" viewBox="0 0 16 16" version="1.1" width="20" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
+                </a>
+                <a href="#download" class="bg-white text-zinc-950 px-4 py-2 rounded font-medium text-sm hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                    下载 Windows 版
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- VIEW: HOME (Landing Page) -->
+    <main id="view-home" class="block">
+        <!-- Hero Section -->
+        <section class="relative pt-32 pb-20 overflow-hidden">
+            <!-- Background Grid -->
+            <div class="absolute inset-0 z-0 opacity-10 bg-grid-pattern pointer-events-none"></div>
+
+            <div class="max-w-7xl mx-auto px-6 relative z-10 flex flex-col items-center text-center">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 mb-8 animate-fade-in">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-xs text-zinc-400 font-medium">Local-first & Privacy by default</span>
+                </div>
+
+                <h1 class="text-5xl md:text-7xl font-bold text-white tracking-tight mb-6 max-w-4xl leading-tight animate-slide-up">
+                    别再让你的工作<br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">"沉默流失"</span>
+                </h1>
+
+                <p class="text-lg text-zinc-400 max-w-2xl mb-10 animate-slide-up" style="animation-delay: 0.1s;">
+                    Project Mirror 自动把你每天的真实编码、浏览与调试行为，整理成可追溯的证据链回顾。
+                    <span class="text-zinc-500">不上传云端，不依赖记忆。</span>
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-4 mb-20 animate-slide-up" style="animation-delay: 0.2s;">
+                    <button class="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 group">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-y-0.5 transition-transform"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        下载 v0.2 Installer
+                    </button>
+                    <button class="px-8 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg font-medium transition-colors font-mono text-sm">
+                        $ winget install project-mirror
+                    </button>
+                </div>
+
+                <!-- The "Cockpit" Mockup (Updated based on image_6cefe8.png) -->
+                <div class="w-full max-w-5xl bg-zinc-950 rounded-xl border border-zinc-800 shadow-2xl overflow-hidden animate-slide-up text-left mockup-font" style="animation-delay: 0.3s;">
+                    <!-- Mockup Header -->
+                    <div class="h-10 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4">
+                        <div class="flex items-center gap-4">
+                            <span class="font-bold text-white text-sm tracking-tight flex items-center gap-2">
+                                <div class="w-1 h-4 bg-indigo-500 rounded-full"></div>
+                                Project Mirror
+                            </span>
+                            <span class="text-[10px] text-zinc-500 font-mono">v0.2-alpha</span>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="hidden sm:block text-zinc-600 text-xs">- □ x</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mockup Body Grid -->
+                    <div class="grid grid-cols-12 h-[600px]">
+                        <!-- Sidebar (Darker, Nav Items) -->
+                        <div class="col-span-2 border-r border-zinc-800 bg-zinc-950 p-4 flex flex-col justify-between">
+                            <!-- Top Nav -->
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-3 px-3 py-2 bg-zinc-800/50 text-white rounded-md text-sm font-medium border border-zinc-700/50">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                                    仪表盘
+                                </div>
+                                <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                                    会话流
+                                </div>
+                                <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                    技能树
+                                </div>
+                                <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    报告
+                                </div>
+                                <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                                    系统诊断
+                                </div>
+                            </div>
+
+                            <!-- Bottom System Status (Matches Screenshot) -->
+                            <div class="border-t border-zinc-800 pt-4 mt-auto">
+                                <div class="text-[10px] text-zinc-500 mb-2 flex justify-between">
+                                    <span>系统健康</span>
+                                    <span class="font-mono">心跳: 1s</span>
+                                </div>
+                                <div class="flex gap-3 text-[10px] font-mono mb-4">
+                                    <span class="flex items-center gap-1 text-zinc-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> WIN</span>
+                                    <span class="flex items-center gap-1 text-zinc-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> DIFF</span>
+                                    <span class="flex items-center gap-1 text-zinc-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> AI</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 text-sm cursor-pointer">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                    设置
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Content (Dashboard) -->
+                        <div class="col-span-10 bg-zinc-950 p-6 overflow-hidden">
+                            <!-- Header Line -->
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-sm font-bold text-white">仪表盘</h2>
+                                <div class="flex gap-3">
+                                    <div class="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-500 font-mono flex items-center gap-2">
+                                        ⌘K 搜索证据...
+                                    </div>
+                                    <div class="w-6 h-6 rounded bg-indigo-500"></div>
+                                </div>
+                            </div>
+
+                            <!-- Top Row Cards -->
+                            <div class="grid grid-cols-3 gap-4 mb-4">
+                                <!-- Card 1: Today Session -->
+                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
+                                    <div class="text-xs text-zinc-400 mb-2">今日会话</div>
+                                    <div class="flex items-baseline gap-2 mb-2">
+                                        <span class="text-4xl font-bold text-white">57</span>
+                                        <span class="text-xs text-zinc-500">/ 30天共 0</span>
+                                    </div>
+                                    <div class="text-xs text-zinc-500">30天代码变更: 791 次</div>
+                                </div>
+                                <!-- Card 2: Coverage -->
+                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
+                                    <div class="text-xs text-zinc-400 mb-2">证据覆盖率</div>
+                                    <div class="flex items-baseline gap-2 mb-2">
+                                        <span class="text-4xl font-bold text-amber-500">61%</span>
+                                        <span class="text-xs text-zinc-500">中等</span>
+                                    </div>
+                                    <div class="text-xs text-amber-500 mb-2 flex items-center gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                                        22 个弱证据会话
+                                    </div>
+                                    <div class="text-[10px] text-zinc-600">24h: 57 会话 | 有Diff: 35 | 有浏览: 0</div>
+                                </div>
+                                <!-- Card 3: Focus Distribution -->
+                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5 flex items-center gap-4">
+                                    <!-- Doughnut Chart Simulation -->
+                                    <div class="relative w-16 h-16 rounded-full conic-gradient-chart flex items-center justify-center">
+                                        <div class="w-10 h-10 bg-zinc-900 rounded-full"></div>
+                                    </div>
+                                    <div class="space-y-1 text-[10px] text-zinc-400 flex-1">
+                                        <div class="text-xs text-zinc-400 mb-1">专注分布</div>
+                                        <div class="flex justify-between">
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Antigravity</span>
+                                            <span class="font-mono">47%</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> ShellHost</span>
+                                            <span class="font-mono">27%</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> comet.exe</span>
+                                            <span class="font-mono">8%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Middle Banner -->
+                            <div class="w-full bg-gradient-to-r from-indigo-900/20 to-purple-900/10 border border-indigo-500/20 rounded-lg p-4 mb-4 flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-indigo-100 font-bold text-sm">每日总结已生成</h3>
+                                        <p class="text-xs text-indigo-300/70">查看今日自动生成的工作回顾</p>
+                                    </div>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-400"><line x1="5" x2="19" y1="12" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                            </div>
+
+                            <!-- Bottom Heatmap -->
+                            <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
+                                <div class="flex justify-between items-end mb-4">
+                                    <div class="text-xs text-zinc-400 font-bold">活动热力图</div>
+                                    <div class="text-[10px] text-zinc-600">最近 30 天</div>
+                                </div>
+                                <div class="flex gap-1.5 flex-wrap opacity-50">
+                                    <!-- Fake Heatmap Boxes -->
+                                    <script>
+                                        for(let i=0; i<30; i++) {
+                                            document.write(`<div class="w-4 h-4 rounded-sm bg-zinc-800"></div>`)
+                                        }
+                                    </script>
+                                </div>
+                                <div class="flex justify-between text-[10px] text-zinc-600 mt-2">
+                                    <span>30天前</span>
+                                    <span>今天</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Grid (Bento) -->
+        <section id="features" class="py-24 bg-zinc-950 relative">
+            <div class="max-w-7xl mx-auto px-6">
+                <h2 class="text-3xl font-bold text-white mb-12 text-center">为什么我们需要 <span class="text-indigo-500">证据链</span>？</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Card 1: Local First -->
+                    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-emerald-500/30 transition-colors group">
+                        <div class="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center mb-6 text-emerald-500 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-3">100% 本地隐私</h3>
+                        <p class="text-zinc-400 leading-relaxed">
+                            你的代码、Diff 和浏览记录永远不会离开你的电脑。没有云端上传，不需要账号注册。数据安全是我们的底线。
+                        </p>
+                    </div>
+
+                    <!-- Card 2: Git Integration -->
+                    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-indigo-500/30 transition-colors group">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-6 text-indigo-500 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" x2="2.25" y1="12" y2="12"/><line x1="21.75" x2="22.95" y1="12" y2="12"/><line x1="12" x2="12" y1="1.05" y2="2.25"/><line x1="12" x2="12" y1="21.75" y2="22.95"/></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-3">全自动行为采集</h3>
+                        <p class="text-zinc-400 leading-relaxed">
+                            不仅是"你打开了什么窗口"，Project Mirror 还会监控文件系统的 Diff 变化。无论你是否 Commit，每一行代码变更都会被记录。
+                        </p>
+                    </div>
+
+                    <!-- Card 3: AI Attribution -->
+                    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-amber-500/30 transition-colors group">
+                        <div class="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center mb-6 text-amber-500 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-3">智能技能归因</h3>
+                        <p class="text-zinc-400 leading-relaxed">
+                            基于你的实际行为生成技能树。AI 自动分析你的工作内容，告诉你这周是在"重构代码"还是在"摸鱼"。支持离线 LLM。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technical Specs (The Engineer's Details) -->
+        <section class="py-24 border-t border-zinc-900">
+            <div class="max-w-5xl mx-auto px-6">
+                <div class="flex flex-col md:flex-row gap-12 items-center">
+                    <div class="flex-1">
+                        <h2 class="text-3xl font-bold text-white mb-6">为 <span class="font-mono text-indigo-400">Windows</span> 工程师打造</h2>
+                        <ul class="space-y-4">
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                <span class="text-zinc-300"><strong>系统托盘常驻:</strong> 极低资源占用，静默运行于后台。</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                <span class="text-zinc-300"><strong>Git Diff Watcher:</strong> 自动监听指定目录的文件变更，无需手动 Commit。</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                <span class="text-zinc-300"><strong>Local API:</strong> 内置本地 HTTP Server，支持自定义脚本扩展。</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                <span class="text-zinc-300"><strong>离线可用:</strong> 无网环境下自动降级为规则模式，不影响数据记录。</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="flex-1 bg-zinc-900 p-6 rounded-xl border border-zinc-800 font-mono text-xs text-zinc-400 overflow-hidden shadow-2xl">
+                        <div class="flex gap-2 mb-4 border-b border-zinc-800 pb-2">
+                            <span class="text-rose-500">●</span>
+                            <span class="text-amber-500">●</span>
+                            <span class="text-emerald-500">●</span>
+                        </div>
+                        <pre><span class="text-purple-400">const</span> <span class="text-blue-400">projectMirror</span> = {
+  <span class="text-zinc-200">version</span>: <span class="text-emerald-400">"0.2.0"</span>,
+  <span class="text-zinc-200">platform</span>: <span class="text-emerald-400">"win32"</span>,
+  <span class="text-zinc-200">collectors</span>: [
+    <span class="text-emerald-400">"WindowWatcher"</span>,
+    <span class="text-emerald-400">"GitDiffObserver"</span>, 
+    <span class="text-emerald-400">"BrowserExtension"</span>
+  ],
+  <span class="text-zinc-200">privacy</span>: {
+    <span class="text-zinc-200">cloudSync</span>: <span class="text-rose-400">false</span>,
+    <span class="text-zinc-200">dataStorage</span>: <span class="text-emerald-400">"./data/db.sqlite"</span>
+  }
+};</pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- VIEW: DOCS (Pseudo-SPA) -->
+    <main id="view-docs" class="hidden min-h-screen pt-16">
+        <div class="flex max-w-7xl mx-auto">
+            <!-- Sidebar -->
+            <aside class="w-64 fixed h-[calc(100vh-4rem)] overflow-y-auto border-r border-zinc-800 bg-zinc-950 p-6 hidden lg:block">
+                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Documentation</div>
+                <div class="space-y-1 mb-8">
+                    <button onclick="showDoc('install')" id="nav-install" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">快速开始</button>
+                    <button onclick="showDoc('config')" id="nav-config" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">配置指南</button>
+                    <button onclick="showDoc('faq')" id="nav-faq" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">常见问题</button>
+                </div>
+
+                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Legal</div>
+                <div class="space-y-1">
+                    <button onclick="showDoc('privacy')" id="nav-privacy" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">隐私策略</button>
+                    <button onclick="showDoc('terms')" id="nav-terms" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">服务条款</button>
+                </div>
+            </aside>
+
+            <!-- Mobile Nav Toggle (Visible only on small screens) -->
+            <div class="lg:hidden p-4 border-b border-zinc-800 bg-zinc-950 w-full sticky top-16 z-40">
+                <select onchange="showDoc(this.value)" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded p-2 text-sm">
+                    <option value="install">快速开始</option>
+                    <option value="config">配置指南</option>
+                    <option value="privacy">隐私策略</option>
+                </select>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 lg:pl-64 w-full">
+                <div class="max-w-3xl mx-auto px-6 py-12 prose">
+                    
+                    <!-- DOC: INSTALL -->
+                    <article id="doc-install" class="doc-content">
+                        <div class="flex items-center gap-2 text-emerald-500 text-sm font-medium mb-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 推荐阅读
+                        </div>
+                        <h1>快速开始</h1>
+                        <p>Project Mirror 是一个<strong>零配置</strong>的 Windows 托盘应用。只需 3 步即可开始构建你的工作证据链。</p>
+                        
+                        <h2>1. 安装</h2>
+                        <p>推荐使用 winget 安装最新版本，或直接从 GitHub Releases 下载 msi 安装包。</p>
+                        <pre>winget install project-mirror</pre>
+                        
+                        <h2>2. 初始化</h2>
+                        <p>首次运行后，Project Mirror 会最小化到系统托盘。右键点击图标选择 <strong>"打开面板"</strong>。</p>
+                        <ul>
+                            <li>默认数据存储路径：<code>%APPDATA%\ProjectMirror\db</code></li>
+                            <li>默认监听端口：<code>127.0.0.1:4120</code></li>
+                        </ul>
+
+                        <h2>3. 配置监听目录</h2>
+                        <p>为了让 Diff Collector 生效，你需要在设置页添加你的工作区目录：</p>
+                        <pre>C:\Users\Dev\Projects\Go-Backend</pre>
+                    </article>
+
+                    <!-- DOC: PRIVACY -->
+                    <article id="doc-privacy" class="doc-content hidden">
+                        <h1>隐私策略</h1>
+                        <p>最后更新：2023年10月24日</p>
+                        <p>我们深知工程师对数据的敏感性。Project Mirror 遵循 <strong>"Local-First"</strong> 原则设计。</p>
+                        
+                        <h2>数据存储</h2>
+                        <p>所有采集的数据（包括但不限于应用活动、文件差异、浏览历史）均存储在您计算机的本地 SQLite 数据库中。我们没有服务器，也不会上传任何数据。</p>
+                        
+                        <h2>AI 处理</h2>
+                        <p>默认情况下，Project Mirror 使用离线规则引擎。如果您配置了 OpenAI API Key，数据仅在生成周报时发送给 LLM 提供商，且会经过 PII（个人敏感信息）脱敏处理。</p>
+                    </article>
+
+                    <!-- DOC: CONFIG -->
+                    <article id="doc-config" class="doc-content hidden">
+                        <h1>配置指南</h1>
+                        <p>高级用户可以通过修改 <code>config.json</code> 来自定义采集行为。</p>
+                        <h2>忽略名单</h2>
+                        <p>在 <code>ignore_apps</code> 列表中添加不需要记录的应用进程名：</p>
+                        <pre>{
+  "collectors": {
+    "window": {
+      "ignore_apps": ["Spotify.exe", "Steam.exe"]
+    }
+  }
+}</pre>
+                    </article>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer (Shared) -->
+    <footer class="bg-zinc-950 border-t border-zinc-900 py-12">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 bg-zinc-800 rounded flex items-center justify-center">
+                    <div class="w-3 h-3 bg-zinc-500 rounded-full"></div>
+                </div>
+                <span class="font-bold text-zinc-500">Project Mirror</span>
+            </div>
+            <div class="text-sm text-zinc-500">
+                &copy; 2023-2024 Project Mirror. Built for Engineers.
+            </div>
+            <div class="flex gap-6">
+                <a href="#" onclick="switchView('docs', 'install')" class="text-zinc-500 hover:text-white transition-colors">Documentation</a>
+                <a href="https://github.com/your-repo" class="text-zinc-500 hover:text-white transition-colors">GitHub</a>
+                <a href="#" onclick="switchView('docs', 'privacy')" class="text-zinc-500 hover:text-white transition-colors">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        // Simple View Router
+        function switchView(viewName, docId = null) {
+            // 1. Handle View Toggling
+            const views = ['home', 'docs'];
+            views.forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                if (v === viewName) {
+                    el.classList.remove('hidden');
+                    el.classList.add('block');
+                } else {
+                    el.classList.add('hidden');
+                    el.classList.remove('block');
+                }
+            });
+
+            // 2. Handle Scroll Reset
+            window.scrollTo(0, 0);
+
+            // 3. If switching to docs, optional deep link
+            if (viewName === 'docs' && docId) {
+                showDoc(docId);
+            }
+        }
+
+        // Handle Nav Clicks (Conditional Logic)
+        function handleNavClick(sectionId) {
+            const homeView = document.getElementById('view-home');
+            if (homeView.classList.contains('hidden')) {
+                // If on docs, switch to home first
+                switchView('home');
+                // Wait for render then scroll
+                setTimeout(() => {
+                    document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth' });
+                }, 10);
+            } else {
+                // Just scroll
+                document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Internal Doc Router
+        function showDoc(docId) {
+            // Hide all docs
+            document.querySelectorAll('.doc-content').forEach(el => el.classList.add('hidden'));
+            // Show target
+            document.getElementById(`doc-${docId}`).classList.remove('hidden');
+            
+            // Update Sidebar Active State
+            document.querySelectorAll('[id^="nav-"]').forEach(el => el.classList.remove('nav-active'));
+            const navBtn = document.getElementById(`nav-${docId}`);
+            if(navBtn) navBtn.classList.add('nav-active');
+        }
+    </script>
+
+</body>
+</html>

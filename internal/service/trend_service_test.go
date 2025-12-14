@@ -40,7 +40,13 @@ func (f fakeDiffRepoForTrend) GetLanguageStats(ctx context.Context, startTime, e
 	return f.langStats, nil
 }
 func (f fakeDiffRepoForTrend) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error) {
-	return 0, nil
+	var n int64
+	for _, d := range f.diffs {
+		if d.Timestamp >= startTime && d.Timestamp <= endTime {
+			n++
+		}
+	}
+	return n, nil
 }
 func (f fakeDiffRepoForTrend) GetRecentAnalyzed(ctx context.Context, limit int) ([]schema.Diff, error) {
 	return nil, nil
@@ -120,7 +126,7 @@ func (f fakeSkillActivityRepoForTrend) GetStatsByTimeRange(ctx context.Context, 
 }
 
 type fakeEventRepoForTrend struct {
-	stats []repository.AppStat
+	events []schema.Event
 }
 
 func (f fakeEventRepoForTrend) BatchInsert(ctx context.Context, events []schema.Event) error {
@@ -133,9 +139,48 @@ func (f fakeEventRepoForTrend) GetByDate(ctx context.Context, date string) ([]sc
 	return nil, nil
 }
 func (f fakeEventRepoForTrend) GetAppStats(ctx context.Context, startTime, endTime int64) ([]repository.AppStat, error) {
-	return f.stats, nil
+	type agg struct {
+		totalDuration int
+		eventCount    int64
+	}
+	m := make(map[string]*agg)
+	for _, e := range f.events {
+		if e.Timestamp < startTime || e.Timestamp > endTime {
+			continue
+		}
+		a := m[e.AppName]
+		if a == nil {
+			a = &agg{}
+			m[e.AppName] = a
+		}
+		a.totalDuration += e.Duration
+		a.eventCount++
+	}
+	out := make([]repository.AppStat, 0, len(m))
+	for app, a := range m {
+		out = append(out, repository.AppStat{
+			AppName:       app,
+			TotalDuration: a.totalDuration,
+			EventCount:    a.eventCount,
+		})
+	}
+	return out, nil
 }
 func (f fakeEventRepoForTrend) Count(ctx context.Context) (int64, error) { return 0, nil }
+
+type fakeSessionRepoForTrend struct {
+	sessions []schema.Session
+}
+
+func (f fakeSessionRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.Session, error) {
+	out := make([]schema.Session, 0)
+	for _, s := range f.sessions {
+		if s.StartTime >= startTime && s.StartTime <= endTime {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
 
 func TestGetTrendReport(t *testing.T) {
 	ctx := context.Background()
@@ -151,22 +196,34 @@ func TestGetTrendReport(t *testing.T) {
 		{Key: "react", Name: "React", Category: "framework", LastActive: now.Add(-9 * 24 * time.Hour).UnixMilli()},
 	}
 
-	appStats := []repository.AppStat{
-		{AppName: "code.exe", TotalDuration: 3600},
-		{AppName: "chrome.exe", TotalDuration: 7200},
-	}
-
 	activities := []schema.SkillActivity{
 		{SkillKey: "go", Source: "diff", EvidenceID: 1, Exp: 10, Timestamp: now.Add(-24 * time.Hour).UnixMilli()},
 		// react 在上期活跃，本期不活跃 -> declining
 		{SkillKey: "react", Source: "diff", EvidenceID: 2, Exp: 5, Timestamp: now.Add(-10 * 24 * time.Hour).UnixMilli()},
 	}
 
+	diffs := []schema.Diff{
+		{ID: 1, Timestamp: now.Add(-1 * time.Hour).UnixMilli()},
+		{ID: 2, Timestamp: now.Add(-2 * time.Hour).UnixMilli()},
+		{ID: 3, Timestamp: now.Add(-26 * time.Hour).UnixMilli()},
+	}
+
+	events := []schema.Event{
+		{Timestamp: now.Add(-1 * time.Hour).UnixMilli(), AppName: "code.exe", Duration: 3600},
+		{Timestamp: now.Add(-2 * time.Hour).UnixMilli(), AppName: "chrome.exe", Duration: 7200},
+	}
+
+	sessions := []schema.Session{
+		{ID: 1, StartTime: now.Add(-1 * time.Hour).UnixMilli()},
+		{ID: 2, StartTime: now.Add(-26 * time.Hour).UnixMilli()},
+	}
+
 	svc := NewTrendService(
 		fakeSkillRepoForTrend{all: allSkills},
 		fakeSkillActivityRepoForTrend{activities: activities},
-		fakeDiffRepoForTrend{langStats: langStats, diffs: nil},
-		fakeEventRepoForTrend{stats: appStats},
+		fakeDiffRepoForTrend{langStats: langStats, diffs: diffs},
+		fakeEventRepoForTrend{events: events},
+		fakeSessionRepoForTrend{sessions: sessions},
 	)
 
 	report, err := svc.GetTrendReport(ctx, TrendPeriod7Days)
@@ -197,6 +254,9 @@ func TestGetTrendReport(t *testing.T) {
 	}
 	if len(report.Bottlenecks) != 1 {
 		t.Fatalf("bottlenecks=%v, want 1 item", report.Bottlenecks)
+	}
+	if len(report.DailyStats) != 7 {
+		t.Fatalf("dailyStats len=%d, want 7", len(report.DailyStats))
 	}
 }
 

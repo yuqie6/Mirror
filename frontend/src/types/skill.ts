@@ -9,8 +9,8 @@ export interface ISkillNode {
     name: string;
     type: SkillNodeType; // Root -> Branch -> Leaf
     level: number;
-    xp: number;
-    maxXp: number;
+    xp: number; // 后端 experience
+    progress: number; // 后端提供的 0-100 进度
     trend: SkillTrend;
     lastActive: string; // "Today", "3 days ago"
     children?: ISkillNode[];
@@ -19,7 +19,7 @@ export interface ISkillNode {
     contextualEvidence?: { sessionId: number; fileHint: string }[];
 }
 
-// 后端 DTO (扁平结构)
+// 后端 DTO (扁平结构) - 匹配 internal/dto/httpapi.go:41
 export interface SkillNodeDTO {
     key: string;
     name: string;
@@ -27,9 +27,9 @@ export interface SkillNodeDTO {
     parent_key: string;
     level: number;
     experience: number;
-    progress: number;
+    progress: number; // 0-100，后端已计算
     status: string; // "up" | "flat" | "down"
-    last_active: number; // Unix timestamp
+    last_active: number; // Unix timestamp (ms)
 }
 
 // 把扁平 DTO 转换为嵌套树结构
@@ -44,10 +44,11 @@ export function buildSkillTree(dtos: SkillNodeDTO[]): ISkillNode[] {
         const daysDiff = Math.floor((now.getTime() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24));
 
         let lastActiveStr = 'Unknown';
-        if (daysDiff === 0) lastActiveStr = 'Today';
-        else if (daysDiff === 1) lastActiveStr = 'Yesterday';
-        else if (daysDiff < 7) lastActiveStr = `${daysDiff} days ago`;
-        else lastActiveStr = `${Math.floor(daysDiff / 7)} weeks ago`;
+        if (daysDiff === 0) lastActiveStr = '今天';
+        else if (daysDiff === 1) lastActiveStr = '昨天';
+        else if (daysDiff < 7) lastActiveStr = `${daysDiff} 天前`;
+        else if (daysDiff < 30) lastActiveStr = `${Math.floor(daysDiff / 7)} 周前`;
+        else lastActiveStr = `${Math.floor(daysDiff / 30)} 月前`;
 
         const node: ISkillNode = {
             id: dto.key,
@@ -56,7 +57,7 @@ export function buildSkillTree(dtos: SkillNodeDTO[]): ISkillNode[] {
             type: dto.parent_key ? (dto.category ? 'skill' : 'topic') : 'domain',
             level: dto.level,
             xp: dto.experience,
-            maxXp: dto.experience + Math.max(100, dto.experience * 0.2), // 估算
+            progress: dto.progress, // 使用后端提供的进度
             trend: (dto.status as SkillTrend) || 'flat',
             lastActive: lastActiveStr,
             children: [],

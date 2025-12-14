@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { StatusDot, StatusType } from '@/components/common/StatusDot';
-import { AlertTriangle, RefreshCw, Download } from 'lucide-react';
-import { GetStatus, RebuildSessionsForDate, EnrichSessionsForDate } from '@/api/app';
+import { AlertTriangle, RefreshCw, Download, Play } from 'lucide-react';
+import { GetStatus, RebuildSessionsForDate, EnrichSessionsForDate, BuildSessions } from '@/api/app';
 import { StatusDTO, extractHealthIndicator } from '@/types/status';
 
 interface CollectorRowProps {
@@ -49,6 +49,21 @@ export default function StatusView() {
     };
     loadStatus();
   }, []);
+
+  const handleBuild = async () => {
+    setActionLoading(true);
+    try {
+      await BuildSessions();
+      alert('会话构建成功！');
+      // 刷新状态
+      const data = await GetStatus();
+      setStatus(data);
+    } catch (e) {
+      alert(`构建失败: ${e}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const handleRebuild = async () => {
     const date = new Date().toISOString().slice(0, 10);
@@ -151,6 +166,18 @@ export default function StatusView() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <button
+            onClick={handleBuild}
+            disabled={actionLoading}
+            className="w-full flex items-center justify-between p-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors text-left group disabled:opacity-50"
+          >
+            <div>
+              <div className="text-sm text-emerald-300 font-medium">构建会话</div>
+              <div className="text-xs text-zinc-500">从今日原始数据生成会话（首次使用/无会话时）</div>
+            </div>
+            <Play size={16} className="text-emerald-600 group-hover:text-emerald-400" />
+          </button>
+
           <button
             onClick={handleRebuild}
             disabled={actionLoading}

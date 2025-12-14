@@ -91,7 +91,7 @@ func NewCore(cfgPath string) (*Core, error) {
 	// Services
 	c.Services.Skills = service.NewSkillService(c.Repos.Skill, c.Repos.Diff, c.Repos.SkillActivity, service.DefaultExpPolicy{})
 	c.Services.AI = service.NewAIService(analyzer, c.Repos.Diff, c.Repos.Event, c.Repos.Summary, c.Services.Skills)
-	c.Services.Trends = service.NewTrendService(c.Repos.Skill, c.Repos.SkillActivity, c.Repos.Diff, c.Repos.Event)
+	c.Services.Trends = service.NewTrendService(c.Repos.Skill, c.Repos.SkillActivity, c.Repos.Diff, c.Repos.Event, c.Repos.Session)
 	c.Services.Sessions = service.NewSessionService(
 		c.Repos.Event,
 		c.Repos.Diff,

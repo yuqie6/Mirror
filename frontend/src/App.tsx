@@ -13,6 +13,9 @@ import { StatusDTO, extractHealthIndicator } from '@/types/status';
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [systemIndicator, setSystemIndicator] = useState<SystemHealthIndicator | null>(null);
+  
+  // 跳转到指定会话
+  const [targetSessionId, setTargetSessionId] = useState<number | null>(null);
 
   // 加载系统健康状态
   const refreshSystemIndicator = async () => {
@@ -50,15 +53,21 @@ function App() {
     };
   }, []);
 
+  // 从技能树跳转到会话
+  const handleNavigateToSession = (sessionId: number) => {
+    setTargetSessionId(sessionId);
+    setActiveTab('sessions');
+  };
+
   // 视图渲染
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardView onNavigate={(tab) => setActiveTab(tab as TabId)} />;
       case 'sessions':
-        return <SessionsView />;
+        return <SessionsView targetSessionId={targetSessionId} onSessionOpened={() => setTargetSessionId(null)} />;
       case 'skills':
-        return <SkillView />;
+        return <SkillView onNavigateToSession={handleNavigateToSession} />;
       case 'reports':
         return <ReportsView />;
       case 'status':

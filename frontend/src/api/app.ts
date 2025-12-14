@@ -136,3 +136,11 @@ export async function SaveSettings(req: Record<string, JSONValue>): Promise<any>
         body: JSON.stringify(req),
     });
 }
+
+// 构建会话 - 从今日原始数据生成会话
+export async function BuildSessions(date?: string): Promise<any> {
+    const d = typeof date === "string" && date.trim() !== ""
+        ? date.trim()
+        : new Date().toISOString().slice(0, 10);
+    return BuildSessionsForDate(d);
+}

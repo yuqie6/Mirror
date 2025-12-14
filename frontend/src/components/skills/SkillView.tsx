@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -16,20 +16,18 @@ import {
   ExternalLink,
   FileCode,
   History,
+  GripVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GetSkillTree, GetSkillEvidence, GetSkillSessions } from '@/api/app';
 import { ISkillNode, SkillNodeDTO, buildSkillTree } from '@/types/skill';
 
 interface SkillEvidence {
-  id: number;
-  skill_key: string;
-  source_type: string;
-  source_id: number;
+  source: string;
+  evidence_id: number;
+  timestamp: number;
+  contribution_context: string;
   file_name: string;
-  insight: string;
-  experience: number;
-  created_at: string;
 }
 
 interface SkillSession {
@@ -40,7 +38,6 @@ interface SkillSession {
   date: string;
 }
 
-// 递归树节点组件
 interface SkillTreeItemProps {
   node: ISkillNode;
   selectedId: string | null;
@@ -81,13 +78,7 @@ function SkillTreeItem({ node, selectedId, onSelect, depth = 0 }: SkillTreeItemP
 
           <div className="flex-1">
             <div className="flex justify-between items-center">
-              <span
-                className={cn(
-                  'text-sm font-medium',
-                  nameColor,
-                  node.type === 'domain' && 'uppercase tracking-wider text-xs font-bold'
-                )}
-              >
+              <span className={cn('text-sm font-medium', nameColor, node.type === 'domain' && 'uppercase tracking-wider text-xs font-bold')}>
                 {node.name}
               </span>
               <div className="flex items-center gap-2">
@@ -96,7 +87,7 @@ function SkillTreeItem({ node, selectedId, onSelect, depth = 0 }: SkillTreeItemP
               </div>
             </div>
             {node.type !== 'domain' && (
-              <Progress value={(node.xp / node.maxXp) * 100} className="h-0.5 mt-1" />
+              <Progress value={node.progress} className="h-0.5 mt-1" />
             )}
           </div>
         </div>
@@ -105,13 +96,7 @@ function SkillTreeItem({ node, selectedId, onSelect, depth = 0 }: SkillTreeItemP
           <CollapsibleContent>
             <ul className="pl-4 mt-1 space-y-1 border-l border-zinc-800/50">
               {node.children!.map((child: ISkillNode) => (
-                <SkillTreeItem
-                  key={child.id}
-                  node={child}
-                  selectedId={selectedId}
-                  onSelect={onSelect}
-                  depth={depth + 1}
-                />
+                <SkillTreeItem key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
               ))}
             </ul>
           </CollapsibleContent>
@@ -132,6 +117,11 @@ export default function SkillView({ onNavigateToSession }: SkillViewProps) {
   const [evidence, setEvidence] = useState<SkillEvidence[]>([]);
   const [sessions, setSessions] = useState<SkillSession[]>([]);
   const [loadingEvidence, setLoadingEvidence] = useState(false);
+  
+  // 可拖拽分栏
+  const [leftWidth, setLeftWidth] = useState(33);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
 
   useEffect(() => {
     const loadSkills = async () => {
@@ -152,7 +142,6 @@ export default function SkillView({ onNavigateToSession }: SkillViewProps) {
     loadSkills();
   }, []);
 
-  // 加载选中技能的证据和会话
   useEffect(() => {
     if (!selectedSkill) return;
     
@@ -174,84 +163,103 @@ export default function SkillView({ onNavigateToSession }: SkillViewProps) {
     loadEvidence();
   }, [selectedSkill]);
 
+  // 拖拽逻辑
+  const handleMouseDown = () => {
+    isDragging.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.max(20, Math.min(60, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   const getTrendText = (trend: string) => {
     if (trend === 'up') return '↗ 上升中';
     if (trend === 'down') return '↘ 下降中';
     return '→ 稳定';
   };
 
+  const formatTimestamp = (ts: number): string => {
+    if (!ts) return '--';
+    return new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+  };
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-zinc-500">
-        加载技能树中...
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64 text-zinc-500">加载技能树中...</div>;
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6 animate-in fade-in duration-500">
-      {/* Tree Explorer (1/3) */}
-      <div className="w-1/3 border-r border-zinc-800 pr-4 overflow-y-auto">
+    <div ref={containerRef} className="flex h-[calc(100vh-8rem)] animate-in fade-in duration-500">
+      {/* Tree Explorer - 可拖拽宽度 */}
+      <div style={{ width: `${leftWidth}%` }} className="pr-2 overflow-y-auto border-r border-zinc-800">
         <ul className="space-y-2">
           {skills.map((node) => (
-            <SkillTreeItem
-              key={node.id}
-              node={node}
-              selectedId={selectedSkill?.id ?? null}
-              onSelect={setSelectedSkill}
-            />
+            <SkillTreeItem key={node.id} node={node} selectedId={selectedSkill?.id ?? null} onSelect={setSelectedSkill} />
           ))}
         </ul>
       </div>
 
-      {/* Detail Pane (2/3) */}
-      <div className="flex-1 overflow-y-auto">
+      {/* 拖拽手柄 */}
+      <div
+        onMouseDown={handleMouseDown}
+        className="w-2 flex items-center justify-center cursor-col-resize hover:bg-zinc-800 transition-colors group"
+      >
+        <GripVertical size={12} className="text-zinc-600 group-hover:text-zinc-400" />
+      </div>
+
+      {/* Detail Pane */}
+      <div style={{ width: `${100 - leftWidth - 1}%` }} className="pl-2 overflow-y-auto">
         {selectedSkill ? (
           <>
             {/* Header Card */}
             <Card className="bg-zinc-900 border-zinc-800 mb-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-5 font-bold text-9xl select-none">
-                XP
-              </div>
+              <div className="absolute top-0 right-0 p-8 opacity-5 font-bold text-9xl select-none">XP</div>
               <CardContent className="p-8 relative z-10">
                 <div className="flex items-center gap-3 mb-2">
                   <h2 className="text-3xl font-bold text-white">{selectedSkill.name}</h2>
                   <Badge variant="default">Lv.{selectedSkill.level}</Badge>
                 </div>
-                <p className="text-zinc-400 mb-6">
-                  证据来源于最近的会话记录
-                </p>
 
                 <div className="flex gap-8 mb-6">
                   <div>
                     <div className="text-xs text-zinc-500 uppercase">总经验值</div>
                     <div className="text-2xl font-mono text-indigo-400">
-                      {selectedSkill.xp}{' '}
-                      <span className="text-sm text-zinc-600">/ {selectedSkill.maxXp}</span>
+                      {selectedSkill.xp} <span className="text-sm text-zinc-600">({selectedSkill.progress}%)</span>
                     </div>
                   </div>
                   <div>
                     <div className="text-xs text-zinc-500 uppercase">趋势</div>
-                    <div className={cn(
-                      'text-2xl font-mono',
-                      selectedSkill.trend === 'up' ? 'text-emerald-500' : 'text-zinc-400'
-                    )}>
+                    <div className={cn('text-2xl font-mono', selectedSkill.trend === 'up' ? 'text-emerald-500' : 'text-zinc-400')}>
                       {getTrendText(selectedSkill.trend)}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs text-zinc-500 uppercase">最近活跃</div>
-                    <div className="text-2xl font-mono text-zinc-300">
-                      {selectedSkill.lastActive}
-                    </div>
+                    <div className="text-2xl font-mono text-zinc-300">{selectedSkill.lastActive}</div>
                   </div>
                 </div>
 
                 <div className="w-full h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
-                    style={{ width: `${(selectedSkill.xp / selectedSkill.maxXp) * 100}%` }}
-                  />
+                  <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{ width: `${selectedSkill.progress}%` }} />
                 </div>
               </CardContent>
             </Card>
@@ -275,9 +283,7 @@ export default function SkillView({ onNavigateToSession }: SkillViewProps) {
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-mono text-xs text-indigo-400 mb-1">
-                            会话 #{session.id} • {session.date}
-                          </div>
+                          <div className="font-mono text-xs text-indigo-400 mb-1">会话 #{session.id} • {session.date}</div>
                           <div className="text-zinc-300">{session.category || session.summary}</div>
                           <div className="text-xs text-zinc-500 mt-1">{session.time_range}</div>
                         </div>
@@ -291,7 +297,7 @@ export default function SkillView({ onNavigateToSession }: SkillViewProps) {
               </CardContent>
             </Card>
 
-            {/* 代码证据 - 可展开 */}
+            {/* 代码证据 - 使用后端正确字段 */}
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader>
                 <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
@@ -303,29 +309,27 @@ export default function SkillView({ onNavigateToSession }: SkillViewProps) {
                   <div className="text-zinc-500 text-sm">加载中...</div>
                 ) : evidence.length > 0 ? (
                   evidence.slice(0, 10).map((ev) => (
-                    <Collapsible key={ev.id}>
+                    <Collapsible key={ev.evidence_id}>
                       <div className="bg-zinc-950 border border-zinc-800 rounded overflow-hidden">
                         <CollapsibleTrigger className="w-full p-3 flex items-center justify-between hover:bg-zinc-900/50 transition-colors text-left">
                           <div className="flex items-center gap-2 font-mono text-xs">
                             <FileCode size={14} className="text-emerald-400" />
-                            <span className="text-zinc-300 truncate max-w-[200px]">{ev.file_name}</span>
-                            <Badge variant="outline" className="text-[10px]">
-                              +{ev.experience} XP
-                            </Badge>
+                            <span className="text-zinc-300 truncate max-w-[200px]">{ev.file_name || ev.source}</span>
+                            <Badge variant="outline" className="text-[10px]">{ev.source}</Badge>
                           </div>
                           <ChevronDown size={14} className="text-zinc-500" />
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="border-t border-zinc-800 p-3">
-                            {ev.insight && (
+                            {ev.contribution_context && (
                               <div className="mb-2 p-2 bg-indigo-500/10 border border-indigo-500/20 rounded text-sm text-indigo-200">
-                                <span className="text-indigo-400 font-medium">洞察：</span> {ev.insight}
+                                <span className="text-indigo-400 font-medium">上下文：</span> {ev.contribution_context}
                               </div>
                             )}
                             <div className="text-xs text-zinc-500">
-                              来源: {ev.source_type} #{ev.source_id}
+                              来源 ID: {ev.evidence_id}
                               <br />
-                              时间: {ev.created_at}
+                              时间: {formatTimestamp(ev.timestamp)}
                             </div>
                           </div>
                         </CollapsibleContent>
@@ -339,9 +343,7 @@ export default function SkillView({ onNavigateToSession }: SkillViewProps) {
             </Card>
           </>
         ) : (
-          <div className="text-zinc-500 text-center mt-20">
-            选择一个技能查看详情
-          </div>
+          <div className="text-zinc-500 text-center mt-20">选择一个技能查看详情</div>
         )}
       </div>
     </div>

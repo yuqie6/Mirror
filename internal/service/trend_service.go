@@ -16,6 +16,11 @@ type TrendService struct {
 	activityRepo SkillActivityRepository
 	diffRepo     DiffRepository
 	eventRepo    EventRepository
+	sessionRepo  sessionTimeRangeReader
+}
+
+type sessionTimeRangeReader interface {
+	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.Session, error)
 }
 
 // NewTrendService 创建趋势服务
@@ -24,12 +29,14 @@ func NewTrendService(
 	activityRepo SkillActivityRepository,
 	diffRepo DiffRepository,
 	eventRepo EventRepository,
+	sessionRepo sessionTimeRangeReader,
 ) *TrendService {
 	return &TrendService{
 		skillRepo:    skillRepo,
 		activityRepo: activityRepo,
 		diffRepo:     diffRepo,
 		eventRepo:    eventRepo,
+		sessionRepo:  sessionRepo,
 	}
 }
 
@@ -63,6 +70,13 @@ type LanguageTrend struct {
 	Percentage   float64
 }
 
+type DailyStat struct {
+	Date           string
+	TotalDiffs      int64
+	TotalCodingMins int64
+	SessionCount    int64
+}
+
 // TrendReport 趋势报告
 type TrendReport struct {
 	Period          TrendPeriod
@@ -74,6 +88,7 @@ type TrendReport struct {
 	TotalCodingMins int64
 	AvgDiffsPerDay  float64
 	Bottlenecks     []string
+	DailyStats      []DailyStat
 }
 
 // GetTrendReport 获取趋势报告
@@ -258,6 +273,41 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 
 	totalCodingMins := SumCodingMinutesFromAppStats(appStats)
 
+	// Heatmap 用 daily_stats：按自然日统计，返回固定 days 个点（含今天）
+	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dailyStats := make([]DailyStat, 0, days)
+	for i := days - 1; i >= 0; i-- {
+		d := dayStart.AddDate(0, 0, -i)
+		start := d.UnixMilli()
+		end := d.AddDate(0, 0, 1).UnixMilli() - 1
+
+		dayDiffs, err := s.diffRepo.CountByDateRange(ctx, start, end)
+		if err != nil {
+			return nil, err
+		}
+		dayApps, err := s.eventRepo.GetAppStats(ctx, start, end)
+		if err != nil {
+			return nil, err
+		}
+		dayCodingMins := SumCodingMinutesFromAppStats(dayApps)
+
+		var sessionCount int64
+		if s.sessionRepo != nil {
+			sessions, err := s.sessionRepo.GetByTimeRange(ctx, start, end)
+			if err != nil {
+				return nil, err
+			}
+			sessionCount = int64(len(sessions))
+		}
+
+		dailyStats = append(dailyStats, DailyStat{
+			Date:           d.Format("2006-01-02"),
+			TotalDiffs:      dayDiffs,
+			TotalCodingMins: dayCodingMins,
+			SessionCount:    sessionCount,
+		})
+	}
+
 	// 检测瓶颈
 	bottlenecks := s.detectBottlenecks(topSkills, totalCodingMins)
 
@@ -271,6 +321,7 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 		TotalCodingMins: totalCodingMins,
 		AvgDiffsPerDay:  float64(totalDiffs) / float64(days),
 		Bottlenecks:     bottlenecks,
+		DailyStats:      dailyStats,
 	}, nil
 }
 

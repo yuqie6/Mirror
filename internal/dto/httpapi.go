@@ -58,6 +58,13 @@ type SkillEvidenceDTO struct {
 	FileName            string `json:"file_name"`
 }
 
+type DailyTrendStatDTO struct {
+	Date           string `json:"date"`
+	TotalDiffs      int64  `json:"total_diffs"`
+	TotalCodingMins int64  `json:"total_coding_mins"`
+	SessionCount    int64  `json:"session_count"`
+}
+
 type TrendReportDTO struct {
 	Period          string             `json:"period"`
 	StartDate       string             `json:"start_date"`
@@ -68,6 +75,7 @@ type TrendReportDTO struct {
 	TopLanguages    []LanguageTrendDTO `json:"top_languages"`
 	TopSkills       []SkillTrendDTO    `json:"top_skills"`
 	Bottlenecks     []string           `json:"bottlenecks"`
+	DailyStats      []DailyTrendStatDTO `json:"daily_stats,omitempty"`
 }
 
 type LanguageTrendDTO struct {

@@ -56,6 +56,16 @@ func (a *API) HandleTrends(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	dailyStats := make([]dto.DailyTrendStatDTO, 0, len(report.DailyStats))
+	for _, st := range report.DailyStats {
+		dailyStats = append(dailyStats, dto.DailyTrendStatDTO{
+			Date:           st.Date,
+			TotalDiffs:      st.TotalDiffs,
+			TotalCodingMins: st.TotalCodingMins,
+			SessionCount:    st.SessionCount,
+		})
+	}
+
 	WriteJSON(w, http.StatusOK, &dto.TrendReportDTO{
 		Period:          string(report.Period),
 		StartDate:       report.StartDate,
@@ -66,6 +76,7 @@ func (a *API) HandleTrends(w http.ResponseWriter, r *http.Request) {
 		TopLanguages:    languages,
 		TopSkills:       skills,
 		Bottlenecks:     report.Bottlenecks,
+		DailyStats:      dailyStats,
 	})
 }
 
