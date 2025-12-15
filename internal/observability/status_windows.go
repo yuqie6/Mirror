@@ -135,7 +135,7 @@ func BuildStatus(ctx context.Context, rt *bootstrap.AgentRuntime, startedAt time
 		lastSemanticAt = rt.Core.Services.SessionSemantic.Stats().LastEnrichAt
 	}
 
-	aiConfigured := rt.Core.Clients.DeepSeek != nil && rt.Core.Clients.DeepSeek.IsConfigured()
+	aiConfigured := rt.Core.Clients.LLM != nil && rt.Core.Clients.LLM.IsConfigured()
 	aiMode := "offline"
 	if aiConfigured {
 		aiMode = "ai"

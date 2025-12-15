@@ -3,14 +3,18 @@ package bootstrap
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/yuqie6/WorkMirror/internal/ai"
 	"github.com/yuqie6/WorkMirror/internal/pkg/config"
 	"github.com/yuqie6/WorkMirror/internal/repository"
 	"github.com/yuqie6/WorkMirror/internal/service"
 )
+
+func ptrBool(v bool) *bool { return &v }
 
 // Core 持有跨二进制共享的核心依赖
 type Core struct {
@@ -39,7 +43,7 @@ type Core struct {
 	}
 
 	Clients struct {
-		DeepSeek    *ai.DeepSeekClient
+		LLM         ai.LLMProvider // 主 LLM 供应商（根据配置选择）
 		SiliconFlow *ai.SiliconFlowClient
 	}
 }
@@ -78,14 +82,13 @@ func NewCore(cfgPath string) (*Core, error) {
 	c.Repos.PeriodSummary = repository.NewPeriodSummaryRepository(db.DB)
 
 	// Clients / Analyzer
-	c.Clients.DeepSeek = ai.NewDeepSeekClient(&ai.DeepSeekConfig{
-		APIKey:  cfg.AI.DeepSeek.APIKey,
-		BaseURL: cfg.AI.DeepSeek.BaseURL,
-		Model:   cfg.AI.DeepSeek.Model,
-	})
+	c.Clients.LLM = selectLLMProvider(cfg)
 	var analyzer service.Analyzer
-	if c.Clients.DeepSeek != nil && c.Clients.DeepSeek.IsConfigured() {
-		analyzer = ai.NewDiffAnalyzer(c.Clients.DeepSeek, cfg.App.Language)
+	if c.Clients.LLM != nil && c.Clients.LLM.IsConfigured() {
+		analyzer = ai.NewDiffAnalyzer(c.Clients.LLM, cfg.App.Language)
+		slog.Info("LLM Provider 已配置", "provider", c.Clients.LLM.Name())
+	} else {
+		slog.Warn("LLM Provider 未配置，AI 功能将不可用")
 	}
 
 	// Services
@@ -138,8 +141,89 @@ func (c *Core) Close() error {
 
 // RequireAIConfigured 检查 AI 是否已配置
 func (c *Core) RequireAIConfigured() error {
-	if c.Clients.DeepSeek == nil || !c.Clients.DeepSeek.IsConfigured() {
-		return fmt.Errorf("DeepSeek API 未配置")
+	if c.Clients.LLM == nil || !c.Clients.LLM.IsConfigured() {
+		return fmt.Errorf("LLM API 未配置")
 	}
 	return nil
+}
+
+// selectLLMProvider 根据配置选择 LLM 供应商
+func selectLLMProvider(cfg *config.Config) ai.LLMProvider {
+	provider := strings.ToLower(strings.TrimSpace(cfg.AI.Provider))
+
+	switch provider {
+	case "openai":
+		if cfg.AI.OpenAI.APIKey == "" {
+			slog.Warn("OpenAI 兼容格式已选择，但未配置 API Key")
+			return nil
+		}
+		return ai.NewOpenAIProvider(&ai.OpenAIProviderConfig{
+			Name:    "OpenAI",
+			APIKey:  cfg.AI.OpenAI.APIKey,
+			BaseURL: cfg.AI.OpenAI.BaseURL,
+			Model:   cfg.AI.OpenAI.Model,
+			// OpenAI 兼容的第三方多数需要 Key；此处保持严格，避免误调用导致反复 401。
+			RequireAPIKey: ptrBool(true),
+		})
+
+	case "anthropic":
+		if cfg.AI.Anthropic.APIKey == "" {
+			slog.Warn("Anthropic 已选择，但未配置 API Key")
+			return nil
+		}
+		return ai.NewAnthropicProvider(&ai.AnthropicProviderConfig{
+			APIKey:  cfg.AI.Anthropic.APIKey,
+			BaseURL: cfg.AI.Anthropic.BaseURL,
+			Model:   cfg.AI.Anthropic.Model,
+		})
+
+	case "google":
+		if cfg.AI.Google.APIKey == "" {
+			slog.Warn("Google Gemini 已选择，但未配置 API Key")
+			return nil
+		}
+		return ai.NewGoogleProvider(&ai.GoogleProviderConfig{
+			APIKey:  cfg.AI.Google.APIKey,
+			BaseURL: cfg.AI.Google.BaseURL,
+			Model:   cfg.AI.Google.Model,
+		})
+
+	case "zhipu":
+		if cfg.AI.Zhipu.APIKey == "" {
+			slog.Warn("Zhipu 已选择，但未配置 API Key")
+			return nil
+		}
+		return ai.NewZhipuProvider(&ai.ZhipuProviderConfig{
+			Name:          "Zhipu",
+			APIKey:        cfg.AI.Zhipu.APIKey,
+			BaseURL:       cfg.AI.Zhipu.BaseURL,
+			Model:         cfg.AI.Zhipu.Model,
+			RequireAPIKey: ptrBool(true),
+		})
+
+	case "default", "":
+		// 使用内置免费服务
+		if !cfg.AI.Default.Enabled {
+			slog.Info("内置免费服务已禁用")
+			return nil
+		}
+		// 检查是否配置了内置服务（base_url 由作者/构建注入，api_key 可选）
+		if strings.TrimSpace(cfg.AI.Default.BaseURL) == "" {
+			slog.Warn("内置免费服务未配置（需要提供 base_url）")
+			return nil
+		}
+		// default 内置服务（作者提供的 OpenAI 兼容网关）
+		return ai.NewOpenAIProvider(&ai.OpenAIProviderConfig{
+			Name:    "WorkMirror 内置服务",
+			APIKey:  cfg.AI.Default.APIKey,
+			BaseURL: cfg.AI.Default.BaseURL,
+			Model:   cfg.AI.Default.Model,
+			// 允许作者侧按需做匿名/网关鉴权，不强制用户配置 Key。
+			RequireAPIKey: ptrBool(false),
+		})
+
+	default:
+		slog.Warn("未知的 LLM Provider", "provider", provider)
+		return nil
+	}
 }

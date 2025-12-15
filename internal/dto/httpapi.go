@@ -151,14 +151,7 @@ type SettingsDTO struct {
 
 	Language string `json:"language"` // AI Prompt 语言偏好：zh/en
 
-	DeepSeekAPIKeySet bool   `json:"deepseek_api_key_set"`
-	DeepSeekBaseURL   string `json:"deepseek_base_url"`
-	DeepSeekModel     string `json:"deepseek_model"`
-
-	SiliconFlowAPIKeySet      bool   `json:"siliconflow_api_key_set"`
-	SiliconFlowBaseURL        string `json:"siliconflow_base_url"`
-	SiliconFlowEmbeddingModel string `json:"siliconflow_embedding_model"`
-	SiliconFlowRerankerModel  string `json:"siliconflow_reranker_model"`
+	AI AISettingsDTO `json:"ai"`
 
 	DBPath             string   `json:"db_path"`
 	DiffEnabled        bool     `json:"diff_enabled"`
@@ -170,17 +163,40 @@ type SettingsDTO struct {
 	PrivacyPatterns []string `json:"privacy_patterns"`
 }
 
+type AISettingsDTO struct {
+	Provider string `json:"provider"`
+
+	Default   AIProviderSettingsDTO `json:"default"`
+	OpenAI    AIProviderSettingsDTO `json:"openai"`
+	Anthropic AIProviderSettingsDTO `json:"anthropic"`
+	Google    AIProviderSettingsDTO `json:"google"`
+	Zhipu     AIProviderSettingsDTO `json:"zhipu"`
+
+	SiliconFlow SiliconFlowSettingsDTO `json:"siliconflow"`
+}
+
+type AIProviderSettingsDTO struct {
+	Enabled       bool   `json:"enabled,omitempty"` // 仅 default 用；其他 provider 忽略
+	APIKeySet     bool   `json:"api_key_set"`
+	APIKey        string `json:"api_key,omitempty"` // 永不返回（占位，避免前端误用）
+	BaseURL       string `json:"base_url"`
+	Model         string `json:"model"`
+	APIKeyLocked  bool   `json:"api_key_locked,omitempty"`  // 仅 default 用；为 true 时禁止修改 api_key
+	BaseURLLocked bool   `json:"base_url_locked,omitempty"` // 仅 default 用；为 true 时禁止修改 base_url
+	ModelLocked   bool   `json:"model_locked,omitempty"`    // 仅 default 用；为 true 时禁止修改 model
+}
+
+type SiliconFlowSettingsDTO struct {
+	APIKeySet      bool   `json:"api_key_set"`
+	BaseURL        string `json:"base_url"`
+	EmbeddingModel string `json:"embedding_model"`
+	RerankerModel  string `json:"reranker_model"`
+}
+
 type SaveSettingsRequestDTO struct {
 	Language *string `json:"language"` // AI Prompt 语言偏好：zh/en
 
-	DeepSeekAPIKey  *string `json:"deepseek_api_key"`
-	DeepSeekBaseURL *string `json:"deepseek_base_url"`
-	DeepSeekModel   *string `json:"deepseek_model"`
-
-	SiliconFlowAPIKey         *string `json:"siliconflow_api_key"`
-	SiliconFlowBaseURL        *string `json:"siliconflow_base_url"`
-	SiliconFlowEmbeddingModel *string `json:"siliconflow_embedding_model"`
-	SiliconFlowRerankerModel  *string `json:"siliconflow_reranker_model"`
+	AI *AISettingsPatchDTO `json:"ai"`
 
 	DBPath             *string   `json:"db_path"`
 	DiffEnabled        *bool     `json:"diff_enabled"`
@@ -190,6 +206,32 @@ type SaveSettingsRequestDTO struct {
 
 	PrivacyEnabled  *bool     `json:"privacy_enabled"`
 	PrivacyPatterns *[]string `json:"privacy_patterns"`
+}
+
+type AISettingsPatchDTO struct {
+	Provider *string `json:"provider"`
+
+	Default   *AIProviderPatchDTO `json:"default"`
+	OpenAI    *AIProviderPatchDTO `json:"openai"`
+	Anthropic *AIProviderPatchDTO `json:"anthropic"`
+	Google    *AIProviderPatchDTO `json:"google"`
+	Zhipu     *AIProviderPatchDTO `json:"zhipu"`
+
+	SiliconFlow *SiliconFlowPatchDTO `json:"siliconflow"`
+}
+
+type AIProviderPatchDTO struct {
+	Enabled *bool   `json:"enabled"`
+	APIKey  *string `json:"api_key"`
+	BaseURL *string `json:"base_url"`
+	Model   *string `json:"model"`
+}
+
+type SiliconFlowPatchDTO struct {
+	APIKey         *string `json:"api_key"`
+	BaseURL        *string `json:"base_url"`
+	EmbeddingModel *string `json:"embedding_model"`
+	RerankerModel  *string `json:"reranker_model"`
 }
 
 type SaveSettingsResponseDTO struct {

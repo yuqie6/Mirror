@@ -10,5 +10,6 @@
     <p>默认开启脱敏：URL 会清空 query/fragment 并保留域名与"存在路径"的事实；窗口标题/浏览标题会按规则替换敏感片段。你可以在配置中调整 <code>privacy.patterns</code>。</p>
 
     <h2>AI 处理</h2>
-    <p>不配置任何 Key 时，不会调用外部 AI。启用 AI 后，仅在需要生成语义摘要/建议时发送经脱敏的最小必要文本到你配置的提供商（例如 DeepSeek / SiliconFlow）。</p>
+    <p>关闭 AI 时，不会调用外部 AI；启用 AI 后，仅在需要生成语义摘要/建议时发送经脱敏的最小必要文本到你配置的提供商。</p>
+    <p>默认 <code>ai.provider=default</code> 使用作者提供的 OpenAI 兼容网关（端点 <code>https://gpt.devbin.de/proxy/mirror</code>，默认模型 <code>llama-3.3-70b</code>）。如需完全自定义或使用自有 Key，请改用 <code>openai/anthropic/google/zhipu</code>。</p>
 </article>

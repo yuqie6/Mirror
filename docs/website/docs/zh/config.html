@@ -19,5 +19,6 @@ privacy:
   enabled: true</pre>
 
     <h2>AI Key 与环境变量</h2>
-    <p>建议通过环境变量注入 Key（避免写入磁盘/提交仓库），例如 <code>DEEPSEEK_API_KEY</code>、<code>SILICONFLOW_API_KEY</code>。</p>
+    <p>默认 <code>ai.provider=default</code> 使用作者提供的 OpenAI 兼容网关（默认模型 <code>llama-3.3-70b</code>，端点 <code>https://gpt.devbin.de/proxy/mirror</code>）。如需完全自定义或使用自有 Key，请改用 <code>openai/anthropic/google/zhipu</code>。</p>
+    <p>建议通过环境变量注入 Key（避免写入磁盘/提交仓库），例如 <code>OPENAI_API_KEY</code>、<code>ANTHROPIC_API_KEY</code>、<code>GOOGLE_API_KEY</code>、<code>ZHIPU_API_KEY</code>、<code>SILICONFLOW_API_KEY</code>。</p>
 </article>

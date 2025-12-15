@@ -163,8 +163,9 @@ func TestSplitSessions_IdleGapCreatesNewSession(t *testing.T) {
 
 	// 两段事件，中间有 10 分钟间隔（超过 6 分钟阈值）
 	events := []schema.Event{
-		{Timestamp: baseTs, AppName: "code.exe", Duration: 60},
-		{Timestamp: baseTs + 15*60*1000, AppName: "chrome.exe", Duration: 60}, // 15min later
+		// 默认 MinSessionMinutes=2，会过滤掉 <2min 的碎片会话；因此这里用 >=2min 的窗口事件来验证 idle gap 切分。
+		{Timestamp: baseTs, AppName: "code.exe", Duration: 120},
+		{Timestamp: baseTs + 15*60*1000, AppName: "chrome.exe", Duration: 120}, // 15min later
 	}
 
 	svc := NewSessionService(

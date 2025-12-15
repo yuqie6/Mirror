@@ -6,25 +6,39 @@ import (
 	"testing"
 )
 
-// mockDeepSeekClient 用于测试的 mock client
-type mockDeepSeekClient struct {
+// mockLLMProvider 用于测试的 mock LLM Provider
+type mockLLMProvider struct {
+	name       string
 	configured bool
 	response   string
 	err        error
 	// 记录最后一次调用的参数，用于验证
 	lastMessages []Message
+	lastOpts     ChatOptions
 }
 
-func (m *mockDeepSeekClient) IsConfigured() bool {
-	return m.configured
+func (m *mockLLMProvider) Chat(ctx context.Context, messages []Message) (string, error) {
+	return m.ChatWithOptions(ctx, messages, DefaultChatOptions())
 }
 
-func (m *mockDeepSeekClient) ChatWithOptions(ctx context.Context, messages []Message, temperature float64, maxTokens int) (string, error) {
+func (m *mockLLMProvider) ChatWithOptions(ctx context.Context, messages []Message, opts ChatOptions) (string, error) {
 	m.lastMessages = messages
+	m.lastOpts = opts
 	if m.err != nil {
 		return "", m.err
 	}
 	return m.response, nil
+}
+
+func (m *mockLLMProvider) IsConfigured() bool {
+	return m.configured
+}
+
+func (m *mockLLMProvider) Name() string {
+	if m.name == "" {
+		return "MockProvider"
+	}
+	return m.name
 }
 
 // TestNewDiffAnalyzer 测试 Analyzer 初始化时的语言参数处理
@@ -63,8 +77,8 @@ func TestNewDiffAnalyzer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &DeepSeekClient{apiKey: "test"}
-			analyzer := NewDiffAnalyzer(client, tt.lang)
+			provider := &mockLLMProvider{configured: true}
+			analyzer := NewDiffAnalyzer(provider, tt.lang)
 			if analyzer.lang != tt.expectedLang {
 				t.Errorf("NewDiffAnalyzer(%s) 语言应为 %q，实际为 %q", tt.lang, tt.expectedLang, analyzer.lang)
 			}
@@ -75,9 +89,9 @@ func TestNewDiffAnalyzer(t *testing.T) {
 // TestAnalyzeDiff_Language 测试 AnalyzeDiff 是否正确传递语言参数到 prompt
 func TestAnalyzeDiff_Language(t *testing.T) {
 	tests := []struct {
-		name            string
-		lang            string
-		expectInPrompt  string // 期望在系统 prompt 中出现的关键词
+		name           string
+		lang           string
+		expectInPrompt string // 期望在系统 prompt 中出现的关键词
 	}{
 		{
 			name:           "中文 Diff 分析",
@@ -93,12 +107,13 @@ func TestAnalyzeDiff_Language(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			provider := &mockLLMProvider{configured: true}
 			analyzer := &DiffAnalyzer{
-				client: &DeepSeekClient{apiKey: "test"},
-				lang:   tt.lang,
+				provider: provider,
+				lang:     tt.lang,
 			}
 
-			// 由于我们不能直接替换 client 的方法，我们采用另一种方法：
+			// 由于我们不能直接替换 provider 的方法，我们采用另一种方法：
 			// 直接测试 prompt 生成，而不是整个 AnalyzeDiff 流程
 			// 这样可以避免实际调用 API
 
@@ -124,9 +139,10 @@ func TestGenerateDailySummary_Language(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			provider := &mockLLMProvider{configured: true}
 			analyzer := &DiffAnalyzer{
-				client: &DeepSeekClient{apiKey: "test"},
-				lang:   tt.lang,
+				provider: provider,
+				lang:     tt.lang,
 			}
 
 			if analyzer.lang != tt.lang {
@@ -148,9 +164,10 @@ func TestGenerateSessionSummary_Language(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			provider := &mockLLMProvider{configured: true}
 			analyzer := &DiffAnalyzer{
-				client: &DeepSeekClient{apiKey: "test"},
-				lang:   tt.lang,
+				provider: provider,
+				lang:     tt.lang,
 			}
 
 			if analyzer.lang != tt.lang {
@@ -172,9 +189,10 @@ func TestGenerateWeeklySummary_Language(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			provider := &mockLLMProvider{configured: true}
 			analyzer := &DiffAnalyzer{
-				client: &DeepSeekClient{apiKey: "test"},
-				lang:   tt.lang,
+				provider: provider,
+				lang:     tt.lang,
 			}
 
 			if analyzer.lang != tt.lang {
@@ -233,24 +251,24 @@ func TestCleanJSONResponse(t *testing.T) {
 	}
 }
 
-// TestAnalyzer_UnconfiguredClient 测试未配置的 client
-func TestAnalyzer_UnconfiguredClient(t *testing.T) {
-	// 创建未配置的 client（没有 API key）
-	client := NewDeepSeekClient(&DeepSeekConfig{})
-	analyzer := NewDiffAnalyzer(client, "zh")
+// TestAnalyzer_UnconfiguredProvider 测试未配置的 Provider
+func TestAnalyzer_UnconfiguredProvider(t *testing.T) {
+	// 创建未配置的 provider（没有 API key）
+	provider := &mockLLMProvider{configured: false}
+	analyzer := NewDiffAnalyzer(provider, "zh")
 
 	ctx := context.Background()
 
 	// AnalyzeDiff 应该返回错误
 	_, err := analyzer.AnalyzeDiff(ctx, "test.go", "Go", "diff content", nil)
 	if err == nil || !strings.Contains(err.Error(), "未配置") {
-		t.Errorf("未配置的 client 应该返回错误，实际: %v", err)
+		t.Errorf("未配置的 provider 应该返回错误，实际: %v", err)
 	}
 
 	// GenerateDailySummary 应该返回错误
 	_, err = analyzer.GenerateDailySummary(ctx, &DailySummaryRequest{Date: "2025-01-01"})
 	if err == nil || !strings.Contains(err.Error(), "未配置") {
-		t.Errorf("未配置的 client 应该返回错误，实际: %v", err)
+		t.Errorf("未配置的 provider 应该返回错误，实际: %v", err)
 	}
 
 	// GenerateSessionSummary 应该返回错误
@@ -259,9 +277,112 @@ func TestAnalyzer_UnconfiguredClient(t *testing.T) {
 		TimeRange: "10:00-11:00",
 	})
 	if err == nil || !strings.Contains(err.Error(), "未配置") {
-		t.Errorf("未配置的 client 应该返回错误，实际: %v", err)
+		t.Errorf("未配置的 provider 应该返回错误，实际: %v", err)
+	}
+}
+
+// TestOpenAIProvider_IsConfigured 测试 OpenAI Provider 的配置检查
+func TestOpenAIProvider_IsConfigured(t *testing.T) {
+	ptrBool := func(v bool) *bool { return &v }
+
+	tests := []struct {
+		name       string
+		apiKey     string
+		requireKey *bool
+		baseURL    string
+		configured bool
+	}{
+		{name: "有 API Key", apiKey: "test-key", configured: true},
+		{name: "空 API Key", apiKey: "", configured: false},
+		{name: "不强制 Key（用于自建匿名服务）", apiKey: "", baseURL: "https://example.com", requireKey: ptrBool(false), configured: true},
 	}
 
-	// GenerateWeeklySummary 应该返回错误（这个方法不检查配置，但会在调用时失败）
-	// 我们可以跳过这个测试，因为它的实现不同
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := NewOpenAIProvider(&OpenAIProviderConfig{
+				APIKey:        tt.apiKey,
+				BaseURL:       tt.baseURL,
+				RequireAPIKey: tt.requireKey,
+			})
+			if provider.IsConfigured() != tt.configured {
+				t.Errorf("IsConfigured() = %v, 期望 %v", provider.IsConfigured(), tt.configured)
+			}
+		})
+	}
+}
+
+// TestAnthropicProvider_IsConfigured 测试 Anthropic Provider 的配置检查
+func TestAnthropicProvider_IsConfigured(t *testing.T) {
+	tests := []struct {
+		name       string
+		apiKey     string
+		configured bool
+	}{
+		{name: "有 API Key", apiKey: "test-key", configured: true},
+		{name: "空 API Key", apiKey: "", configured: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := NewAnthropicProvider(&AnthropicProviderConfig{
+				APIKey: tt.apiKey,
+			})
+			if provider.IsConfigured() != tt.configured {
+				t.Errorf("IsConfigured() = %v, 期望 %v", provider.IsConfigured(), tt.configured)
+			}
+		})
+	}
+}
+
+// TestGoogleProvider_IsConfigured 测试 Google Provider 的配置检查
+func TestGoogleProvider_IsConfigured(t *testing.T) {
+	tests := []struct {
+		name       string
+		apiKey     string
+		configured bool
+	}{
+		{name: "有 API Key", apiKey: "test-key", configured: true},
+		{name: "空 API Key", apiKey: "", configured: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := NewGoogleProvider(&GoogleProviderConfig{
+				APIKey: tt.apiKey,
+			})
+			if provider.IsConfigured() != tt.configured {
+				t.Errorf("IsConfigured() = %v, 期望 %v", provider.IsConfigured(), tt.configured)
+			}
+		})
+	}
+}
+
+// TestZhipuProvider_IsConfigured 测试 Zhipu Provider 的配置检查
+func TestZhipuProvider_IsConfigured(t *testing.T) {
+	ptrBool := func(v bool) *bool { return &v }
+
+	tests := []struct {
+		name          string
+		apiKey        string
+		baseURL       string
+		requireAPIKey *bool
+		configured    bool
+	}{
+		{name: "有 API Key", apiKey: "id.secret", configured: true},
+		{name: "空 API Key", apiKey: "", configured: false},
+		{name: "不强制 Key（用于自建网关）", apiKey: "", baseURL: "https://example.com/api/paas/v4", requireAPIKey: ptrBool(false), configured: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := NewZhipuProvider(&ZhipuProviderConfig{
+				APIKey:        tt.apiKey,
+				BaseURL:       tt.baseURL,
+				RequireAPIKey: tt.requireAPIKey,
+			})
+			if provider.IsConfigured() != tt.configured {
+				t.Errorf("IsConfigured() = %v, 期望 %v", provider.IsConfigured(), tt.configured)
+			}
+		})
+	}
 }

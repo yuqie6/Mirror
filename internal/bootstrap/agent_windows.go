@@ -133,7 +133,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 	}
 
 	// AI 定时分析（optional）
-	if core.Clients.DeepSeek != nil && core.Clients.DeepSeek.IsConfigured() {
+	if core.Clients.LLM != nil && core.Clients.LLM.IsConfigured() {
 		go runPeriodic(ctx, 5*time.Minute, func() { analyzeWithRetry(ctx, core.Services.AI) })
 	}
 
@@ -142,7 +142,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		go runPeriodic(ctx, 5*time.Minute, func() { splitWithRetry(ctx, core.Services.Sessions) })
 	}
 
-	// Session 语义补全（用于证据链，DeepSeek 未配置时自动降级为规则摘要）
+	// Session 语义补全（用于证据链，LLM 未配置时自动降级为规则摘要）
 	if core.Services.SessionSemantic != nil {
 		go runPeriodic(ctx, 10*time.Minute, func() { enrichWithRetry(ctx, core.Services.SessionSemantic) })
 	}

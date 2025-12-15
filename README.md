@@ -15,7 +15,7 @@
 - **自动日报/复盘**：把一天拆成工作片段并生成摘要；支持周期聚合（日报/周报/趋势）。
 - **可回溯证据链**：每条结论都能一键展开到来源覆盖率与证据明细（Diff/窗口/浏览）。
 - **技能树与趋势**：基于工作片段做技能归因与趋势展示（口径统一、可解释）。
-- **离线可用**：不配置 AI Key 也能生成规则版摘要；配置 AI 后可选增强语义与建议。
+- **离线可用**：关闭 AI 时可完全离线；也可使用内置免费模型或自配供应商生成语义摘要与建议。
 - **隐私默认开启**：数据本地存储；URL/标题可脱敏；本地 HTTP 仅监听 `127.0.0.1`。
 - **拒绝沉默失败**：内置状态页与诊断包导出，空态/异常会给出可操作原因与修复建议。
 
@@ -29,7 +29,7 @@
 
 - **后端**: Go 1.25.4
 - **存储**: SQLite (WAL 模式)
-- **AI**: DeepSeek (LLM) + SiliconFlow (Embedding/Reranker)
+- **AI**: 内置免费 LLM（可选）/OpenAI 兼容/Anthropic/Google + SiliconFlow (Embedding/Reranker)
 
 ## 快速开始
 
@@ -63,7 +63,8 @@ diff:
     - "C:\\Users\\Dev\\Projects\\MyRepo"
 ```
 
-AI Key 建议通过环境变量注入（避免写入磁盘），例如 `DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`（详见 `config/config.yaml.example`）。
+默认 `ai.provider=default` 会使用作者提供的 OpenAI 兼容网关（默认模型 `llama-3.3-70b`，端点 `https://gpt.devbin.de/proxy/mirror`）；如需完全自定义或使用自有 Key，请改用 `openai/anthropic/google/zhipu`。
+AI Key 建议通过环境变量注入（避免写入磁盘），例如 `OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GOOGLE_API_KEY`、`ZHIPU_API_KEY`、`SILICONFLOW_API_KEY`（详见 `config/config.yaml.example`）。
 如不希望采集浏览历史，可在配置中关闭 `browser.enabled`。
 
 ## 开发者

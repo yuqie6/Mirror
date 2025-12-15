@@ -65,12 +65,64 @@ type BrowserConfig struct {
 
 // AIConfig AI 配置
 type AIConfig struct {
-	DeepSeek    DeepSeekConfig    `mapstructure:"deepseek"`
+	// Provider 指定使用的 LLM 供应商：default, openai, anthropic, google, zhipu
+	// default: 使用内置免费服务（作者提供的 NewAPI）
+	// openai: OpenAI 兼容格式（支持 OpenRouter、DeepSeek、硅基流动、自建 NewAPI 等）
+	// anthropic: Anthropic Claude 格式
+	// google: Google Gemini 格式
+	// zhipu: 智谱 BigModel v4 格式
+	Provider string `mapstructure:"provider"`
+
+	// Default 内置免费服务配置（当 Provider 为 "default" 时使用）
+	Default DefaultLLMConfig `mapstructure:"default"`
+
+	// OpenAI 兼容格式配置（当 Provider 为 "openai" 时使用）
+	OpenAI OpenAIConfig `mapstructure:"openai"`
+
+	// Anthropic Claude 配置（当 Provider 为 "anthropic" 时使用）
+	Anthropic AnthropicConfig `mapstructure:"anthropic"`
+
+	// Google Gemini 配置（当 Provider 为 "google" 时使用）
+	Google GoogleConfig `mapstructure:"google"`
+
+	// Zhipu 智谱 BigModel v4 配置（当 Provider 为 "zhipu" 时使用）
+	Zhipu ZhipuConfig `mapstructure:"zhipu"`
+
+	// SiliconFlow 配置（Embedding/Reranker，独立于 LLM）
 	SiliconFlow SiliconFlowConfig `mapstructure:"siliconflow"`
 }
 
-// DeepSeekConfig DeepSeek 配置
-type DeepSeekConfig struct {
+// DefaultLLMConfig 内置免费服务配置
+type DefaultLLMConfig struct {
+	Enabled bool   `mapstructure:"enabled"` // 是否启用内置免费服务
+	BaseURL string `mapstructure:"base_url"`
+	APIKey  string `mapstructure:"api_key"`
+	Model   string `mapstructure:"model"`
+}
+
+// OpenAIConfig OpenAI 兼容格式配置
+type OpenAIConfig struct {
+	APIKey  string `mapstructure:"api_key"`
+	BaseURL string `mapstructure:"base_url"`
+	Model   string `mapstructure:"model"`
+}
+
+// AnthropicConfig Anthropic Claude 配置
+type AnthropicConfig struct {
+	APIKey  string `mapstructure:"api_key"`
+	BaseURL string `mapstructure:"base_url"`
+	Model   string `mapstructure:"model"`
+}
+
+// GoogleConfig Google Gemini 配置
+type GoogleConfig struct {
+	APIKey  string `mapstructure:"api_key"`
+	BaseURL string `mapstructure:"base_url"`
+	Model   string `mapstructure:"model"`
+}
+
+// ZhipuConfig 智谱 BigModel v4 配置
+type ZhipuConfig struct {
 	APIKey  string `mapstructure:"api_key"`
 	BaseURL string `mapstructure:"base_url"`
 	Model   string `mapstructure:"model"`
@@ -134,8 +186,23 @@ func Load(configPath string) (*Config, error) {
 	cfg.App.Version = buildinfo.Version
 
 	// 处理环境变量占位符
-	cfg.AI.DeepSeek.APIKey = expandEnv(cfg.AI.DeepSeek.APIKey)
+	cfg.AI.Default.APIKey = expandEnv(cfg.AI.Default.APIKey)
+	cfg.AI.OpenAI.APIKey = expandEnv(cfg.AI.OpenAI.APIKey)
+	cfg.AI.Anthropic.APIKey = expandEnv(cfg.AI.Anthropic.APIKey)
+	cfg.AI.Google.APIKey = expandEnv(cfg.AI.Google.APIKey)
+	cfg.AI.Zhipu.APIKey = expandEnv(cfg.AI.Zhipu.APIKey)
 	cfg.AI.SiliconFlow.APIKey = expandEnv(cfg.AI.SiliconFlow.APIKey)
+
+	// 内置服务锁定：当 Release 构建注入 DefaultLLM* 时，不允许配置文件覆盖（避免用户误改导致不可用）。
+	if strings.TrimSpace(buildinfo.DefaultLLMBaseURL) != "" {
+		cfg.AI.Default.BaseURL = buildinfo.DefaultLLMBaseURL
+	}
+	if strings.TrimSpace(buildinfo.DefaultLLMAPIKey) != "" {
+		cfg.AI.Default.APIKey = buildinfo.DefaultLLMAPIKey
+	}
+	if strings.TrimSpace(buildinfo.DefaultLLMModel) != "" {
+		cfg.AI.Default.Model = buildinfo.DefaultLLMModel
+	}
 
 	// 处理相对路径
 	cfg.Storage.DBPath = resolvePath(cfg.Storage.DBPath)
@@ -181,8 +248,39 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("diff.debounce_sec", 2)
 
 	// AI
-	v.SetDefault("ai.deepseek.base_url", "https://api.deepseek.com")
-	v.SetDefault("ai.deepseek.model", "deepseek-chat")
+	// 默认使用内置免费服务
+	v.SetDefault("ai.provider", "default")
+	v.SetDefault("ai.default.enabled", true)
+	// 注意：内置服务默认值可由 Release 构建注入；否则保持为空（不开启外部调用）。
+	if strings.TrimSpace(buildinfo.DefaultLLMBaseURL) != "" {
+		v.SetDefault("ai.default.base_url", buildinfo.DefaultLLMBaseURL)
+	} else {
+		v.SetDefault("ai.default.base_url", "https://gpt.devbin.de/proxy/mirror")
+	}
+	v.SetDefault("ai.default.api_key", buildinfo.DefaultLLMAPIKey)
+	if strings.TrimSpace(buildinfo.DefaultLLMModel) != "" {
+		v.SetDefault("ai.default.model", buildinfo.DefaultLLMModel)
+	} else {
+		v.SetDefault("ai.default.model", "llama-3.3-70b")
+	}
+
+	// OpenAI 兼容格式默认值
+	v.SetDefault("ai.openai.base_url", "https://api.openai.com")
+	v.SetDefault("ai.openai.model", "gpt-4o-mini")
+
+	// Anthropic 默认值
+	v.SetDefault("ai.anthropic.base_url", "https://api.anthropic.com")
+	v.SetDefault("ai.anthropic.model", "claude-sonnet-4-20250514")
+
+	// Google 默认值
+	v.SetDefault("ai.google.base_url", "https://generativelanguage.googleapis.com")
+	v.SetDefault("ai.google.model", "gemini-1.5-flash")
+
+	// Zhipu 默认值（BigModel v4）
+	v.SetDefault("ai.zhipu.base_url", "https://open.bigmodel.cn/api/paas/v4")
+	v.SetDefault("ai.zhipu.model", "glm-4.5-flash")
+
+	// SiliconFlow 默认值（Embedding/Reranker）
 	v.SetDefault("ai.siliconflow.base_url", "https://api.siliconflow.cn/v1")
 	v.SetDefault("ai.siliconflow.embedding_model", "BAAI/bge-large-zh-v1.5")
 	v.SetDefault("ai.siliconflow.reranker_model", "BAAI/bge-reranker-v2-m3")

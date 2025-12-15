@@ -10,6 +10,7 @@ import (
 
 	"github.com/yuqie6/WorkMirror/internal/dto"
 	"github.com/yuqie6/WorkMirror/internal/eventbus"
+	"github.com/yuqie6/WorkMirror/internal/pkg/buildinfo"
 	"github.com/yuqie6/WorkMirror/internal/pkg/config"
 )
 
@@ -41,14 +42,44 @@ func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
 
 		Language: cfg.App.Language,
 
-		DeepSeekAPIKeySet: cfg.AI.DeepSeek.APIKey != "",
-		DeepSeekBaseURL:   cfg.AI.DeepSeek.BaseURL,
-		DeepSeekModel:     cfg.AI.DeepSeek.Model,
-
-		SiliconFlowAPIKeySet:      cfg.AI.SiliconFlow.APIKey != "",
-		SiliconFlowBaseURL:        cfg.AI.SiliconFlow.BaseURL,
-		SiliconFlowEmbeddingModel: cfg.AI.SiliconFlow.EmbeddingModel,
-		SiliconFlowRerankerModel:  cfg.AI.SiliconFlow.RerankerModel,
+		AI: dto.AISettingsDTO{
+			Provider: cfg.AI.Provider,
+			Default: dto.AIProviderSettingsDTO{
+				Enabled:       cfg.AI.Default.Enabled,
+				APIKeySet:     cfg.AI.Default.APIKey != "",
+				BaseURL:       cfg.AI.Default.BaseURL,
+				Model:         cfg.AI.Default.Model,
+				APIKeyLocked:  strings.TrimSpace(buildinfo.DefaultLLMAPIKey) != "",
+				BaseURLLocked: strings.TrimSpace(buildinfo.DefaultLLMBaseURL) != "",
+				ModelLocked:   strings.TrimSpace(buildinfo.DefaultLLMModel) != "",
+			},
+			OpenAI: dto.AIProviderSettingsDTO{
+				APIKeySet: cfg.AI.OpenAI.APIKey != "",
+				BaseURL:   cfg.AI.OpenAI.BaseURL,
+				Model:     cfg.AI.OpenAI.Model,
+			},
+			Anthropic: dto.AIProviderSettingsDTO{
+				APIKeySet: cfg.AI.Anthropic.APIKey != "",
+				BaseURL:   cfg.AI.Anthropic.BaseURL,
+				Model:     cfg.AI.Anthropic.Model,
+			},
+			Google: dto.AIProviderSettingsDTO{
+				APIKeySet: cfg.AI.Google.APIKey != "",
+				BaseURL:   cfg.AI.Google.BaseURL,
+				Model:     cfg.AI.Google.Model,
+			},
+			Zhipu: dto.AIProviderSettingsDTO{
+				APIKeySet: cfg.AI.Zhipu.APIKey != "",
+				BaseURL:   cfg.AI.Zhipu.BaseURL,
+				Model:     cfg.AI.Zhipu.Model,
+			},
+			SiliconFlow: dto.SiliconFlowSettingsDTO{
+				APIKeySet:      cfg.AI.SiliconFlow.APIKey != "",
+				BaseURL:        cfg.AI.SiliconFlow.BaseURL,
+				EmbeddingModel: cfg.AI.SiliconFlow.EmbeddingModel,
+				RerankerModel:  cfg.AI.SiliconFlow.RerankerModel,
+			},
+		},
 
 		DBPath:             cfg.Storage.DBPath,
 		DiffEnabled:        cfg.Diff.Enabled,
@@ -86,27 +117,101 @@ func (a *API) saveSettings(w http.ResponseWriter, r *http.Request) {
 			next.App.Language = lang
 		}
 	}
-	if req.DeepSeekAPIKey != nil {
-		next.AI.DeepSeek.APIKey = *req.DeepSeekAPIKey
-	}
-	if req.DeepSeekBaseURL != nil {
-		next.AI.DeepSeek.BaseURL = *req.DeepSeekBaseURL
-	}
-	if req.DeepSeekModel != nil {
-		next.AI.DeepSeek.Model = *req.DeepSeekModel
-	}
+	if req.AI != nil {
+		if req.AI.Provider != nil {
+			p := strings.ToLower(strings.TrimSpace(*req.AI.Provider))
+			switch p {
+			case "", "default", "openai", "anthropic", "google", "zhipu":
+				if p == "" {
+					p = "default"
+				}
+				next.AI.Provider = p
+			}
+		}
 
-	if req.SiliconFlowAPIKey != nil {
-		next.AI.SiliconFlow.APIKey = *req.SiliconFlowAPIKey
-	}
-	if req.SiliconFlowBaseURL != nil {
-		next.AI.SiliconFlow.BaseURL = *req.SiliconFlowBaseURL
-	}
-	if req.SiliconFlowEmbeddingModel != nil {
-		next.AI.SiliconFlow.EmbeddingModel = *req.SiliconFlowEmbeddingModel
-	}
-	if req.SiliconFlowRerankerModel != nil {
-		next.AI.SiliconFlow.RerankerModel = *req.SiliconFlowRerankerModel
+		if req.AI.Default != nil {
+			if req.AI.Default.Enabled != nil {
+				next.AI.Default.Enabled = *req.AI.Default.Enabled
+			}
+			if req.AI.Default.APIKey != nil {
+				if strings.TrimSpace(buildinfo.DefaultLLMAPIKey) == "" {
+					next.AI.Default.APIKey = strings.TrimSpace(*req.AI.Default.APIKey)
+				}
+			}
+			if req.AI.Default.BaseURL != nil {
+				if strings.TrimSpace(buildinfo.DefaultLLMBaseURL) == "" {
+					next.AI.Default.BaseURL = strings.TrimSpace(*req.AI.Default.BaseURL)
+				}
+			}
+			if req.AI.Default.Model != nil {
+				if strings.TrimSpace(buildinfo.DefaultLLMModel) == "" {
+					next.AI.Default.Model = strings.TrimSpace(*req.AI.Default.Model)
+				}
+			}
+		}
+
+		if req.AI.OpenAI != nil {
+			if req.AI.OpenAI.APIKey != nil {
+				next.AI.OpenAI.APIKey = strings.TrimSpace(*req.AI.OpenAI.APIKey)
+			}
+			if req.AI.OpenAI.BaseURL != nil {
+				next.AI.OpenAI.BaseURL = strings.TrimSpace(*req.AI.OpenAI.BaseURL)
+			}
+			if req.AI.OpenAI.Model != nil {
+				next.AI.OpenAI.Model = strings.TrimSpace(*req.AI.OpenAI.Model)
+			}
+		}
+
+		if req.AI.Anthropic != nil {
+			if req.AI.Anthropic.APIKey != nil {
+				next.AI.Anthropic.APIKey = strings.TrimSpace(*req.AI.Anthropic.APIKey)
+			}
+			if req.AI.Anthropic.BaseURL != nil {
+				next.AI.Anthropic.BaseURL = strings.TrimSpace(*req.AI.Anthropic.BaseURL)
+			}
+			if req.AI.Anthropic.Model != nil {
+				next.AI.Anthropic.Model = strings.TrimSpace(*req.AI.Anthropic.Model)
+			}
+		}
+
+		if req.AI.Google != nil {
+			if req.AI.Google.APIKey != nil {
+				next.AI.Google.APIKey = strings.TrimSpace(*req.AI.Google.APIKey)
+			}
+			if req.AI.Google.BaseURL != nil {
+				next.AI.Google.BaseURL = strings.TrimSpace(*req.AI.Google.BaseURL)
+			}
+			if req.AI.Google.Model != nil {
+				next.AI.Google.Model = strings.TrimSpace(*req.AI.Google.Model)
+			}
+		}
+
+		if req.AI.Zhipu != nil {
+			if req.AI.Zhipu.APIKey != nil {
+				next.AI.Zhipu.APIKey = strings.TrimSpace(*req.AI.Zhipu.APIKey)
+			}
+			if req.AI.Zhipu.BaseURL != nil {
+				next.AI.Zhipu.BaseURL = strings.TrimSpace(*req.AI.Zhipu.BaseURL)
+			}
+			if req.AI.Zhipu.Model != nil {
+				next.AI.Zhipu.Model = strings.TrimSpace(*req.AI.Zhipu.Model)
+			}
+		}
+
+		if req.AI.SiliconFlow != nil {
+			if req.AI.SiliconFlow.APIKey != nil {
+				next.AI.SiliconFlow.APIKey = strings.TrimSpace(*req.AI.SiliconFlow.APIKey)
+			}
+			if req.AI.SiliconFlow.BaseURL != nil {
+				next.AI.SiliconFlow.BaseURL = strings.TrimSpace(*req.AI.SiliconFlow.BaseURL)
+			}
+			if req.AI.SiliconFlow.EmbeddingModel != nil {
+				next.AI.SiliconFlow.EmbeddingModel = strings.TrimSpace(*req.AI.SiliconFlow.EmbeddingModel)
+			}
+			if req.AI.SiliconFlow.RerankerModel != nil {
+				next.AI.SiliconFlow.RerankerModel = strings.TrimSpace(*req.AI.SiliconFlow.RerankerModel)
+			}
+		}
 	}
 
 	if req.DBPath != nil {

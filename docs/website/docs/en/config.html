@@ -19,5 +19,6 @@ privacy:
   enabled: true</pre>
 
     <h2>AI Key & Environment Variables</h2>
-    <p>Recommended to inject Key via environment variables (avoid writing to disk/committing to repo), e.g., <code>DEEPSEEK_API_KEY</code>, <code>SILICONFLOW_API_KEY</code>.</p>
+    <p>By default, <code>ai.provider=default</code> uses the author's OpenAI-compatible gateway (default model <code>llama-3.3-70b</code>, endpoint <code>https://gpt.devbin.de/proxy/mirror</code>). To fully customize or use your own keys, switch to <code>openai/anthropic/google/zhipu</code>.</p>
+    <p>Recommended to inject Key via environment variables (avoid writing to disk/committing to repo), e.g., <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>GOOGLE_API_KEY</code>, <code>ZHIPU_API_KEY</code>, <code>SILICONFLOW_API_KEY</code>.</p>
 </article>

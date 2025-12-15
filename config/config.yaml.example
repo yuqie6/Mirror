@@ -52,13 +52,51 @@ storage:
 
 # AI API 配置
 ai:
-  # DeepSeek LLM
-  deepseek:
-    api_key: "${DEEPSEEK_API_KEY}"
-    base_url: "https://api.deepseek.com"
-    model: "deepseek-chat"
+  # 供应商选择：default, openai, anthropic, google, zhipu
+  # - default: 使用内置免费服务（无需配置 API Key）
+  # - openai: OpenAI 兼容格式（支持 OpenRouter、DeepSeek、硅基流动、自建 NewAPI 等）
+  # - anthropic: Anthropic Claude 格式
+  # - google: Google Gemini 格式
+  # - zhipu: 智谱 BigModel v4 格式（官方与多数代理使用 /api/paas/v4/chat/completions）
+  provider: "default"
 
-  # SiliconFlow Embedding & Reranker
+  # 内置免费服务配置（当 provider 为 "default" 时生效）
+  # 注意：内置服务由作者提供，数据会经过云端处理；协议为 OpenAI 兼容（POST {base_url}/v1/chat/completions）
+  # 如需完全本地控制，请配置 openai/anthropic/google 并使用自己的 API Key
+  default:
+    enabled: true
+    # base_url 由作者内置或构建注入；如你自建 OpenAI 兼容网关，也可以直接填自己的地址。
+    base_url: "https://gpt.devbin.de/proxy/mirror"
+    # api_key 可选（如果你的网关不需要 key，就留空）。
+    # api_key: ""
+    model: "llama-3.3-70b"
+
+  # OpenAI 兼容格式配置（当 provider 为 "openai" 时生效）
+  # 支持 DeepSeek、OpenRouter、硅基流动、Azure OpenAI、自建 NewAPI 等
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    base_url: "https://api.openai.com" # 或 https://api.deepseek.com、https://openrouter.ai/api 等
+    model: "gpt-4o-mini" # 或 deepseek-chat、claude-3-5-sonnet 等
+
+  # Anthropic Claude 配置（当 provider 为 "anthropic" 时生效）
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+    base_url: "https://api.anthropic.com"
+    model: "claude-sonnet-4-20250514"
+
+  # Google Gemini 配置（当 provider 为 "google" 时生效）
+  google:
+    api_key: "${GOOGLE_API_KEY}"
+    base_url: "https://generativelanguage.googleapis.com"
+    model: "gemini-1.5-flash"
+
+  # 智谱 BigModel v4 配置（当 provider 为 "zhipu" 时生效）
+  zhipu:
+    api_key: "${ZHIPU_API_KEY}"
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    model: "glm-4.5-flash"
+
+  # SiliconFlow Embedding & Reranker（用于 RAG，独立于 LLM）
   siliconflow:
     api_key: "${SILICONFLOW_API_KEY}"
     base_url: "https://api.siliconflow.cn/v1"

@@ -1,7 +1,13 @@
 package ai
 
 // 注意：本文件集中定义 AI 层的输入/输出类型。
-// - 这里的 json tag 用于“AI 生成的 JSON”与“供应商 HTTP payload”的解析/序列化（不属于 HTTP API DTO）。
+// - 这里的 json tag 用于"AI 生成的 JSON"与"供应商 HTTP payload"的解析/序列化（不属于 HTTP API DTO）。
+
+// Message LLM 消息
+type Message struct {
+	Role    string `json:"role"`    // "system", "user", "assistant"
+	Content string `json:"content"` // 消息内容
+}
 
 // SkillWithCategory 带分类的技能（AI 返回）
 type SkillWithCategory struct {

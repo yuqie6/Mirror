@@ -12,14 +12,44 @@ interface SettingsData {
 
   language: string; // AI Prompt 语言偏好：zh/en
 
-  deepseek_api_key_set: boolean;
-  deepseek_base_url: string;
-  deepseek_model: string;
-
-  siliconflow_api_key_set: boolean;
-  siliconflow_base_url: string;
-  siliconflow_embedding_model: string;
-  siliconflow_reranker_model: string;
+  ai: {
+    provider: 'default' | 'openai' | 'anthropic' | 'google' | 'zhipu' | string;
+    default: {
+      enabled: boolean;
+      api_key_set: boolean;
+      base_url: string;
+      model: string;
+      api_key_locked?: boolean;
+      base_url_locked?: boolean;
+      model_locked?: boolean;
+    };
+    openai: {
+      api_key_set: boolean;
+      base_url: string;
+      model: string;
+    };
+    anthropic: {
+      api_key_set: boolean;
+      base_url: string;
+      model: string;
+    };
+    google: {
+      api_key_set: boolean;
+      base_url: string;
+      model: string;
+    };
+    zhipu: {
+      api_key_set: boolean;
+      base_url: string;
+      model: string;
+    };
+    siliconflow: {
+      api_key_set: boolean;
+      base_url: string;
+      embedding_model: string;
+      reranker_model: string;
+    };
+  };
 
   db_path: string;
   diff_enabled: boolean;
@@ -35,14 +65,41 @@ interface SettingsData {
 interface SaveSettingsRequest {
   language?: string; // AI Prompt 语言偏好：zh/en
 
-  deepseek_api_key?: string;
-  deepseek_base_url?: string;
-  deepseek_model?: string;
-
-  siliconflow_api_key?: string;
-  siliconflow_base_url?: string;
-  siliconflow_embedding_model?: string;
-  siliconflow_reranker_model?: string;
+  ai?: {
+    provider?: 'default' | 'openai' | 'anthropic' | 'google' | 'zhipu' | string;
+    default?: {
+      enabled?: boolean;
+      api_key?: string;
+      base_url?: string;
+      model?: string;
+    };
+    openai?: {
+      api_key?: string;
+      base_url?: string;
+      model?: string;
+    };
+    anthropic?: {
+      api_key?: string;
+      base_url?: string;
+      model?: string;
+    };
+    google?: {
+      api_key?: string;
+      base_url?: string;
+      model?: string;
+    };
+    zhipu?: {
+      api_key?: string;
+      base_url?: string;
+      model?: string;
+    };
+    siliconflow?: {
+      api_key?: string;
+      base_url?: string;
+      embedding_model?: string;
+      reranker_model?: string;
+    };
+  };
 
   db_path?: string;
   diff_enabled?: boolean;
@@ -62,7 +119,11 @@ export default function SettingsView() {
   const [pendingChanges, setPendingChanges] = useState<SaveSettingsRequest>({});
   
   // 输入状态
-  const [newDeepSeekApiKey, setNewDeepSeekApiKey] = useState('');
+  const [newDefaultApiKey, setNewDefaultApiKey] = useState('');
+  const [newOpenAICompatibleApiKey, setNewOpenAICompatibleApiKey] = useState('');
+  const [newAnthropicApiKey, setNewAnthropicApiKey] = useState('');
+  const [newGoogleApiKey, setNewGoogleApiKey] = useState('');
+  const [newZhipuApiKey, setNewZhipuApiKey] = useState('');
   const [newSiliconFlowApiKey, setNewSiliconFlowApiKey] = useState('');
   const [newWatchPath, setNewWatchPath] = useState('');
   const [newPrivacyPattern, setNewPrivacyPattern] = useState('');
@@ -109,6 +170,32 @@ export default function SettingsView() {
     setPendingChanges((prev) => ({ ...prev, [key]: value }));
   };
 
+  const updatePendingAI = (patch: NonNullable<SaveSettingsRequest['ai']>) => {
+    setPendingChanges((prev) => ({
+      ...prev,
+      ai: {
+        ...(prev.ai || {}),
+        ...patch,
+      },
+    }));
+  };
+
+  const updatePendingAIProvider = (
+    provider: 'default' | 'openai' | 'anthropic' | 'google' | 'zhipu' | 'siliconflow',
+    patch: Record<string, any>
+  ) => {
+    setPendingChanges((prev) => ({
+      ...prev,
+      ai: {
+        ...(prev.ai || {}),
+        [provider]: {
+          ...((prev.ai as any)?.[provider] || {}),
+          ...patch,
+        },
+      },
+    }));
+  };
+
   // 监控路径管理
   const displayWatchPaths = pendingChanges.diff_watch_paths ?? settings?.diff_watch_paths ?? [];
   const addWatchPath = () => {
@@ -133,6 +220,7 @@ export default function SettingsView() {
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
   const privacyEnabled = pendingChanges.privacy_enabled ?? settings?.privacy_enabled ?? false;
+  const aiProvider = (pendingChanges.ai?.provider ?? settings?.ai.provider ?? 'default') as string;
 
   const previewPrivacy = (text: string): string => {
     const input = typeof text === 'string' ? text : '';
@@ -238,51 +326,324 @@ export default function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* DeepSeek AI 配置 */}
+      {/* LLM Provider */}
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
-            <Server size={18} /> {t('settings.deepseekConfig')}
+            <Server size={18} /> {t('settings.llmProvider')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="text-xs text-zinc-500">{t('settings.llmProviderHint')}</div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
-            <div className="flex items-center gap-2">
-              {settings.deepseek_api_key_set ? (
-                <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
-              ) : (
-                <input
-                  type="password"
-                  placeholder={t('settings.enterApiKey')}
-                  value={newDeepSeekApiKey}
-                  onChange={(e) => setNewDeepSeekApiKey(e.target.value)}
-                  onBlur={() => { if (newDeepSeekApiKey) updatePending('deepseek_api_key', newDeepSeekApiKey); }}
-                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 w-48"
-                />
-              )}
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
-            <input
-              type="text"
-              defaultValue={settings.deepseek_base_url}
-              onBlur={(e) => { if (e.target.value !== settings.deepseek_base_url) updatePending('deepseek_base_url', e.target.value); }}
-              className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-64"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-zinc-300">{t('settings.model')}</div>
-            <input
-              type="text"
-              defaultValue={settings.deepseek_model}
-              onBlur={(e) => { if (e.target.value !== settings.deepseek_model) updatePending('deepseek_model', e.target.value); }}
-              className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-48"
-            />
+            <div className="text-sm text-zinc-300">{t('settings.llmProvider')}</div>
+            <select
+              value={aiProvider}
+              onChange={(e) => updatePendingAI({ provider: e.target.value })}
+              className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300"
+            >
+              <option value="default">{t('settings.providerDefault')}</option>
+              <option value="openai">{t('settings.providerOpenAI')}</option>
+              <option value="anthropic">{t('settings.providerAnthropic')}</option>
+              <option value="google">{t('settings.providerGoogle')}</option>
+              <option value="zhipu">{t('settings.providerZhipu')}</option>
+            </select>
           </div>
         </CardContent>
       </Card>
+
+      {/* Built-in / Default provider */}
+      {(aiProvider === 'default') && settings && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
+              <Server size={18} /> {t('settings.defaultProviderConfig')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.defaultEnabled')}</div>
+              <Switch
+                checked={(pendingChanges.ai?.default?.enabled ?? settings.ai.default.enabled) as boolean}
+                onCheckedChange={(checked: boolean) => updatePendingAIProvider('default', { enabled: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
+              <div className="flex items-center gap-2">
+                {settings.ai.default.api_key_set ? (
+                  <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
+                ) : null}
+                <input
+                  type="password"
+                  placeholder={settings.ai.default.api_key_set ? t('settings.enterApiKeyReplace') : t('settings.enterApiKey')}
+                  value={newDefaultApiKey}
+                  disabled={Boolean(settings.ai.default.api_key_locked)}
+                  onChange={(e) => setNewDefaultApiKey(e.target.value)}
+                  onBlur={() => {
+                    if (settings.ai.default.api_key_locked) return;
+                    const v = newDefaultApiKey.trim();
+                    if (v) updatePendingAIProvider('default', { api_key: v });
+                  }}
+                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 w-56 disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.default.base_url}
+                disabled={Boolean(settings.ai.default.base_url_locked)}
+                onBlur={(e) => {
+                  if (settings.ai.default.base_url_locked) return;
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.default.base_url) updatePendingAIProvider('default', { base_url: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-80 disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.model')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.default.model}
+                disabled={Boolean(settings.ai.default.model_locked)}
+                onBlur={(e) => {
+                  if (settings.ai.default.model_locked) return;
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.default.model) updatePendingAIProvider('default', { model: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-56 disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* OpenAI compatible */}
+      {(aiProvider === 'openai') && settings && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
+              <Server size={18} /> {t('settings.openaiProviderConfig')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
+              <div className="flex items-center gap-2">
+                {settings.ai.openai.api_key_set ? (
+                  <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
+                ) : null}
+                <input
+                  type="password"
+                  placeholder={settings.ai.openai.api_key_set ? t('settings.enterApiKeyReplace') : t('settings.enterApiKey')}
+                  value={newOpenAICompatibleApiKey}
+                  onChange={(e) => setNewOpenAICompatibleApiKey(e.target.value)}
+                  onBlur={() => {
+                    const v = newOpenAICompatibleApiKey.trim();
+                    if (v) updatePendingAIProvider('openai', { api_key: v });
+                  }}
+                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 w-56"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.openai.base_url}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.openai.base_url) updatePendingAIProvider('openai', { base_url: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-80"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.model')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.openai.model}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.openai.model) updatePendingAIProvider('openai', { model: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-56"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Anthropic */}
+      {(aiProvider === 'anthropic') && settings && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
+              <Server size={18} /> {t('settings.anthropicProviderConfig')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
+              <div className="flex items-center gap-2">
+                {settings.ai.anthropic.api_key_set ? (
+                  <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
+                ) : null}
+                <input
+                  type="password"
+                  placeholder={settings.ai.anthropic.api_key_set ? t('settings.enterApiKeyReplace') : t('settings.enterApiKey')}
+                  value={newAnthropicApiKey}
+                  onChange={(e) => setNewAnthropicApiKey(e.target.value)}
+                  onBlur={() => {
+                    const v = newAnthropicApiKey.trim();
+                    if (v) updatePendingAIProvider('anthropic', { api_key: v });
+                  }}
+                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 w-56"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.anthropic.base_url}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.anthropic.base_url) updatePendingAIProvider('anthropic', { base_url: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-80"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.model')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.anthropic.model}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.anthropic.model) updatePendingAIProvider('anthropic', { model: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-56"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Google */}
+      {(aiProvider === 'google') && settings && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
+              <Server size={18} /> {t('settings.googleProviderConfig')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
+              <div className="flex items-center gap-2">
+                {settings.ai.google.api_key_set ? (
+                  <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
+                ) : null}
+                <input
+                  type="password"
+                  placeholder={settings.ai.google.api_key_set ? t('settings.enterApiKeyReplace') : t('settings.enterApiKey')}
+                  value={newGoogleApiKey}
+                  onChange={(e) => setNewGoogleApiKey(e.target.value)}
+                  onBlur={() => {
+                    const v = newGoogleApiKey.trim();
+                    if (v) updatePendingAIProvider('google', { api_key: v });
+                  }}
+                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 w-56"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.google.base_url}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.google.base_url) updatePendingAIProvider('google', { base_url: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-80"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.model')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.google.model}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.google.model) updatePendingAIProvider('google', { model: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-56"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Zhipu */}
+      {(aiProvider === 'zhipu') && settings && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader>
+            <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
+              <Server size={18} /> {t('settings.zhipuProviderConfig')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
+              <div className="flex items-center gap-2">
+                {settings.ai.zhipu.api_key_set ? (
+                  <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
+                ) : null}
+                <input
+                  type="password"
+                  placeholder={settings.ai.zhipu.api_key_set ? t('settings.enterApiKeyReplace') : t('settings.enterApiKey')}
+                  value={newZhipuApiKey}
+                  onChange={(e) => setNewZhipuApiKey(e.target.value)}
+                  onBlur={() => {
+                    const v = newZhipuApiKey.trim();
+                    if (v) updatePendingAIProvider('zhipu', { api_key: v });
+                  }}
+                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 w-56"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.zhipu.base_url}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.zhipu.base_url) updatePendingAIProvider('zhipu', { base_url: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-80"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-zinc-300">{t('settings.model')}</div>
+              <input
+                type="text"
+                defaultValue={settings.ai.zhipu.model}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v !== settings.ai.zhipu.model) updatePendingAIProvider('zhipu', { model: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-56"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* SiliconFlow 配置 */}
       <Card className="bg-zinc-900 border-zinc-800">
@@ -295,26 +656,31 @@ export default function SettingsView() {
           <div className="flex items-center justify-between">
             <div className="text-sm text-zinc-300">{t('settings.apiKey')}</div>
             <div className="flex items-center gap-2">
-              {settings.siliconflow_api_key_set ? (
+              {settings.ai.siliconflow.api_key_set ? (
                 <Badge variant="default" className="text-xs"><Key size={10} className="mr-1" /> {t('settings.apiKeySet')}</Badge>
-              ) : (
-                <input
-                  type="password"
-                  placeholder={t('settings.enterApiKey')}
-                  value={newSiliconFlowApiKey}
-                  onChange={(e) => setNewSiliconFlowApiKey(e.target.value)}
-                  onBlur={() => { if (newSiliconFlowApiKey) updatePending('siliconflow_api_key', newSiliconFlowApiKey); }}
-                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 w-48"
-                />
-              )}
+              ) : null}
+              <input
+                type="password"
+                placeholder={settings.ai.siliconflow.api_key_set ? t('settings.enterApiKeyReplace') : t('settings.enterApiKey')}
+                value={newSiliconFlowApiKey}
+                onChange={(e) => setNewSiliconFlowApiKey(e.target.value)}
+                onBlur={() => {
+                  const v = newSiliconFlowApiKey.trim();
+                  if (v) updatePendingAIProvider('siliconflow', { api_key: v });
+                }}
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 w-56"
+              />
             </div>
           </div>
           <div className="flex items-center justify-between">
             <div className="text-sm text-zinc-300">{t('settings.baseUrl')}</div>
             <input
               type="text"
-              defaultValue={settings.siliconflow_base_url}
-              onBlur={(e) => { if (e.target.value !== settings.siliconflow_base_url) updatePending('siliconflow_base_url', e.target.value); }}
+              defaultValue={settings.ai.siliconflow.base_url}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v !== settings.ai.siliconflow.base_url) updatePendingAIProvider('siliconflow', { base_url: v });
+              }}
               className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-64"
             />
           </div>
@@ -322,8 +688,11 @@ export default function SettingsView() {
             <div className="text-sm text-zinc-300">{t('settings.embeddingModel')}</div>
             <input
               type="text"
-              defaultValue={settings.siliconflow_embedding_model}
-              onBlur={(e) => { if (e.target.value !== settings.siliconflow_embedding_model) updatePending('siliconflow_embedding_model', e.target.value); }}
+              defaultValue={settings.ai.siliconflow.embedding_model}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v !== settings.ai.siliconflow.embedding_model) updatePendingAIProvider('siliconflow', { embedding_model: v });
+              }}
               className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-48"
             />
           </div>
@@ -331,8 +700,11 @@ export default function SettingsView() {
             <div className="text-sm text-zinc-300">{t('settings.rerankerModel')}</div>
             <input
               type="text"
-              defaultValue={settings.siliconflow_reranker_model}
-              onBlur={(e) => { if (e.target.value !== settings.siliconflow_reranker_model) updatePending('siliconflow_reranker_model', e.target.value); }}
+              defaultValue={settings.ai.siliconflow.reranker_model}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v !== settings.ai.siliconflow.reranker_model) updatePendingAIProvider('siliconflow', { reranker_model: v });
+              }}
               className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-400 font-mono w-48"
             />
           </div>

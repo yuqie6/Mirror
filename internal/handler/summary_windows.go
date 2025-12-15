@@ -16,7 +16,7 @@ func (a *API) HandleTodaySummary(w http.ResponseWriter, r *http.Request) {
 	if !a.requireWritableDB(w) {
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.AI == nil {
@@ -93,7 +93,7 @@ func (a *API) HandleDailySummary(w http.ResponseWriter, r *http.Request) {
 	if !a.requireWritableDB(w) {
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 
 	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.AI == nil {

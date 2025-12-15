@@ -25,7 +25,7 @@ WorkMirror runs silently in your Windows system tray, recording your work traces
 
 - **Backend**: Go 1.25.4
 - **Storage**: SQLite (WAL mode)
-- **AI**: DeepSeek (LLM) + SiliconFlow (Embedding/Reranker)
+- **AI**: Optional built-in free LLM / OpenAI-compatible / Anthropic / Google + SiliconFlow (Embedding/Reranker)
 
 ## Quick Start
 
@@ -59,7 +59,8 @@ diff:
     - "C:\\Users\\Dev\\Projects\\MyRepo"
 ```
 
-AI Keys should be injected via environment variables (avoid writing to disk), e.g., `DEEPSEEK_API_KEY`, `SILICONFLOW_API_KEY` (see `config/config.yaml.example`).
+By default, `ai.provider=default` uses the author's OpenAI-compatible gateway (default model `llama-3.3-70b`, endpoint `https://gpt.devbin.de/proxy/mirror`). To fully customize or use your own keys, switch to `openai/anthropic/google/zhipu`.
+AI Keys should be injected via environment variables (avoid writing to disk), e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `ZHIPU_API_KEY`, `SILICONFLOW_API_KEY` (see `config/config.yaml.example`).
 Disable `browser.enabled` in config if you don't want browser history collection.
 
 ## For Developers

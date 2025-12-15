@@ -61,10 +61,32 @@ func WriteFile(path string, cfg *Config) error {
 			"history_path":      cfg.Browser.HistoryPath,
 		},
 		"ai": map[string]any{
-			"deepseek": map[string]any{
-				"api_key":  cfg.AI.DeepSeek.APIKey,
-				"base_url": cfg.AI.DeepSeek.BaseURL,
-				"model":    cfg.AI.DeepSeek.Model,
+			"provider": cfg.AI.Provider,
+			"default": map[string]any{
+				"enabled":  cfg.AI.Default.Enabled,
+				"api_key":  cfg.AI.Default.APIKey,
+				"base_url": cfg.AI.Default.BaseURL,
+				"model":    cfg.AI.Default.Model,
+			},
+			"openai": map[string]any{
+				"api_key":  cfg.AI.OpenAI.APIKey,
+				"base_url": cfg.AI.OpenAI.BaseURL,
+				"model":    cfg.AI.OpenAI.Model,
+			},
+			"anthropic": map[string]any{
+				"api_key":  cfg.AI.Anthropic.APIKey,
+				"base_url": cfg.AI.Anthropic.BaseURL,
+				"model":    cfg.AI.Anthropic.Model,
+			},
+			"google": map[string]any{
+				"api_key":  cfg.AI.Google.APIKey,
+				"base_url": cfg.AI.Google.BaseURL,
+				"model":    cfg.AI.Google.Model,
+			},
+			"zhipu": map[string]any{
+				"api_key":  cfg.AI.Zhipu.APIKey,
+				"base_url": cfg.AI.Zhipu.BaseURL,
+				"model":    cfg.AI.Zhipu.Model,
 			},
 			"siliconflow": map[string]any{
 				"api_key":         cfg.AI.SiliconFlow.APIKey,

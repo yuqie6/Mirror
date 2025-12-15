@@ -10,27 +10,111 @@ import (
 	"github.com/yuqie6/WorkMirror/internal/ai/prompts"
 )
 
+func escapeControlCharsInJSONStringLiterals(s string) (string, bool) {
+	inString := false
+	escaped := false
+	changed := false
+
+	out := make([]byte, 0, len(s)+16)
+	const hex = "0123456789abcdef"
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if inString {
+			if escaped {
+				out = append(out, c)
+				escaped = false
+				continue
+			}
+			switch c {
+			case '\\':
+				out = append(out, c)
+				escaped = true
+				continue
+			case '"':
+				out = append(out, c)
+				inString = false
+				continue
+			case '\b':
+				out = append(out, '\\', 'b')
+				changed = true
+				continue
+			case '\f':
+				out = append(out, '\\', 'f')
+				changed = true
+				continue
+			case '\n':
+				out = append(out, '\\', 'n')
+				changed = true
+				continue
+			case '\r':
+				out = append(out, '\\', 'r')
+				changed = true
+				continue
+			case '\t':
+				out = append(out, '\\', 't')
+				changed = true
+				continue
+			default:
+				if c < 0x20 {
+					out = append(out, '\\', 'u', '0', '0', hex[c>>4], hex[c&0x0f])
+					changed = true
+					continue
+				}
+				out = append(out, c)
+				continue
+			}
+		}
+
+		if c == '"' {
+			inString = true
+		}
+		out = append(out, c)
+	}
+
+	if !changed {
+		return s, false
+	}
+	return string(out), true
+}
+
+func unmarshalLLMJSON[T any](providerName string, cleaned string, dst *T) error {
+	if err := json.Unmarshal([]byte(cleaned), dst); err == nil {
+		return nil
+	} else {
+		fixed, changed := escapeControlCharsInJSONStringLiterals(cleaned)
+		if !changed {
+			return err
+		}
+		if err2 := json.Unmarshal([]byte(fixed), dst); err2 != nil {
+			return err
+		}
+		slog.Warn("AI JSON 响应包含未转义控制字符，已自动修复", "provider", providerName)
+		return nil
+	}
+}
+
 // DiffAnalyzer Diff 分析器
 type DiffAnalyzer struct {
-	client *DeepSeekClient
-	lang   string // 用户语言偏好：zh, en
+	provider LLMProvider
+	lang     string // 用户语言偏好：zh, en
 }
 
 // NewDiffAnalyzer 创建 Diff 分析器
-func NewDiffAnalyzer(client *DeepSeekClient, lang string) *DiffAnalyzer {
+func NewDiffAnalyzer(provider LLMProvider, lang string) *DiffAnalyzer {
 	if lang != "en" && lang != "zh" {
 		lang = "zh" // 默认中文
 	}
 	return &DiffAnalyzer{
-		client: client,
-		lang:   lang,
+		provider: provider,
+		lang:     lang,
 	}
 }
 
 // AnalyzeDiff 分析单个 Diff（传入当前技能树作为上下文）
 func (a *DiffAnalyzer) AnalyzeDiff(ctx context.Context, filePath, language, diffContent string, existingSkills []SkillInfo) (*DiffInsight, error) {
-	if !a.client.IsConfigured() {
-		return nil, fmt.Errorf("DeepSeek API 未配置")
+	if !a.provider.IsConfigured() {
+		return nil, fmt.Errorf("LLM API 未配置")
 	}
 
 	// 限制 diff 长度
@@ -59,20 +143,35 @@ func (a *DiffAnalyzer) AnalyzeDiff(ctx context.Context, filePath, language, diff
 		{Role: "user", Content: prompt},
 	}
 
-	response, err := a.client.ChatWithOptions(ctx, messages, 0.2, 500)
+	response, err := a.provider.ChatWithOptions(ctx, messages, ChatOptions{Temperature: 0.2, MaxTokens: 500})
 	if err != nil {
 		return nil, fmt.Errorf("AI 分析失败: %w", err)
 	}
 
+	rawResponse := strings.TrimSpace(response)
+	if rawResponse == "" {
+		return nil, fmt.Errorf("AI 返回空响应")
+	}
+
 	// 清理响应（移除可能的 markdown 代码块）
 	response = cleanJSONResponse(response)
+	if response == "" && rawResponse != "" {
+		slog.Warn("AI 响应清理后为空（可能仅返回了代码块围栏或非 JSON 输出）",
+			"provider", a.provider.Name(),
+			"raw_len", len(rawResponse),
+			"has_code_fence", strings.Contains(rawResponse, "```"),
+			"has_brace", strings.Contains(rawResponse, "{"),
+		)
+		// 避免空字符串写入存储：保留原始响应（即便不是 JSON，也能用于诊断展示）
+		response = rawResponse
+	}
 
 	var insight DiffInsight
-	if err := json.Unmarshal([]byte(response), &insight); err != nil {
+	if err := unmarshalLLMJSON(a.provider.Name(), response, &insight); err != nil {
 		slog.Warn("解析 AI 响应失败，使用原始文本", "response", response, "error", err)
 		// 降级处理：直接使用响应文本
 		insight = DiffInsight{
-			Insight:    response,
+			Insight:    rawResponse,
 			Skills:     []SkillWithCategory{{Name: language, Category: "language"}},
 			Difficulty: 0.3,
 			Category:   "unknown",
@@ -84,8 +183,8 @@ func (a *DiffAnalyzer) AnalyzeDiff(ctx context.Context, filePath, language, diff
 
 // GenerateDailySummary 生成每日总结
 func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySummaryRequest) (*DailySummaryResult, error) {
-	if !a.client.IsConfigured() {
-		return nil, fmt.Errorf("DeepSeek API 未配置")
+	if !a.provider.IsConfigured() {
+		return nil, fmt.Errorf("LLM API 未配置")
 	}
 
 	windowTotal := 0
@@ -164,15 +263,29 @@ func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySumma
 		{Role: "user", Content: prompt},
 	}
 
-	response, err := a.client.ChatWithOptions(ctx, messages, 0.5, 1000)
+	response, err := a.provider.ChatWithOptions(ctx, messages, ChatOptions{Temperature: 0.5, MaxTokens: 1000})
 	if err != nil {
 		return nil, fmt.Errorf("生成总结失败: %w", err)
 	}
 
+	rawResponse := strings.TrimSpace(response)
+	if rawResponse == "" {
+		return nil, fmt.Errorf("AI 返回空响应")
+	}
+
 	response = cleanJSONResponse(response)
+	if response == "" {
+		slog.Warn("AI 总结响应清理后为空（非 JSON 输出）",
+			"provider", a.provider.Name(),
+			"raw_len", len(rawResponse),
+			"has_code_fence", strings.Contains(rawResponse, "```"),
+			"has_brace", strings.Contains(rawResponse, "{"),
+		)
+		return nil, fmt.Errorf("AI 返回非 JSON 响应")
+	}
 
 	var result DailySummaryResult
-	if err := json.Unmarshal([]byte(response), &result); err != nil {
+	if err := unmarshalLLMJSON(a.provider.Name(), response, &result); err != nil {
 		return nil, fmt.Errorf("解析总结失败: %w", err)
 	}
 
@@ -181,8 +294,8 @@ func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySumma
 
 // GenerateSessionSummary 生成会话语义摘要（用于证据链的可解释描述）
 func (a *DiffAnalyzer) GenerateSessionSummary(ctx context.Context, req *SessionSummaryRequest) (*SessionSummaryResult, error) {
-	if !a.client.IsConfigured() {
-		return nil, fmt.Errorf("DeepSeek API 未配置")
+	if !a.provider.IsConfigured() {
+		return nil, fmt.Errorf("LLM API 未配置")
 	}
 
 	// 控制输入规模
@@ -272,14 +385,27 @@ func (a *DiffAnalyzer) GenerateSessionSummary(ctx context.Context, req *SessionS
 		{Role: "user", Content: prompt},
 	}
 
-	response, err := a.client.ChatWithOptions(ctx, messages, 0.3, 600)
+	response, err := a.provider.ChatWithOptions(ctx, messages, ChatOptions{Temperature: 0.3, MaxTokens: 600})
 	if err != nil {
 		return nil, fmt.Errorf("生成会话摘要失败: %w", err)
 	}
+	rawResponse := strings.TrimSpace(response)
+	if rawResponse == "" {
+		return nil, fmt.Errorf("AI 返回空响应")
+	}
 	response = cleanJSONResponse(response)
+	if response == "" {
+		slog.Warn("AI 会话摘要响应清理后为空（非 JSON 输出）",
+			"provider", a.provider.Name(),
+			"raw_len", len(rawResponse),
+			"has_code_fence", strings.Contains(rawResponse, "```"),
+			"has_brace", strings.Contains(rawResponse, "{"),
+		)
+		return nil, fmt.Errorf("AI 返回非 JSON 响应")
+	}
 
 	var result SessionSummaryResult
-	if err := json.Unmarshal([]byte(response), &result); err != nil {
+	if err := unmarshalLLMJSON(a.provider.Name(), response, &result); err != nil {
 		return nil, fmt.Errorf("解析会话摘要失败: %w", err)
 	}
 	return &result, nil
@@ -343,15 +469,29 @@ func (a *DiffAnalyzer) GenerateWeeklySummary(ctx context.Context, req *WeeklySum
 		{Role: "user", Content: prompt},
 	}
 
-	response, err := a.client.ChatWithOptions(ctx, messages, 0.5, 1500)
+	response, err := a.provider.ChatWithOptions(ctx, messages, ChatOptions{Temperature: 0.5, MaxTokens: 1500})
 	if err != nil {
 		return nil, fmt.Errorf("生成周报失败: %w", err)
 	}
 
+	rawResponse := strings.TrimSpace(response)
+	if rawResponse == "" {
+		return nil, fmt.Errorf("AI 返回空响应")
+	}
+
 	response = cleanJSONResponse(response)
+	if response == "" {
+		slog.Warn("AI 周报响应清理后为空（非 JSON 输出）",
+			"provider", a.provider.Name(),
+			"raw_len", len(rawResponse),
+			"has_code_fence", strings.Contains(rawResponse, "```"),
+			"has_brace", strings.Contains(rawResponse, "{"),
+		)
+		return nil, fmt.Errorf("AI 返回非 JSON 响应")
+	}
 
 	var result WeeklySummaryResult
-	if err := json.Unmarshal([]byte(response), &result); err != nil {
+	if err := unmarshalLLMJSON(a.provider.Name(), response, &result); err != nil {
 		return nil, fmt.Errorf("解析周报失败: %w", err)
 	}
 
