@@ -13,6 +13,15 @@ import (
 	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
+func durationToSecondsRounded(d time.Duration) int {
+	if d <= 0 {
+		return 0
+	}
+	// 以秒为存储粒度时，直接向下取整会产生系统性低估（尤其是心跳/频繁切换场景）。
+	// 这里采用“四舍五入到最近秒”，将长期偏差控制在更小范围。
+	return int((d + 500*time.Millisecond) / time.Second)
+}
+
 // Collector 采集器接口
 type Collector interface {
 	// Start 启动采集
@@ -262,7 +271,7 @@ func (c *WindowCollector) emitEvent(w *WindowInfo, duration time.Duration) {
 		Source:    "window",
 		AppName:   w.AppName,
 		Title:     w.Title,
-		Duration:  int(duration.Seconds()),
+		Duration:  durationToSecondsRounded(duration),
 		Metadata:  make(schema.JSONMap),
 	}
 

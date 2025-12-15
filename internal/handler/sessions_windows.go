@@ -210,15 +210,30 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 			Domain:    e.Domain,
 			Title:     e.Title,
 			URL:       e.URL,
+			Duration:  e.Duration,
 		})
 	}
 
 	appStats, _ := a.rt.Repos.Event.GetAppStats(r.Context(), sess.StartTime, sess.EndTime)
 	appUsage := make([]dto.SessionAppUsageDTO, 0, len(appStats))
-	for _, st := range service.TopAppStats(appStats, service.DefaultTopAppsLimit) {
+	totalAll := 0
+	for _, st := range appStats {
+		totalAll += st.TotalDuration
+	}
+	topStats := service.TopAppStats(appStats, service.DefaultTopAppsLimit)
+	topTotal := 0
+	for _, st := range topStats {
+		topTotal += st.TotalDuration
 		appUsage = append(appUsage, dto.SessionAppUsageDTO{
 			AppName:       st.AppName,
 			TotalDuration: st.TotalDuration,
+		})
+	}
+	other := totalAll - topTotal
+	if other > 0 && len(topStats) < len(appStats) {
+		appUsage = append(appUsage, dto.SessionAppUsageDTO{
+			AppName:       "其他",
+			TotalDuration: other,
 		})
 	}
 

@@ -221,6 +221,17 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 	}
 	topApps := WindowEventInfosFromAppStats(appStats, DefaultTopAppsLimit)
 
+	// 窗口标题证据：弥补“只有 app 分钟数”导致的语义缺失（例如 VSCode 当前文件名/项目名）。
+	// 仅聚合 Top 列表以控制 prompt 规模，避免把整个时间轴塞进 AI。
+	var windowTitleInfos []ai.WindowTitleInfo
+	if s.eventRepo != nil {
+		if rawEvents, err := s.eventRepo.GetByTimeRange(ctx, sess.StartTime, sess.EndTime); err == nil {
+			windowTitleInfos = TopWindowTitleInfosFromEvents(rawEvents, 10)
+		} else {
+			slog.Debug("查询窗口事件失败（跳过窗口标题证据）", "session_id", sess.ID, "error", err)
+		}
+	}
+
 	// 浏览事件（优先用索引 ID，否则按时间窗补全）
 	browserIDs := getSessionBrowserEventIDs(meta)
 	var browserEvents []schema.BrowserEvent
@@ -348,15 +359,16 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 
 	if s.analyzer != nil && strings.TrimSpace(summary) == "" {
 		req := &ai.SessionSummaryRequest{
-			SessionID:  sess.ID,
-			Date:       sess.Date,
-			TimeRange:  sess.TimeRange,
-			PrimaryApp: sess.PrimaryApp,
-			AppUsage:   topApps,
-			Diffs:      diffInfos,
-			Browser:    browserInfos,
-			SkillsHint: skillNames,
-			Memories:   memories,
+			SessionID:    sess.ID,
+			Date:         sess.Date,
+			TimeRange:    sess.TimeRange,
+			PrimaryApp:   sess.PrimaryApp,
+			AppUsage:     topApps,
+			WindowTitles: windowTitleInfos,
+			Diffs:        diffInfos,
+			Browser:      browserInfos,
+			SkillsHint:   skillNames,
+			Memories:     memories,
 		}
 		if res, err := s.analyzer.GenerateSessionSummary(ctx, req); err == nil && res != nil {
 			summary = strings.TrimSpace(res.Summary)

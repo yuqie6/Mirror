@@ -5,9 +5,9 @@ import "fmt"
 // DailySummarySystem 返回日报的系统 prompt
 func DailySummarySystem(lang string) string {
 	if lang == "en" {
-		return "You are a personal growth assistant helping users review their daily work and learning, providing constructive feedback. Response must be pure JSON."
+		return baseSystemPrompt(lang, "personal growth assistant") + "Task: generate a daily work/learning review.\n"
 	}
-	return "你是一个个人成长助手，帮助用户回顾每天的工作和学习，提供有建设性的反馈。回复必须是纯 JSON。"
+	return baseSystemPrompt(lang, "个人成长助手") + "任务：生成每日工作/学习复盘。\n"
 }
 
 func DailySummaryUser(
@@ -59,7 +59,7 @@ func dailySummaryUserZH(
   "highlights": "今日亮点（2-6 条要点，用换行分隔；每条尽量具体。若确实没有，写'无'）",
   "struggles": "今日困难（0-5 条要点，用换行分隔；没有就写'无'）",
   "skills_gained": ["今日涉及的技能（按重要性排序，允许 0-12 个）"],
-  "suggestions": "明日建议（2-6 条要点，用换行分隔；优先给可执行的小动作）"
+  "suggestions": "明日建议（2-6 条要点，用换行分隔；优先给可执行的小动作；如涉及编码建议，优先遵循 SOLID/KISS/DRY/YAGNI；证据不足就写'无'）"
 }`, historySummary, date, windowTotalMinutes, windowTopN, diffCountTotal, linesChangedTotal, diffTopN, windowSummary, diffSummary)
 }
 
@@ -94,6 +94,6 @@ Return in JSON format (no markdown code blocks):
   "highlights": "Daily highlights (2-6 key points, separated by newlines; be specific. If none, write 'None')",
   "struggles": "Daily challenges (0-5 key points, separated by newlines; if none, write 'None')",
   "skills_gained": ["Skills involved today (sorted by importance, allow 0-12 items)"],
-  "suggestions": "Tomorrow's suggestions (2-6 key points, separated by newlines; prioritize actionable small steps)"
+  "suggestions": "Tomorrow's suggestions (2-6 key points, separated by newlines; prioritize actionable small steps; if it includes coding advice, prefer SOLID/KISS/DRY/YAGNI; write 'None' when evidence is insufficient)"
 }`, historySummary, date, windowTotalMinutes, windowTopN, diffCountTotal, linesChangedTotal, diffTopN, windowSummary, diffSummary)
 }

@@ -5,9 +5,11 @@ import "fmt"
 // DiffAnalysisSystem 返回 diff 分析的系统 prompt
 func DiffAnalysisSystem(lang string) string {
 	if lang == "en" {
-		return "You are a code analysis assistant, skilled at inferring developer learning and growth from code changes. You can see the user's current skill tree. Response must be pure JSON, no markdown."
+		return baseSystemPrompt(lang, "code analysis assistant") +
+			"Task: infer learning/growth from code diffs using the provided skill tree context.\n"
 	}
-	return "你是一个代码分析助手，擅长从代码变更中推断开发者的学习和成长。你能看到用户当前的技能树，请合理判断技能归属。回复必须是纯 JSON，不要 markdown。"
+	return baseSystemPrompt(lang, "代码分析助手") +
+		"任务：结合提供的技能树上下文，从代码 diff 中推断学习/成长与变更类型。\n"
 }
 
 func DiffAnalysisUser(filePath, language, skillTreeContext, diffContent, lang string) string {
@@ -41,7 +43,8 @@ Diff:
 2. 编程语言是顶级技能（parent 留空）
 3. 框架/库归属到对应语言（如 Gin → Go, React → JavaScript）
 4. category 可选值: language/framework/database/devops/tool/concept/other
-5. 变更分类: learning/refactoring/bugfix/feature`, filePath, language, skillTreeContext, diffContent)
+5. 变更分类: learning/refactoring/bugfix/feature
+6. skills 去重、最多 8 个；只列出能从 diff/技能树上下文中支撑的技能；至少包含当前语言（%s）这一项`, filePath, language, skillTreeContext, diffContent, language)
 }
 
 func diffAnalysisUserEN(filePath, language, skillTreeContext, diffContent string) string {
@@ -68,5 +71,6 @@ Skill hierarchy rules:
 2. Programming languages are top-level skills (leave parent empty)
 3. Frameworks/libraries belong to corresponding language (e.g. Gin → Go, React → JavaScript)
 4. category options: language/framework/database/devops/tool/concept/other
-5. change categories: learning/refactoring/bugfix/feature`, filePath, language, skillTreeContext, diffContent)
+5. change categories: learning/refactoring/bugfix/feature
+6. Deduplicate skills, max 8; include only skills supported by the diff/context; include the current language (%s) at minimum`, filePath, language, skillTreeContext, diffContent, language)
 }

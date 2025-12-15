@@ -334,6 +334,38 @@ func (a *DiffAnalyzer) GenerateSessionSummary(ctx context.Context, req *SessionS
 		appLines = append(appLines, fmt.Sprintf("%s: %d 分钟", a.AppName, a.Duration))
 	}
 
+	formatWindowTitleDuration := func(sec int) string {
+		if sec <= 0 {
+			return ""
+		}
+		if sec < 60 {
+			return fmt.Sprintf("%d 秒", sec)
+		}
+		return fmt.Sprintf("%d 分钟", sec/60)
+	}
+
+	windowTitleLines := make([]string, 0, len(req.WindowTitles))
+	windowTitles := req.WindowTitles
+	if len(windowTitles) > 0 {
+		// 控制 prompt 规模：只展示前 12 条标题证据
+		if len(windowTitles) > 12 {
+			windowTitles = windowTitles[:12]
+		}
+		for _, w := range windowTitles {
+			app := strings.TrimSpace(w.AppName)
+			title := strings.TrimSpace(w.Title)
+			if app == "" || title == "" {
+				continue
+			}
+			dur := formatWindowTitleDuration(w.DurationSec)
+			if dur == "" {
+				windowTitleLines = append(windowTitleLines, fmt.Sprintf("%s: %s", app, title))
+				continue
+			}
+			windowTitleLines = append(windowTitleLines, fmt.Sprintf("%s: %s (%s)", app, title, dur))
+		}
+	}
+
 	diffLines := make([]string, 0, len(diffs))
 	for _, d := range diffs {
 		desc := strings.TrimSpace(d.Insight)
@@ -369,15 +401,16 @@ func (a *DiffAnalyzer) GenerateSessionSummary(ctx context.Context, req *SessionS
 	}
 
 	prompt := prompts.SessionSummaryUser(prompts.SessionSummaryUserInput{
-		Date:            req.Date,
-		TimeRange:       req.TimeRange,
-		PrimaryApp:      req.PrimaryApp,
-		SummaryGuidance: summaryGuidance,
-		AppLines:        appLines,
-		DiffLines:       diffLines,
-		BrowserLines:    browserLines,
-		SkillsHintLines: skillsHintLines,
-		MemoryLines:     memLines,
+		Date:             req.Date,
+		TimeRange:        req.TimeRange,
+		PrimaryApp:       req.PrimaryApp,
+		SummaryGuidance:  summaryGuidance,
+		AppLines:         appLines,
+		WindowTitleLines: windowTitleLines,
+		DiffLines:        diffLines,
+		BrowserLines:     browserLines,
+		SkillsHintLines:  skillsHintLines,
+		MemoryLines:      memLines,
 	}, a.lang)
 
 	messages := []Message{

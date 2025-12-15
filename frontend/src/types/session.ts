@@ -36,6 +36,7 @@ export interface SessionBrowserEventDTO {
   domain: string;
   title: string;
   url: string;
+  duration: number;
 }
 
 export interface SessionWindowEventDTO {

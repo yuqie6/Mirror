@@ -7,10 +7,12 @@ import (
 
 // SessionSummarySystem 返回会话摘要的系统 prompt
 func SessionSummarySystem(lang string) string {
+	// 注意：系统 prompt 负责“不可妥协的行为约束”（证据、隐私、JSON 严格性、语言）。
+	// 具体输出 schema 由 user prompt 定义，避免在 system/user 里重复冲突的约束。
 	if lang == "en" {
-		return "You are a local-first personal growth assistant. You must generate summaries based strictly on evidence. Response must be pure JSON."
+		return baseSystemPrompt(lang, "personal growth assistant") + "Task: generate an explainable session summary.\n"
 	}
-	return "你是一个本地优先的个人成长分析助手。你必须严格基于证据生成摘要，回复必须是纯 JSON。"
+	return baseSystemPrompt(lang, "个人成长分析助手") + "任务：生成可解释的会话摘要。\n"
 }
 
 type SessionSummaryUserInput struct {
@@ -19,11 +21,12 @@ type SessionSummaryUserInput struct {
 	PrimaryApp      string
 	SummaryGuidance string
 
-	AppLines        []string
-	DiffLines       []string
-	BrowserLines    []string
-	SkillsHintLines []string
-	MemoryLines     []string
+	AppLines         []string
+	WindowTitleLines []string
+	DiffLines        []string
+	BrowserLines     []string
+	SkillsHintLines  []string
+	MemoryLines      []string
 }
 
 func SessionSummaryUser(in SessionSummaryUserInput, lang string) string {
@@ -41,13 +44,24 @@ func sessionSummaryUserZH(in SessionSummaryUserInput) string {
 	b.WriteString("2) category 只能是 technical/learning/exploration/other\n")
 	b.WriteString("3) skills_involved 最多 8 个，尽量使用用户已有技能树中的标准名称（如 Go、Redis、React）\n")
 	b.WriteString("4) tags 最多 6 个，用中文短标签（如 并发、性能、数据库、文档阅读）\n")
-	b.WriteString("5) 必须可追溯：summary 应对应下面的 diff/browser/app 证据，不要胡编\n\n")
+	b.WriteString("5) 面向经验丰富的开发者：结论优先、信息密度高\n")
+	b.WriteString("6) 必须可追溯：summary 应对应下面的 diff/browser/app 证据，不要胡编\n")
+	b.WriteString("7) 隐私最小披露：不要输出任何完整 URL/Token/密钥/长段代码，仅做必要摘要\n")
+	b.WriteString("8) 输出必须是严格 JSON：只输出一个对象；不要输出任何 JSON 之外的字符；不要多余字段\n\n")
 
 	b.WriteString(fmt.Sprintf("日期: %s\n时间: %s\n主应用: %s\n\n", in.Date, in.TimeRange, in.PrimaryApp))
 
 	if len(in.AppLines) > 0 {
 		b.WriteString("应用使用:\n")
 		for _, line := range in.AppLines {
+			b.WriteString("- " + strings.TrimSpace(line) + "\n")
+		}
+		b.WriteString("\n")
+	}
+
+	if len(in.WindowTitleLines) > 0 {
+		b.WriteString("窗口标题（Top，已脱敏，可用于判断“具体在做什么”）:\n")
+		for _, line := range in.WindowTitleLines {
 			b.WriteString("- " + strings.TrimSpace(line) + "\n")
 		}
 		b.WriteString("\n")
@@ -103,13 +117,24 @@ func sessionSummaryUserEN(in SessionSummaryUserInput) string {
 	b.WriteString("2) category must be technical/learning/exploration/other\n")
 	b.WriteString("3) skills_involved max 8 items, prefer standard names from user's skill tree (e.g. Go, Redis, React)\n")
 	b.WriteString("4) tags max 6 items, in English short tags (e.g. concurrency, performance, database, documentation)\n")
-	b.WriteString("5) Must be traceable: summary should match the diff/browser/app evidence below, don't make things up\n\n")
+	b.WriteString("5) For an experienced developer: conclusion-first, high information density\n")
+	b.WriteString("6) Must be traceable: summary should match the diff/browser/app evidence below, don't make things up\n")
+	b.WriteString("7) Privacy by minimization: do not output full URLs/tokens/keys/long code; only necessary summaries\n")
+	b.WriteString("8) Output must be strict JSON: output a single object only; no extra characters; no unrequested fields\n\n")
 
 	b.WriteString(fmt.Sprintf("Date: %s\nTime: %s\nPrimary App: %s\n\n", in.Date, in.TimeRange, in.PrimaryApp))
 
 	if len(in.AppLines) > 0 {
 		b.WriteString("App Usage:\n")
 		for _, line := range in.AppLines {
+			b.WriteString("- " + strings.TrimSpace(line) + "\n")
+		}
+		b.WriteString("\n")
+	}
+
+	if len(in.WindowTitleLines) > 0 {
+		b.WriteString("Window Titles (Top, sanitized; use as evidence of what the user was doing):\n")
+		for _, line := range in.WindowTitleLines {
 			b.WriteString("- " + strings.TrimSpace(line) + "\n")
 		}
 		b.WriteString("\n")

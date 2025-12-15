@@ -165,6 +165,20 @@ export default function SessionsView({
     return new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatDuration = (seconds: number): string => {
+    const sec = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+    if (sec < 60) return `${sec}${t('common.seconds')}`;
+    const hours = Math.floor(sec / 3600);
+    const minutes = Math.floor((sec % 3600) / 60);
+    const remainSec = sec % 60;
+    if (hours > 0) {
+      if (minutes > 0) return `${hours}${t('common.hours')}${minutes}${t('common.minutes')}`;
+      return `${hours}${t('common.hours')}`;
+    }
+    if (minutes > 0 && remainSec > 0) return `${minutes}${t('common.minutes')}${remainSec}${t('common.seconds')}`;
+    return `${minutes}${t('common.minutes')}`;
+  };
+
   const navigateDate = (direction: number) => {
     const base = parseLocalISODate(currentDate) || new Date();
     base.setDate(base.getDate() + direction);
@@ -315,6 +329,9 @@ export default function SessionsView({
                 <TabsTrigger value="timeline" className="flex-1 text-xs">
                   <Clock size={12} className="mr-1" /> {t('sessions.activityTimeline')}
                 </TabsTrigger>
+                <TabsTrigger value="browser" className="flex-1 text-xs">
+                  <Globe size={12} className="mr-1" /> {t('sessions.browserActivity')}
+                </TabsTrigger>
                 <TabsTrigger value="apps" className="flex-1 text-xs">
                   <MonitorSmartphone size={12} className="mr-1" /> {t('sessions.appUsage')}
                 </TabsTrigger>
@@ -398,33 +415,61 @@ export default function SessionsView({
                 ) : windowEvents.length > 0 ? (
                   <div className="space-y-1">
                     {windowEvents.map((evt, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-2 bg-zinc-900 border border-zinc-800 rounded text-sm">
-                        <span className="text-xs font-mono text-zinc-600 w-12">{formatTimestamp(evt.timestamp)}</span>
-                        <MonitorSmartphone size={12} className="text-zinc-500" />
-                        <span className="text-zinc-300 truncate flex-1">{evt.app_name}</span>
-                        <span className="text-xs text-zinc-500 truncate max-w-[150px]">{evt.title}</span>
-                        {evt.duration > 0 && <span className="text-xs text-zinc-600">{Math.round(evt.duration / 60)}{t('common.minutes')}</span>}
+                      <div key={idx} className="p-2 bg-zinc-900 border border-zinc-800 rounded text-sm">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-mono text-zinc-600 w-12">{formatTimestamp(evt.timestamp)}</span>
+                          <MonitorSmartphone size={12} className="text-zinc-500" />
+                          <span className="text-zinc-300 truncate flex-1">{evt.app_name}</span>
+                          {evt.duration > 0 && <span className="text-xs text-zinc-600">{formatDuration(evt.duration)}</span>}
+                        </div>
+                        {evt.title && (
+                          <div className="mt-1 text-xs text-zinc-500 pl-[60px] truncate">
+                            {evt.title}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-zinc-500 text-sm italic text-center py-8">{t('sessions.noWindowEvents')}</div>
                 )}
+              </TabsContent>
 
-                {selectedSession.browser && selectedSession.browser.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{t('sessions.browserActivity')}</h4>
-                    <div className="space-y-1">
-                      {selectedSession.browser.slice(0, 20).map((evt, idx) => (
-                        <div key={idx} className="flex items-center gap-3 p-2 bg-zinc-900 border border-zinc-800 rounded text-sm">
+              {/* 浏览器证据 */}
+              <TabsContent value="browser" className="mt-4">
+                {selectedSession.browser && selectedSession.browser.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedSession.browser.slice(0, 100).map((evt, idx) => (
+                      <div key={idx} className="p-2 bg-zinc-900 border border-zinc-800 rounded text-sm">
+                        <div className="flex items-center gap-3">
                           <span className="text-xs font-mono text-zinc-600 w-12">{formatTimestamp(evt.timestamp)}</span>
                           <Globe size={12} className="text-sky-500" />
                           <span className="text-zinc-400">{evt.domain}</span>
-                          <span className="text-xs text-zinc-500 truncate flex-1">{evt.title}</span>
+                          {evt.duration > 0 && <span className="text-xs text-zinc-600">{formatDuration(evt.duration)}</span>}
                         </div>
-                      ))}
-                    </div>
+                        <div className="mt-1 text-xs text-zinc-500 pl-[60px] space-y-1">
+                          {evt.title && <div className="truncate">{evt.title}</div>}
+                          {evt.url && (
+                            <a
+                              href={evt.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 truncate max-w-full"
+                              title={evt.url}
+                            >
+                              <ExternalLink size={12} />
+                              <span className="truncate">{evt.url}</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {selectedSession.browser.length > 100 && (
+                      <div className="text-xs text-zinc-600 text-center py-2">{t('sessions.browserEvidenceTruncated')}</div>
+                    )}
                   </div>
+                ) : (
+                  <div className="text-zinc-500 text-sm italic text-center py-8">{t('sessions.noBrowserEvents')}</div>
                 )}
               </TabsContent>
 
@@ -440,7 +485,7 @@ export default function SessionsView({
                           <div className="flex-1 text-sm text-zinc-400 text-right w-24">{app.app_name}</div>
                           <div className="flex-[3]"><Progress value={percent} className="h-2" /></div>
                           <div className="w-12 text-xs text-zinc-500">{percent}%</div>
-                          <div className="w-16 text-xs text-zinc-600 text-right">{Math.round(app.total_duration / 60)}{t('common.minutes')}</div>
+                          <div className="w-24 text-xs text-zinc-600 text-right whitespace-nowrap">{formatDuration(app.total_duration)}</div>
                         </div>
                       );
                     })}

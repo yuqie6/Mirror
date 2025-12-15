@@ -278,6 +278,7 @@ type SessionBrowserEventDTO struct {
 	Domain    string `json:"domain"`
 	Title     string `json:"title"`
 	URL       string `json:"url"`
+	Duration  int    `json:"duration"`
 }
 
 type SessionWindowEventDTO struct {

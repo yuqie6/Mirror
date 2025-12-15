@@ -45,6 +45,14 @@ type WindowEventInfo struct {
 	Duration int // 分钟
 }
 
+// WindowTitleInfo 窗口标题证据（用于让摘要更可解释，而不是只有 app 分钟数）
+type WindowTitleInfo struct {
+	AppName     string `json:"app_name"`
+	Title       string `json:"title"`
+	DurationSec int    `json:"duration_sec"`
+	SampleCount int    `json:"sample_count"` // 聚合了多少条 window event
+}
+
 // DiffInfo Diff 信息
 type DiffInfo struct {
 	FileName     string
@@ -70,10 +78,12 @@ type SessionSummaryRequest struct {
 	TimeRange  string            `json:"time_range"`
 	PrimaryApp string            `json:"primary_app"`
 	AppUsage   []WindowEventInfo `json:"app_usage"`
-	Diffs      []DiffInfo        `json:"diffs"`
-	Browser    []BrowserInfo     `json:"browser"`
-	SkillsHint []string          `json:"skills_hint"`
-	Memories   []string          `json:"memories"`
+	// WindowTitles 为 “窗口标题” 维度的证据，补足仅有 app 统计时的语义缺失（如 VSCode 当前文件/项目名）。
+	WindowTitles []WindowTitleInfo `json:"window_titles,omitempty"`
+	Diffs        []DiffInfo        `json:"diffs"`
+	Browser      []BrowserInfo     `json:"browser"`
+	SkillsHint   []string          `json:"skills_hint"`
+	Memories     []string          `json:"memories"`
 }
 
 type BrowserInfo struct {

@@ -11,6 +11,7 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "minutes": "min",
+    "seconds": "s",
     "hours": "hours",
     "days": "days",
     "secondsAgo": "s ago",
@@ -80,6 +81,8 @@
     "relatedSkills": "Skills: ",
     "noWindowEvents": "No window events",
     "browserActivity": "Browser Activity",
+    "noBrowserEvents": "No browser events",
+    "browserEvidenceTruncated": "Too many browser events, showing first 100",
     "noAppUsageData": "No app usage data",
     "selectSession": "Select a session to view details"
   },

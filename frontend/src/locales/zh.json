@@ -11,6 +11,7 @@
     "today": "今天",
     "yesterday": "昨天",
     "minutes": "分钟",
+    "seconds": "秒",
     "hours": "小时",
     "days": "天",
     "secondsAgo": "秒前",
@@ -80,6 +81,8 @@
     "relatedSkills": "涉及技能：",
     "noWindowEvents": "无窗口事件记录",
     "browserActivity": "浏览器活动",
+    "noBrowserEvents": "无浏览器记录",
+    "browserEvidenceTruncated": "浏览器记录较多，仅展示前 100 条",
     "noAppUsageData": "无应用使用数据",
     "selectSession": "选择一个会话查看详情"
   },
