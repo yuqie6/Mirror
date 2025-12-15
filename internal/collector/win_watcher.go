@@ -20,6 +20,8 @@ var (
 	kernel32                     = windows.NewLazySystemDLL("kernel32.dll")
 	psapi                        = windows.NewLazySystemDLL("psapi.dll")
 	procGetForegroundWindow      = user32.NewProc("GetForegroundWindow")
+	procIsWindowVisible          = user32.NewProc("IsWindowVisible")
+	procIsIconic                 = user32.NewProc("IsIconic")
 	procGetWindowTextW           = user32.NewProc("GetWindowTextW")
 	procGetWindowTextLengthW     = user32.NewProc("GetWindowTextLengthW")
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
@@ -47,6 +49,8 @@ type lastInputInfo struct {
 	dwTime uint32
 }
 
+var ErrNoForegroundWindow = errors.New("no foreground window")
+
 // GetIdleDuration 返回系统空闲时长（基于最后一次用户输入时间）
 func GetIdleDuration() (time.Duration, error) {
 	var li lastInputInfo
@@ -68,7 +72,15 @@ func GetIdleDuration() (time.Duration, error) {
 func GetForegroundWindowInfo() (*WindowInfo, error) {
 	hwnd, _, _ := procGetForegroundWindow.Call()
 	if hwnd == 0 {
-		return nil, errors.New("无法获取前台窗口")
+		return nil, ErrNoForegroundWindow
+	}
+
+	// 前台窗口在某些时刻可能不可见/已最小化；这类窗口不应被用于累计“正在工作”时间。
+	if ret, _, _ := procIsWindowVisible.Call(hwnd); ret == 0 {
+		return nil, ErrNoForegroundWindow
+	}
+	if ret, _, _ := procIsIconic.Call(hwnd); ret != 0 {
+		return nil, ErrNoForegroundWindow
 	}
 
 	// 获取窗口标题

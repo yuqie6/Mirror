@@ -4,6 +4,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -147,17 +148,6 @@ func (c *WindowCollector) pollLoop(ctx context.Context) {
 
 // poll 执行一次轮询
 func (c *WindowCollector) poll() {
-	current, err := GetForegroundWindowInfo()
-	if err != nil {
-		slog.Debug("获取窗口信息失败", "error", err)
-		return
-	}
-
-	// 忽略系统窗口
-	if current.IsSystemWindow() {
-		return
-	}
-
 	now := time.Now()
 
 	// 系统空闲检测：当用户长时间无输入时，不应把 idle 时间记到窗口时长里。
@@ -178,12 +168,27 @@ func (c *WindowCollector) poll() {
 		}
 	}
 
-	// 从 idle 恢复：重置起点，形成时间空洞以供会话切分识别
+	// 从 idle 恢复：先退出 idle，并清空当前跟踪，形成时间空洞以供会话切分识别
 	if c.idleMode {
 		c.idleMode = false
-		c.lastWindow = current
-		c.currentStart = now
 		c.lastSwitchAt = now
+		c.lastWindow = nil
+		c.currentStart = time.Time{}
+	}
+
+	current, err := GetForegroundWindowInfo()
+	if err != nil {
+		// 无法获取前台窗口/暂时不可用：应当结束上一段并形成空洞，而不是让上一窗口继续累加。
+		if !errors.Is(err, ErrNoForegroundWindow) {
+			slog.Debug("获取窗口信息失败", "error", err)
+		}
+		c.pauseTracking(now)
+		return
+	}
+
+	// 忽略系统窗口：也需要切段/暂停，避免上一个窗口持续累计
+	if current.IsSystemWindow() {
+		c.pauseTracking(now)
 		return
 	}
 
@@ -223,6 +228,30 @@ func (c *WindowCollector) poll() {
 	// 更新状态
 	c.lastWindow = current
 	c.currentStart = now
+	c.lastSwitchAt = now
+}
+
+// pauseTracking 结束上一段窗口计时并清空跟踪状态（形成时间空洞）
+func (c *WindowCollector) pauseTracking(now time.Time) {
+	if c.lastWindow == nil || c.currentStart.IsZero() {
+		c.lastWindow = nil
+		c.currentStart = time.Time{}
+		c.lastSwitchAt = now
+		return
+	}
+
+	duration := now.Sub(c.currentStart)
+	if duration >= c.minDuration {
+		c.emitEvent(c.lastWindow, duration)
+	} else {
+		slog.Debug("窗口停留时间过短，已忽略",
+			"window", c.lastWindow.String(),
+			"duration", duration,
+		)
+	}
+
+	c.lastWindow = nil
+	c.currentStart = time.Time{}
 	c.lastSwitchAt = now
 }
 
