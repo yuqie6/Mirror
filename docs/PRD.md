@@ -1,7 +1,7 @@
-# 复盘镜 WorkMirror PRD v0.2.0-alpha.1（产品化闭环版：Windows 托盘 Agent + 本地 Web UI；无 Wails/无 CLI）
+# 复盘镜 WorkMirror PRD v0.2.0-alpha.2（产品化闭环版：Windows 托盘 Agent + 本地 Web UI；无 Wails/无 CLI）
 
-最后更新：2025-12-15  
-对应版本：`v0.2.0-alpha.1`（见 `CHANGELOG.md`）
+最后更新：2025-12-17  
+对应版本：`v0.2.0-alpha.2`（见 `CHANGELOG.md`）
 
 ## 0. 文档目的
 
@@ -13,14 +13,14 @@
 - Web UI 的交互与视觉规范以 `docs/frontend.md` 为准（工程师驾驶舱：Evidence First + No Silent Failures）。
 - 若 PRD 与 `docs/frontend.md` 对 UI 细节冲突：以 PRD 的产品原则/验收为最终口径；实现细节以 `docs/frontend.md` 落地。
 
-### 0.2 现状对照（alpha.1）
+### 0.2 现状对照（alpha.2）
 
-本 PRD v0.2 的大部分 P0 已在 `v0.2.0-alpha.1` 落地，但仍有两处“口径/逻辑不稳”的关键缺口（会影响 Evidence First 与离线一致性）：
+本 PRD v0.2 的大部分 P0 已在 `v0.2.0-alpha.2` 落地；alpha.1 中两处“口径/逻辑不稳”的关键缺口已补齐（Evidence First 与离线一致性更稳）：
 
-1) **会话切分对无窗口证据的处理不够稳健**：当前切分以 window events 为锚点，不产生“纯 diff 会话”（见 `internal/service/session_service.go`），会导致“窗口采集缺失/晚到”场景下 diff 证据丢失或无法追溯。  
-2) **会话语义来源未写入稳定对外契约**：前端目前以启发式推断 `ai/rule`（见 `frontend/src/types/session.ts`），易误标，违反“离线可见且可解释”的验收口径。
+1) **无窗口证据的回溯更稳健**：会话构建从“依赖手动修复”收敛为增量构建自动回溯，降低“窗口采集缺失/晚到”导致的证据断链概率。  
+2) **语义来源成为稳定契约**：后端写入 `semantic_source`（ai/rule）与证据提示，前端不再用启发式猜测，离线/降级更可解释。
 
-> 下一版将把“会话证据归并策略 + 语义来源字段”列为第一优先级。
+> 下一版优先级将转向：更细粒度的证据覆盖率指标、可回放的语义升级策略与诊断闭环。
 
 ---
 
@@ -369,6 +369,6 @@ SSE（已有）：
 
 ## 15. 版本规划
 
-- v0.2（产品化闭环）：状态页/诊断动作、Session 权威、规则降级一致、引导完善、周报可追溯（已落地到 `v0.2.0-alpha.1`）
+- v0.2（产品化闭环）：状态页/诊断动作、Session 权威、规则降级一致、引导完善、周报可追溯（已落地到 `v0.2.0-alpha.2`）
 - v0.3（价值增强）：会话证据归并策略（修复无窗口证据）、语义来源字段、覆盖率提升（browser/diff）、导出报告、通知
 - v0.4（长期演进）：更完善迁移/备份/恢复、性能与长期数据治理

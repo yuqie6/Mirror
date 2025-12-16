@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $false)]
-    [string] $Version = "v0.2.0-alpha.1",
+    [string] $Version = "v0.2.0-alpha.2",
 
     [Parameter(Mandatory = $false)]
     [string] $Arch = "x64",

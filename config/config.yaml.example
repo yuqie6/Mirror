@@ -2,7 +2,7 @@
 
 app:
   name: "workmirror-agent"
-  version: "v0.2.0-alpha.1"
+  version: "v0.2.0-alpha.2"
   log_level: "info" # debug, info, warn, error
   language: "zh" # 语言偏好：zh (中文) / en (English)，影响 AI prompt 和报告生成语言
   # 日志落盘路径（默认写入程序目录下 ./logs/）；相对路径以可执行文件目录为基准。
