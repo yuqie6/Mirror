@@ -124,7 +124,7 @@ func buildSessionDocs(ctx context.Context, diffRepo DiffRepository, sessions []s
 	diffIDsAll := make([]int64, 0, 256)
 	diffIDsBySession := make(map[int64][]int64, len(sessions))
 	for i := range sessions {
-		ids := schema.GetInt64Slice(sessions[i].Metadata, "diff_ids")
+		ids := schema.GetInt64Slice(sessions[i].Metadata, schema.SessionMetaDiffIDs)
 		if len(ids) == 0 {
 			continue
 		}
@@ -160,8 +160,8 @@ func buildSessionDocs(ctx context.Context, diffRepo DiffRepository, sessions []s
 
 	docs := make([]sessionDoc, 0, len(sessions))
 	for _, s := range sessions {
-		diffCount := len(schema.GetInt64Slice(s.Metadata, "diff_ids"))
-		browserCount := len(schema.GetInt64Slice(s.Metadata, "browser_event_ids"))
+		diffCount := len(schema.GetInt64Slice(s.Metadata, schema.SessionMetaDiffIDs))
+		browserCount := len(schema.GetInt64Slice(s.Metadata, schema.SessionMetaBrowserEventIDs))
 
 		timeRange := strings.TrimSpace(s.TimeRange)
 		if timeRange == "" {

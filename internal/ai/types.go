@@ -97,7 +97,6 @@ type SessionSummaryResult struct {
 	Summary        string   `json:"summary"`
 	Category       string   `json:"category"` // technical/learning/exploration/other
 	SkillsInvolved []string `json:"skills_involved"`
-	Tags           []string `json:"tags"`
 }
 
 // WeeklySummaryRequest 周报请求

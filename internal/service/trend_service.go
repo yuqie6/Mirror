@@ -71,7 +71,7 @@ type LanguageTrend struct {
 }
 
 type DailyStat struct {
-	Date           string
+	Date            string
 	TotalDiffs      int64
 	TotalCodingMins int64
 	SessionCount    int64
@@ -144,25 +144,6 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 			currentStats[st.SkillKey] = st
 		}
 
-		prev, err := s.activityRepo.GetStatsByTimeRange(ctx, prevStartTime, prevEndTime)
-		if err != nil {
-			return nil, err
-		}
-		for _, st := range prev {
-			prevStats[st.SkillKey] = st
-		}
-	}
-	// 兼容历史数据：如果 skill_activities 为空但已经存在已分析的 Diff，则回填近 2 个周期的活动记录
-	if s.activityRepo != nil && len(currentStats) == 0 && len(prevStats) == 0 {
-		_, _ = BackfillSkillActivitiesFromDiffs(ctx, s.diffRepo, s.activityRepo, DefaultExpPolicy{}, prevStartTime, endTime, 500)
-
-		cur, err := s.activityRepo.GetStatsByTimeRange(ctx, startTime, endTime)
-		if err != nil {
-			return nil, err
-		}
-		for _, st := range cur {
-			currentStats[st.SkillKey] = st
-		}
 		prev, err := s.activityRepo.GetStatsByTimeRange(ctx, prevStartTime, prevEndTime)
 		if err != nil {
 			return nil, err
@@ -301,7 +282,7 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 		}
 
 		dailyStats = append(dailyStats, DailyStat{
-			Date:           d.Format("2006-01-02"),
+			Date:            d.Format("2006-01-02"),
 			TotalDiffs:      dayDiffs,
 			TotalCodingMins: dayCodingMins,
 			SessionCount:    sessionCount,

@@ -102,7 +102,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 
 	// RAG (optional)
 	if core.Clients.SiliconFlow != nil {
-		rag, err := service.NewRAGService(core.Clients.SiliconFlow, core.Repos.Summary, core.Repos.Diff, nil)
+		rag, err := service.NewRAGService(core.Clients.SiliconFlow, nil)
 		if err == nil {
 			rt.Services.RAG = rag
 			core.Services.AI.SetRAGService(rag)

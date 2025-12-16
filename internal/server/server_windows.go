@@ -105,7 +105,7 @@ func Start(ctx context.Context, rt *bootstrap.AgentRuntime, opts Options) (*Loca
 
 // registerRoutes 注册所有 API 路由
 func registerRoutes(mux *http.ServeMux, api *handler.API) {
-	mux.HandleFunc("/health", api.HandleHealth)
+	mux.HandleFunc("/api/health", requireMethod(http.MethodGet, api.HandleHealth))
 	mux.HandleFunc("/api/events", api.HandleSSE)
 	mux.HandleFunc("/api/status", requireMethod(http.MethodGet, api.HandleStatus))
 
@@ -130,11 +130,7 @@ func registerRoutes(mux *http.ServeMux, api *handler.API) {
 	mux.HandleFunc("/api/sessions/build", requireMethod(http.MethodPost, api.HandleBuildSessionsForDate))
 	mux.HandleFunc("/api/sessions/rebuild", requireMethod(http.MethodPost, api.HandleRebuildSessionsForDate))
 	mux.HandleFunc("/api/sessions/enrich", requireMethod(http.MethodPost, api.HandleEnrichSessionsForDate))
-
-	// v0.2 product API aliases
-	mux.HandleFunc("/api/maintenance/sessions/rebuild", requireMethod(http.MethodPost, api.HandleMaintenanceSessionsRebuild))
-	mux.HandleFunc("/api/maintenance/sessions/enrich", requireMethod(http.MethodPost, api.HandleMaintenanceSessionsEnrich))
-	mux.HandleFunc("/api/maintenance/sessions/repair-evidence", requireMethod(http.MethodPost, api.HandleMaintenanceSessionsRepairEvidence))
+	mux.HandleFunc("/api/sessions/repair-evidence", requireMethod(http.MethodPost, api.HandleRepairEvidenceForDate))
 
 	mux.HandleFunc("/api/diagnostics/export", requireMethod(http.MethodGet, api.HandleDiagnosticsExport))
 

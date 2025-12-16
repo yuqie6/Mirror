@@ -196,8 +196,8 @@ func (s *SessionService) buildSessionsForRange(
 		}
 		diffCount := len(getSessionDiffIDs(sess.Metadata))
 		browserCount := len(getSessionBrowserEventIDs(sess.Metadata))
-		setSessionMetaString(sess.Metadata, sessionMetaEvidenceHint, EvidenceHintFromCounts(diffCount, browserCount))
-		setSessionMetaString(sess.Metadata, sessionMetaSemanticVersion, "v1")
+		setSessionMetaString(sess.Metadata, schema.SessionMetaEvidenceHint, EvidenceHintFromCounts(diffCount, browserCount))
+		setSessionMetaString(sess.Metadata, schema.SessionMetaSemanticVersion, "v1")
 	}
 
 	if err := s.assignSessionVersions(ctx, sessions, versionStrategy); err != nil {
@@ -382,8 +382,8 @@ func (s *SessionService) RepairEvidenceForDate(ctx context.Context, date string,
 			}
 			ids := append(getSessionDiffIDs(meta), d.ID)
 			setSessionDiffIDs(meta, ids)
-			setSessionMetaString(meta, sessionMetaEvidenceHint, EvidenceHintFromCounts(len(getSessionDiffIDs(meta)), len(getSessionBrowserEventIDs(meta))))
-			setSessionMetaString(meta, sessionMetaSemanticVersion, "v1")
+			setSessionMetaString(meta, schema.SessionMetaEvidenceHint, EvidenceHintFromCounts(len(getSessionDiffIDs(meta)), len(getSessionBrowserEventIDs(meta))))
+			setSessionMetaString(meta, schema.SessionMetaSemanticVersion, "v1")
 			updatedMeta[best.id] = meta
 			addedDiffIDs[best.id] = append(addedDiffIDs[best.id], d.ID)
 			refDiffIDs[d.ID] = struct{}{}
@@ -420,8 +420,8 @@ func (s *SessionService) RepairEvidenceForDate(ctx context.Context, date string,
 			}
 			ids := append(getSessionBrowserEventIDs(meta), e.ID)
 			setSessionBrowserEventIDs(meta, ids)
-			setSessionMetaString(meta, sessionMetaEvidenceHint, EvidenceHintFromCounts(len(getSessionDiffIDs(meta)), len(getSessionBrowserEventIDs(meta))))
-			setSessionMetaString(meta, sessionMetaSemanticVersion, "v1")
+			setSessionMetaString(meta, schema.SessionMetaEvidenceHint, EvidenceHintFromCounts(len(getSessionDiffIDs(meta)), len(getSessionBrowserEventIDs(meta))))
+			setSessionMetaString(meta, schema.SessionMetaSemanticVersion, "v1")
 			updatedMeta[best.id] = meta
 			refBrowserIDs[e.ID] = struct{}{}
 			result.AttachedBrowser++

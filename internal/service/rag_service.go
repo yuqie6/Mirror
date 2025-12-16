@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"time"
 
 	chromem "github.com/philippgille/chromem-go"
 	"github.com/yuqie6/WorkMirror/internal/ai"
-	"github.com/yuqie6/WorkMirror/internal/repository"
 	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
@@ -19,8 +17,6 @@ type RAGService struct {
 	db          *chromem.DB
 	collection  *chromem.Collection
 	sfClient    *ai.SiliconFlowClient
-	summaryRepo *repository.SummaryRepository
-	diffRepo    *repository.DiffRepository
 	storagePath string
 }
 
@@ -32,8 +28,6 @@ type RAGConfig struct {
 // NewRAGService 创建 RAG 服务
 func NewRAGService(
 	sfClient *ai.SiliconFlowClient,
-	summaryRepo *repository.SummaryRepository,
-	diffRepo *repository.DiffRepository,
 	cfg *RAGConfig,
 ) (*RAGService, error) {
 	if cfg == nil {
@@ -65,8 +59,6 @@ func NewRAGService(
 		db:          db,
 		collection:  collection,
 		sfClient:    sfClient,
-		summaryRepo: summaryRepo,
-		diffRepo:    diffRepo,
 		storagePath: cfg.StoragePath,
 	}, nil
 }
@@ -231,10 +223,4 @@ type MemoryResult struct {
 func (s *RAGService) Close() error {
 	// chromem-go 持久化数据库会自动保存
 	return nil
-}
-
-// GetStoragePath 获取存储路径
-func (s *RAGService) GetStoragePath() string {
-	absPath, _ := filepath.Abs(s.storagePath)
-	return absPath
 }

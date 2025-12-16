@@ -10,7 +10,6 @@ import (
 
 	"github.com/yuqie6/WorkMirror/internal/dto"
 	"github.com/yuqie6/WorkMirror/internal/schema"
-	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
 func (a *API) HandleSkillTree(w http.ResponseWriter, r *http.Request) {
@@ -90,24 +89,27 @@ func (a *API) HandleSkillSessions(w http.ResponseWriter, r *http.Request) {
 
 	result := make([]dto.SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
-		diffIDs := schema.GetInt64Slice(s.Metadata, "diff_ids")
-		browserIDs := schema.GetInt64Slice(s.Metadata, "browser_event_ids")
-		timeRange := strings.TrimSpace(s.TimeRange)
-		if timeRange == "" {
-			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
-		}
+		meta := s.Metadata
+		diffIDs := schema.GetInt64Slice(meta, schema.SessionMetaDiffIDs)
+		browserIDs := schema.GetInt64Slice(meta, schema.SessionMetaBrowserEventIDs)
+		timeRange, semanticSource, semanticVersion, evidenceHint, degradedReason := sessionDerivedForDTO(&s, len(diffIDs), len(browserIDs))
 		result = append(result, dto.SessionDTO{
-			ID:             s.ID,
-			Date:           s.Date,
-			StartTime:      s.StartTime,
-			EndTime:        s.EndTime,
-			TimeRange:      timeRange,
-			PrimaryApp:     s.PrimaryApp,
-			Category:       s.Category,
-			Summary:        s.Summary,
-			SkillsInvolved: []string(s.SkillsInvolved),
-			DiffCount:      len(diffIDs),
-			BrowserCount:   len(browserIDs),
+			ID:              s.ID,
+			Date:            s.Date,
+			StartTime:       s.StartTime,
+			EndTime:         s.EndTime,
+			TimeRange:       timeRange,
+			PrimaryApp:      s.PrimaryApp,
+			SessionVersion:  s.SessionVersion,
+			Category:        s.Category,
+			Summary:         s.Summary,
+			SkillsInvolved:  []string(s.SkillsInvolved),
+			DiffCount:       len(diffIDs),
+			BrowserCount:    len(browserIDs),
+			SemanticSource:  semanticSource,
+			SemanticVersion: semanticVersion,
+			EvidenceHint:    evidenceHint,
+			DegradedReason:  degradedReason,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].StartTime > result[j].StartTime })

@@ -15,6 +15,39 @@ import (
 	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
+func sessionDerivedForDTO(sess *schema.Session, diffCount, browserCount int) (timeRange, semanticSource, semanticVersion, evidenceHint, degradedReason string) {
+	if sess == nil {
+		return "", "rule", "", service.EvidenceHintFromCounts(diffCount, browserCount), ""
+	}
+
+	timeRange = strings.TrimSpace(sess.TimeRange)
+	if timeRange == "" {
+		timeRange = service.FormatTimeRangeMs(sess.StartTime, sess.EndTime)
+	}
+
+	meta := sess.Metadata
+
+	semanticSource, _ = meta[schema.SessionMetaSemanticSource].(string)
+	semanticSource = strings.TrimSpace(semanticSource)
+	if semanticSource == "" {
+		semanticSource = "rule"
+	}
+
+	semanticVersion, _ = meta[schema.SessionMetaSemanticVersion].(string)
+	semanticVersion = strings.TrimSpace(semanticVersion)
+
+	evidenceHint, _ = meta[schema.SessionMetaEvidenceHint].(string)
+	evidenceHint = strings.TrimSpace(evidenceHint)
+	if evidenceHint == "" {
+		evidenceHint = service.EvidenceHintFromCounts(diffCount, browserCount)
+	}
+
+	degradedReason, _ = meta[schema.SessionMetaDegradedReason].(string)
+	degradedReason = strings.TrimSpace(degradedReason)
+
+	return timeRange, semanticSource, semanticVersion, evidenceHint, degradedReason
+}
+
 func (a *API) HandleBuildSessionsForDate(w http.ResponseWriter, r *http.Request) {
 	if !a.requireWritableDB(w) {
 		return
@@ -172,22 +205,9 @@ func (a *API) HandleSessionsByDate(w http.ResponseWriter, r *http.Request) {
 	result := make([]dto.SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
 		meta := s.Metadata
-		diffIDs := schema.GetInt64Slice(meta, "diff_ids")
-		browserIDs := schema.GetInt64Slice(meta, "browser_event_ids")
-		timeRange := strings.TrimSpace(s.TimeRange)
-		if timeRange == "" {
-			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
-		}
-		semanticSource, _ := meta["semantic_source"].(string)
-		if strings.TrimSpace(semanticSource) == "" {
-			semanticSource = "rule"
-		}
-		semanticVersion, _ := meta["semantic_version"].(string)
-		evidenceHint, _ := meta["evidence_hint"].(string)
-		if strings.TrimSpace(evidenceHint) == "" {
-			evidenceHint = service.EvidenceHintFromCounts(len(diffIDs), len(browserIDs))
-		}
-		degradedReason, _ := meta["degraded_reason"].(string)
+		diffIDs := schema.GetInt64Slice(meta, schema.SessionMetaDiffIDs)
+		browserIDs := schema.GetInt64Slice(meta, schema.SessionMetaBrowserEventIDs)
+		timeRange, semanticSource, semanticVersion, evidenceHint, degradedReason := sessionDerivedForDTO(&s, len(diffIDs), len(browserIDs))
 		result = append(result, dto.SessionDTO{
 			ID:              s.ID,
 			Date:            s.Date,
@@ -232,8 +252,8 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	diffIDs := schema.GetInt64Slice(sess.Metadata, "diff_ids")
-	browserIDs := schema.GetInt64Slice(sess.Metadata, "browser_event_ids")
+	diffIDs := schema.GetInt64Slice(sess.Metadata, schema.SessionMetaDiffIDs)
+	browserIDs := schema.GetInt64Slice(sess.Metadata, schema.SessionMetaBrowserEventIDs)
 
 	var diffs []schema.Diff
 	if len(diffIDs) > 0 {
@@ -292,22 +312,7 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	timeRange := strings.TrimSpace(sess.TimeRange)
-	if timeRange == "" {
-		timeRange = service.FormatTimeRangeMs(sess.StartTime, sess.EndTime)
-	}
-
-	meta := sess.Metadata
-	semanticSource, _ := meta["semantic_source"].(string)
-	if strings.TrimSpace(semanticSource) == "" {
-		semanticSource = "rule"
-	}
-	semanticVersion, _ := meta["semantic_version"].(string)
-	evidenceHint, _ := meta["evidence_hint"].(string)
-	if strings.TrimSpace(evidenceHint) == "" {
-		evidenceHint = service.EvidenceHintFromCounts(len(diffIDs), len(browserIDs))
-	}
-	degradedReason, _ := meta["degraded_reason"].(string)
+	timeRange, semanticSource, semanticVersion, evidenceHint, degradedReason := sessionDerivedForDTO(sess, len(diffIDs), len(browserIDs))
 
 	resp := &dto.SessionDetailDTO{
 		SessionDTO: dto.SessionDTO{
@@ -328,8 +333,6 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 			EvidenceHint:    evidenceHint,
 			DegradedReason:  degradedReason,
 		},
-		Tags:     schema.GetStringSlice(sess.Metadata, "tags"),
-		RAGRefs:  schema.GetMapSlice(sess.Metadata, "rag_refs"),
 		AppUsage: appUsage,
 		Diffs:    diffDTOs,
 		Browser:  browserDTOs,

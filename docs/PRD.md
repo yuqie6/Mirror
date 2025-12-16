@@ -20,7 +20,7 @@
 1) **会话切分对无窗口证据的处理不够稳健**：当前切分以 window events 为锚点，不产生“纯 diff 会话”（见 `internal/service/session_service.go`），会导致“窗口采集缺失/晚到”场景下 diff 证据丢失或无法追溯。  
 2) **会话语义来源未写入稳定对外契约**：前端目前以启发式推断 `ai/rule`（见 `frontend/src/types/session.ts`），易误标，违反“离线可见且可解释”的验收口径。
 
-> 下一版 PRD（v0.3）将把“会话证据归并策略 + 语义来源字段”列为第一优先级（见 `docs/PRD_v0.3.md`）。
+> 下一版将把“会话证据归并策略 + 语义来源字段”列为第一优先级。
 
 ---
 
@@ -100,7 +100,7 @@
 
 - `semantic_source`：`ai` | `rule`（会话摘要/分类/标签的生成来源）
 - `semantic_version`：语义生成策略版本（用于回放与可重复性）
-- `evidence_hint`：`diff+browser` | `diff` | `browser` | `window_only` | `diff_only`（用于弱证据标注与状态页统计）
+- `evidence_hint`：`diff+browser` | `diff` | `browser` | `window_only`（用于弱证据标注与状态页统计）
 
 ### 6.2 权威路径（必须遵守）
 
@@ -301,8 +301,9 @@
 ### 10.1 必备新增/强化接口（建议）
 
 - GET /api/status：汇总健康状态（采集/管道/AI/最近错误/覆盖率）
-- POST /api/maintenance/sessions/rebuild：按日期重建 sessions
-- POST /api/maintenance/sessions/enrich：按日期补全语义
+- POST /api/sessions/rebuild：按日期重建 sessions
+- POST /api/sessions/enrich：按日期补全语义
+- POST /api/sessions/repair-evidence：按日期尝试修复证据归并
 - GET /api/diagnostics/export：导出诊断包（文件流或生成到 data/ 下并返回路径）
 
 SSE（已有）：
@@ -370,5 +371,5 @@ SSE（已有）：
 ## 15. 版本规划
 
 - v0.2（产品化闭环）：状态页/诊断动作、Session 权威、规则降级一致、引导完善、周报可追溯（已落地到 `v0.2.0-alpha.1`）
-- v0.3（价值增强）：会话证据归并策略（修复无窗口证据）、语义来源字段、覆盖率提升（browser/diff）、导出报告、通知（见 `docs/PRD_v0.3.md`）
+- v0.3（价值增强）：会话证据归并策略（修复无窗口证据）、语义来源字段、覆盖率提升（browser/diff）、导出报告、通知
 - v0.4（长期演进）：更完善迁移/备份/恢复、性能与长期数据治理

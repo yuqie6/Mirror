@@ -156,7 +156,7 @@ func (s *SessionSemanticService) GetSessionsBySkill(ctx context.Context, skillKe
 			break
 		}
 		sess := sessions[i]
-		keys := schema.GetStringSlice(sess.Metadata, sessionMetaSkillKeys)
+		keys := schema.GetStringSlice(sess.Metadata, schema.SessionMetaSkillKeys)
 		for _, k := range keys {
 			if k == skillKey {
 				matched = append(matched, sess)
@@ -178,14 +178,14 @@ func shouldEnrichSession(sess *schema.Session) bool {
 		return true
 	}
 	// 证据索引缺失也需要补齐（用于 skill→session 追溯）
-	if len(schema.GetStringSlice(sess.Metadata, sessionMetaSkillKeys)) == 0 && len(sess.SkillsInvolved) == 0 {
+	if len(schema.GetStringSlice(sess.Metadata, schema.SessionMetaSkillKeys)) == 0 && len(sess.SkillsInvolved) == 0 {
 		return true
 	}
 	// v0.3：对外契约字段缺失也需要补齐（避免前端启发式猜测）
-	if strings.TrimSpace(getSessionMetaString(sess.Metadata, sessionMetaSemanticSource)) == "" {
+	if strings.TrimSpace(getSessionMetaString(sess.Metadata, schema.SessionMetaSemanticSource)) == "" {
 		return true
 	}
-	if strings.TrimSpace(getSessionMetaString(sess.Metadata, sessionMetaEvidenceHint)) == "" {
+	if strings.TrimSpace(getSessionMetaString(sess.Metadata, schema.SessionMetaEvidenceHint)) == "" {
 		return true
 	}
 	return false
@@ -289,7 +289,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		skillNames = append(skillNames, skillKeyToName[k])
 	}
 
-	meta[sessionMetaSkillKeys] = skillKeys
+	meta[schema.SessionMetaSkillKeys] = skillKeys
 
 	// 浏览信息截断，用于 prompt/展示
 	browserInfos := make([]ai.BrowserInfo, 0, 10)
@@ -307,9 +307,6 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		}
 	}
 	topDomains := topKeysByCount(domainCount, 6)
-	if len(topDomains) > 0 {
-		meta[sessionMetaTopDomains] = topDomains
-	}
 
 	diffInfos := make([]ai.DiffInfo, 0, len(diffs))
 	for _, d := range diffs {
@@ -322,7 +319,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		})
 	}
 
-	// RAG 记忆（可选）：把引用也写进 metadata，便于 UI 展示“用到了哪些历史记忆”
+	// RAG 记忆（可选）：用于提升语义摘要质量
 	memories := []string{}
 	if s.rag != nil && (len(diffs) > 0 || len(skillNames) > 0) {
 		query := ""
@@ -337,20 +334,12 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		}
 		if query != "" {
 			if results, err := s.rag.Query(ctx, query, 3); err == nil && len(results) > 0 {
-				refs := make([]map[string]any, 0, len(results))
 				for _, r := range results {
 					content := truncateRunes(strings.TrimSpace(r.Content), 180)
 					if content != "" {
 						memories = append(memories, content)
 					}
-					refs = append(refs, map[string]any{
-						"type":       r.Type,
-						"date":       r.Date,
-						"similarity": r.Similarity,
-						"content":    content,
-					})
 				}
-				meta[sessionMetaRAGRefs] = refs
 			}
 		}
 	}
@@ -364,8 +353,8 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		skillsInvolved = append([]string(nil), skillNames...)
 	}
 
-	semanticSource := strings.TrimSpace(getSessionMetaString(meta, sessionMetaSemanticSource))
-	degradedReason := strings.TrimSpace(getSessionMetaString(meta, sessionMetaDegradedReason))
+	semanticSource := strings.TrimSpace(getSessionMetaString(meta, schema.SessionMetaSemanticSource))
+	degradedReason := strings.TrimSpace(getSessionMetaString(meta, schema.SessionMetaDegradedReason))
 
 	usedAI := false
 	if s.analyzer != nil && strings.TrimSpace(summary) == "" {
@@ -395,10 +384,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 						keys = append(keys, k)
 					}
 				}
-				meta[sessionMetaSkillKeys] = uniqueNonEmpty(keys, 16)
-			}
-			if len(res.Tags) > 0 {
-				meta[sessionMetaTags] = uniqueNonEmpty(res.Tags, 6)
+				meta[schema.SessionMetaSkillKeys] = uniqueNonEmpty(keys, 16)
 			}
 			if strings.TrimSpace(summary) != "" {
 				usedAI = true
@@ -417,8 +403,8 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 
 	diffCount := len(getSessionDiffIDs(meta))
 	browserCount := len(getSessionBrowserEventIDs(meta))
-	setSessionMetaString(meta, sessionMetaEvidenceHint, EvidenceHintFromCounts(diffCount, browserCount))
-	setSessionMetaString(meta, sessionMetaSemanticVersion, "v1")
+	setSessionMetaString(meta, schema.SessionMetaEvidenceHint, EvidenceHintFromCounts(diffCount, browserCount))
+	setSessionMetaString(meta, schema.SessionMetaSemanticVersion, "v1")
 
 	if semanticSource == "" {
 		if usedAI {
@@ -433,8 +419,8 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		}
 	}
 
-	setSessionMetaString(meta, sessionMetaSemanticSource, semanticSource)
-	setSessionMetaString(meta, sessionMetaDegradedReason, degradedReason)
+	setSessionMetaString(meta, schema.SessionMetaSemanticSource, semanticSource)
+	setSessionMetaString(meta, schema.SessionMetaDegradedReason, degradedReason)
 
 	update := schema.SessionSemanticUpdate{
 		TimeRange:      sess.TimeRange,

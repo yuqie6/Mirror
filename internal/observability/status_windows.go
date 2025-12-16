@@ -170,8 +170,8 @@ func BuildStatus(ctx context.Context, rt *bootstrap.AgentRuntime, startedAt time
 			refDiffIDs := make(map[int64]struct{}, 256)
 			refBrowserIDs := make(map[int64]struct{}, 256)
 			for _, s := range sessions {
-				diffIDs := schema.GetInt64Slice(s.Metadata, "diff_ids")
-				browserIDs := schema.GetInt64Slice(s.Metadata, "browser_event_ids")
+				diffIDs := schema.GetInt64Slice(s.Metadata, schema.SessionMetaDiffIDs)
+				browserIDs := schema.GetInt64Slice(s.Metadata, schema.SessionMetaBrowserEventIDs)
 				hasDiff := len(diffIDs) > 0
 				hasBrowser := len(browserIDs) > 0
 				if hasDiff {

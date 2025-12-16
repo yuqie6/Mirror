@@ -97,7 +97,7 @@ function SkillTreeItem({ node, selectedId, onSelect, depth = 0 }: SkillTreeItemP
   const hasChildren = node.children && node.children.length > 0;
   const isSelected = selectedId === node.id;
 
-  const isRecent = node.lastActive === 'Today' || node.lastActive === 'Yesterday' || node.lastActive === '今天' || node.lastActive === '昨天';
+  const isRecent = node.lastActiveAt > 0 && Date.now() - node.lastActiveAt <= 2 * 24 * 60 * 60 * 1000;
   const TrendIcon = node.trend === 'up' ? TrendingUp : node.trend === 'down' ? TrendingDown : Minus;
   const trendColor = node.trend === 'up' ? 'text-emerald-500' : node.trend === 'down' ? 'text-rose-500' : 'text-zinc-500';
 
@@ -211,7 +211,7 @@ function findSkillNodeByID(nodes: ISkillNode[], id: string): ISkillNode | null {
 }
 
 export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateToSession }: SkillViewProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [skills, setSkills] = useState<ISkillNode[]>([]);
   const [selectedSkill, setSelectedSkill] = useState<ISkillNode | null>(null);
   const [loading, setLoading] = useState(false);
@@ -315,7 +315,8 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
 
   const formatTimestamp = (ts: number): string => {
     if (!ts) return '--';
-    return new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+    const localeTag = locale === 'zh' ? 'zh-CN' : 'en';
+    return new Date(ts).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' });
   };
 
   // 根据技能类型生成详情卡片的背景样式 - 增加视觉特点
@@ -394,7 +395,7 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
                   </div>
                   <div>
                     <div className="text-xs text-zinc-500 uppercase">{t('skills.lastActive')}</div>
-                    <div className="text-2xl font-mono text-zinc-300">{selectedSkill.lastActive}</div>
+                    <div className="text-2xl font-mono text-zinc-300">{formatTimestamp(selectedSkill.lastActiveAt)}</div>
                   </div>
                 </div>
 
@@ -423,7 +424,7 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-mono text-xs text-indigo-400 mb-1">会话 #{session.id} • {session.date}</div>
+                          <div className="font-mono text-xs text-indigo-400 mb-1">{t('common.session')} #{session.id} • {session.date}</div>
                           <div className="text-zinc-300">{session.category || session.summary}</div>
                           <div className="text-xs text-zinc-500 mt-1">{session.time_range}</div>
                         </div>

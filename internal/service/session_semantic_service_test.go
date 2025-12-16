@@ -162,7 +162,6 @@ func (f *fakeAnalyzerForSemantic) GenerateSessionSummary(ctx context.Context, re
 		Summary:        "Mock session summary",
 		Category:       "coding",
 		SkillsInvolved: []string{"Go", "React"},
-		Tags:           []string{"backend"},
 	}, nil
 }
 
@@ -181,8 +180,8 @@ func TestShouldEnrichSession_HasSummaryAndSkills(t *testing.T) {
 		Summary:        "Already has summary",
 		SkillsInvolved: []string{"Go"}, // has skills too
 		Metadata: schema.JSONMap{
-			"semantic_source": "ai",
-			"evidence_hint":   "diff",
+			schema.SessionMetaSemanticSource: "ai",
+			schema.SessionMetaEvidenceHint:   "diff",
 		},
 	}
 	if shouldEnrichSession(sess) {
@@ -206,7 +205,7 @@ func TestEnrichSessionsForDate_EnrichesNeedingSessions(t *testing.T) {
 
 	sessions := []schema.Session{
 		{ID: 1, StartTime: baseTs, EndTime: baseTs + 1000, Summary: ""}, // needs enrichment
-		{ID: 2, StartTime: baseTs, EndTime: baseTs + 2000, Summary: "Already done", SkillsInvolved: []string{"Go"}, Metadata: schema.JSONMap{"semantic_source": "ai", "evidence_hint": "diff"}}, // skip - has both
+		{ID: 2, StartTime: baseTs, EndTime: baseTs + 2000, Summary: "Already done", SkillsInvolved: []string{"Go"}, Metadata: schema.JSONMap{schema.SessionMetaSemanticSource: "ai", schema.SessionMetaEvidenceHint: "diff"}}, // skip - has both
 	}
 
 	diffs := []schema.Diff{

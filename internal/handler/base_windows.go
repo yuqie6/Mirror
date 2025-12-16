@@ -3,7 +3,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -102,16 +101,6 @@ func sanitizeSSEName(name string) string {
 	n = strings.ReplaceAll(n, "\n", "")
 	n = strings.ReplaceAll(n, "\r", "")
 	return n
-}
-
-// Subscribe 订阅事件总线
-func (a *API) Subscribe(ctx context.Context, buffer int) <-chan eventbus.Event {
-	if a == nil || a.hub == nil {
-		ch := make(chan eventbus.Event)
-		close(ch)
-		return ch
-	}
-	return a.hub.Subscribe(ctx, buffer)
 }
 
 func (a *API) requireWritableDB(w http.ResponseWriter) bool {

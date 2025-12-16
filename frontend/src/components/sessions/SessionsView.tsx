@@ -15,7 +15,7 @@ import {
 import { Sparkles, Cog, AlertTriangle, ChevronDown, ChevronRight, FileCode, Plus, Minus, MonitorSmartphone, Globe, Clock, GripVertical, Calendar, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GetSessionsByDate, GetSessionDetail, GetSessionEvents, GetDiffDetail } from '@/api/app';
-import { ISession, SessionDTO, SessionDetailDTO, SessionWindowEventDTO, toISession } from '@/types/session';
+import { SessionDTO, SessionDetailDTO, SessionWindowEventDTO } from '@/types/session';
 import { parseLocalISODate, todayLocalISODate } from '@/lib/date';
 import { useTranslation } from '@/lib/i18n';
 
@@ -51,12 +51,12 @@ export default function SessionsView({
   onCloseSession,
   onDateChange,
 }: SessionsViewProps) {
-  const [sessions, setSessions] = useState<ISession[]>([]);
+  const [sessions, setSessions] = useState<SessionDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SessionDetailDTO | null>(null);
   const [expandedDiffs, setExpandedDiffs] = useState<Set<number>>(new Set());
   const [currentDate, setCurrentDate] = useState(() => parseOrToday(initialDate));
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   
   // 窗口事件
   const [windowEvents, setWindowEvents] = useState<SessionWindowEventDTO[]>([]);
@@ -77,7 +77,7 @@ export default function SessionsView({
       setLoading(true);
       try {
         const data: SessionDTO[] = await GetSessionsByDate(currentDate);
-        setSessions(data.map(toISession));
+        setSessions(data);
       } catch (e) {
         console.error('Failed to load sessions:', e);
       } finally {
@@ -116,7 +116,7 @@ export default function SessionsView({
     void openSessionByID(selectedSessionId);
   }, [selectedSessionId]);
 
-  const handleSessionClick = async (session: ISession) => {
+  const handleSessionClick = async (session: SessionDTO) => {
     await openSessionByID(session.id);
     onOpenSession?.(session.id, currentDate);
   };
@@ -125,8 +125,7 @@ export default function SessionsView({
     setLoadingEvents(true);
     try {
       const events = await GetSessionEvents(sessionId, 100);
-      const windowEvts = (events?.window_events || events || []) as SessionWindowEventDTO[];
-      setWindowEvents(windowEvts);
+      setWindowEvents(events);
     } catch (e) {
       console.error('Failed to load window events:', e);
     } finally {
@@ -162,7 +161,8 @@ export default function SessionsView({
 
   const formatTimestamp = (ts: number): string => {
     if (!ts) return '--';
-    return new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    const localeTag = locale === 'zh' ? 'zh-CN' : 'en';
+    return new Date(ts).toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   const formatDuration = (seconds: number): string => {
@@ -249,29 +249,40 @@ export default function SessionsView({
           <div className="text-center text-zinc-500 py-12">{t('sessions.noRecords')}</div>
         ) : (
           <div className="space-y-2">
-            {sessions.map((session) => (
+            {sessions.map((session) => {
+              const isAI = session.semantic_source === 'ai';
+              const evidenceStrength =
+                session.diff_count > 0 && session.browser_count > 0
+                  ? 'strong'
+                  : session.diff_count > 0 || session.browser_count > 0
+                    ? 'medium'
+                    : 'weak';
+              const title = session.category || session.primary_app || t('reports.uncategorized');
+              const summary = session.summary || t('reports.noSummary');
+
+              return (
               <div
                 key={session.id}
                 onClick={() => handleSessionClick(session)}
                 className={cn(
                   'group relative pl-3 border-l-2 cursor-pointer hover:bg-zinc-900/50 rounded-r-lg p-3 transition-all',
-                  session.type === 'ai' ? 'border-indigo-500' : 'border-zinc-700',
+                  isAI ? 'border-indigo-500' : 'border-zinc-700',
                   selectedSession?.id === session.id && 'bg-zinc-900 border-indigo-400'
                 )}
               >
                 <div className="flex justify-between items-start mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-zinc-500">{session.duration}</span>
-                    <span title={session.type === 'ai' ? t('sessions.aiAnalysis') : t('sessions.ruleGenerated')}>
-                      {session.type === 'ai' ? <Sparkles size={12} className="text-indigo-400" /> : <Cog size={12} className="text-zinc-600" />}
+                    <span className="text-xs font-mono text-zinc-500">{session.time_range}</span>
+                    <span title={isAI ? t('sessions.aiAnalysis') : t('sessions.ruleGenerated')}>
+                      {isAI ? <Sparkles size={12} className="text-indigo-400" /> : <Cog size={12} className="text-zinc-600" />}
                     </span>
                   </div>
                 </div>
                 <h4 className="text-zinc-200 text-sm font-medium group-hover:text-white transition-colors">
-                  {session.title}
+                  {title}
                 </h4>
-                <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{session.summary}</p>
-                {session.evidenceStrength === 'weak' && (
+                <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{summary}</p>
+                {evidenceStrength === 'weak' && (
                   <div
                     title={t('sessions.weakEvidenceHint')}
                     className="mt-1 text-[10px] text-amber-500 flex items-center gap-1"
@@ -280,7 +291,8 @@ export default function SessionsView({
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

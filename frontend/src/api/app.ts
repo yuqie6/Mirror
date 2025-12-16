@@ -1,4 +1,7 @@
 import { todayLocalISODate } from '@/lib/date';
+import type { SessionDTO, SessionDetailDTO, SessionWindowEventDTO } from '@/types/session';
+import type { SkillNodeDTO } from '@/types/skill';
+import type { StatusDTO } from '@/types/status';
 
 type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
 
@@ -24,7 +27,7 @@ async function requestJSON<T>(url: string, init?: RequestInit): Promise<T> {
     return await res.json() as T;
 }
 
-export async function GetStatus(): Promise<any> {
+export async function GetStatus(): Promise<StatusDTO> {
     return requestJSON("/api/status");
 }
 
@@ -74,7 +77,7 @@ export async function ListPeriodSummaryIndex(periodType: string, limit: number):
     return requestJSON(`/api/summary/period/index?${qs.toString()}`);
 }
 
-export async function GetSkillTree(): Promise<any> {
+export async function GetSkillTree(): Promise<SkillNodeDTO[]> {
     return requestJSON("/api/skills/tree");
 }
 
@@ -102,15 +105,15 @@ export async function GetDiffDetail(id: number): Promise<any> {
     return requestJSON(`/api/diffs/detail?id=${encodeURIComponent(String(id))}`);
 }
 
-export async function GetSessionsByDate(date: string): Promise<any> {
+export async function GetSessionsByDate(date: string): Promise<SessionDTO[]> {
     return requestJSON(`/api/sessions/by-date?date=${encodeURIComponent(date)}`);
 }
 
-export async function GetSessionDetail(id: number): Promise<any> {
+export async function GetSessionDetail(id: number): Promise<SessionDetailDTO> {
     return requestJSON(`/api/sessions/detail?id=${encodeURIComponent(String(id))}`);
 }
 
-export async function GetSessionEvents(id: number, limit?: number, offset?: number): Promise<any> {
+export async function GetSessionEvents(id: number, limit?: number, offset?: number): Promise<SessionWindowEventDTO[]> {
     const qs = new URLSearchParams();
     qs.set("id", String(id));
     if (Number.isFinite(limit) && (limit as number) > 0) qs.set("limit", String(Math.floor(limit as number)));
@@ -143,7 +146,7 @@ export async function RepairEvidenceForDate(date: string, attachGapMinutes?: num
     const gap = Number.isFinite(attachGapMinutes) && (attachGapMinutes as number) > 0
         ? Math.floor(attachGapMinutes as number)
         : undefined;
-    return requestJSON("/api/maintenance/sessions/repair-evidence", {
+    return requestJSON("/api/sessions/repair-evidence", {
         method: "POST",
         body: JSON.stringify({ date, attach_gap_minutes: gap } as any),
     });

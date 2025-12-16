@@ -53,45 +53,7 @@ export interface SessionWindowEventDTO {
 }
 
 export interface SessionDetailDTO extends SessionDTO {
-  tags: string[];
-  rag_refs: Record<string, unknown>[];
   app_usage: SessionAppUsageDTO[];
   diffs: SessionDiffDTO[];
   browser: SessionBrowserEventDTO[];
-}
-
-// 前端使用的 Session 接口（保持向后兼容）
-export interface ISession {
-  id: number;
-  date: string;
-  title: string;
-  summary: string;
-  duration: string;
-  type: 'ai' | 'rule';
-  tags: string[];
-  evidenceStrength: 'strong' | 'medium' | 'weak';
-}
-
-// 从后端 DTO 转换为前端 ISession
-export function toISession(dto: SessionDTO): ISession {
-  const semanticSource = (dto.semantic_source || 'rule') as 'ai' | 'rule' | string;
-
-  // 证据强度：基于 diff 和 browser 同时存在
-  let evidenceStrength: 'strong' | 'medium' | 'weak' = 'weak';
-  if (dto.diff_count > 0 && dto.browser_count > 0) {
-    evidenceStrength = 'strong';
-  } else if (dto.diff_count > 0 || dto.browser_count > 0) {
-    evidenceStrength = 'medium';
-  }
-
-  return {
-    id: dto.id,
-    date: dto.date,
-    title: dto.category || dto.primary_app || '未分类会话',
-    summary: dto.summary || `${dto.primary_app} 相关活动`,
-    duration: dto.time_range,
-    type: semanticSource === 'ai' ? 'ai' : 'rule',
-    tags: dto.skills_involved || [],
-    evidenceStrength,
-  };
 }

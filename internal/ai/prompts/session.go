@@ -43,11 +43,10 @@ func sessionSummaryUserZH(in SessionSummaryUserInput) string {
 	b.WriteString(fmt.Sprintf("1) summary 用中文 %s（尽量具体，避免空泛；引用具体的文件名、技术名称、网站等证据）\n", in.SummaryGuidance))
 	b.WriteString("2) category 只能是 technical/learning/exploration/other\n")
 	b.WriteString("3) skills_involved 最多 8 个，尽量使用用户已有技能树中的标准名称（如 Go、Redis、React）\n")
-	b.WriteString("4) tags 最多 6 个，用中文短标签（如 并发、性能、数据库、文档阅读）\n")
-	b.WriteString("5) 面向经验丰富的开发者：结论优先、信息密度高\n")
-	b.WriteString("6) 必须可追溯：summary 应对应下面的 diff/browser/app 证据，不要胡编\n")
-	b.WriteString("7) 隐私最小披露：不要输出任何完整 URL/Token/密钥/长段代码，仅做必要摘要\n")
-	b.WriteString("8) 输出必须是严格 JSON：只输出一个对象；不要输出任何 JSON 之外的字符；不要多余字段\n\n")
+	b.WriteString("4) 面向经验丰富的开发者：结论优先、信息密度高\n")
+	b.WriteString("5) 必须可追溯：summary 应对应下面的 diff/browser/app 证据，不要胡编\n")
+	b.WriteString("6) 隐私最小披露：不要输出任何完整 URL/Token/密钥/长段代码，仅做必要摘要\n")
+	b.WriteString("7) 输出必须是严格 JSON：只输出一个对象；不要输出任何 JSON 之外的字符；不要多余字段\n\n")
 
 	b.WriteString(fmt.Sprintf("日期: %s\n时间: %s\n主应用: %s\n\n", in.Date, in.TimeRange, in.PrimaryApp))
 
@@ -103,8 +102,7 @@ func sessionSummaryUserZH(in SessionSummaryUserInput) string {
 	b.WriteString("{\n")
 	b.WriteString("  \"summary\": \"...\",\n")
 	b.WriteString("  \"category\": \"technical\",\n")
-	b.WriteString("  \"skills_involved\": [\"...\"],\n")
-	b.WriteString("  \"tags\": [\"...\"]\n")
+	b.WriteString("  \"skills_involved\": [\"...\"]\n")
 	b.WriteString("}\n")
 	return b.String()
 }
@@ -116,11 +114,10 @@ func sessionSummaryUserEN(in SessionSummaryUserInput) string {
 	b.WriteString(fmt.Sprintf("1) summary in English %s (be specific, avoid vagueness; cite specific file names, technical terms, websites as evidence)\n", in.SummaryGuidance))
 	b.WriteString("2) category must be technical/learning/exploration/other\n")
 	b.WriteString("3) skills_involved max 8 items, prefer standard names from user's skill tree (e.g. Go, Redis, React)\n")
-	b.WriteString("4) tags max 6 items, in English short tags (e.g. concurrency, performance, database, documentation)\n")
-	b.WriteString("5) For an experienced developer: conclusion-first, high information density\n")
-	b.WriteString("6) Must be traceable: summary should match the diff/browser/app evidence below, don't make things up\n")
-	b.WriteString("7) Privacy by minimization: do not output full URLs/tokens/keys/long code; only necessary summaries\n")
-	b.WriteString("8) Output must be strict JSON: output a single object only; no extra characters; no unrequested fields\n\n")
+	b.WriteString("4) For an experienced developer: conclusion-first, high information density\n")
+	b.WriteString("5) Must be traceable: summary should match the diff/browser/app evidence below, don't make things up\n")
+	b.WriteString("6) Privacy by minimization: do not output full URLs/tokens/keys/long code; only necessary summaries\n")
+	b.WriteString("7) Output must be strict JSON: output a single object only; no extra characters; no unrequested fields\n\n")
 
 	b.WriteString(fmt.Sprintf("Date: %s\nTime: %s\nPrimary App: %s\n\n", in.Date, in.TimeRange, in.PrimaryApp))
 
@@ -176,8 +173,7 @@ func sessionSummaryUserEN(in SessionSummaryUserInput) string {
 	b.WriteString("{\n")
 	b.WriteString("  \"summary\": \"...\",\n")
 	b.WriteString("  \"category\": \"technical\",\n")
-	b.WriteString("  \"skills_involved\": [\"...\"],\n")
-	b.WriteString("  \"tags\": [\"...\"]\n")
+	b.WriteString("  \"skills_involved\": [\"...\"]\n")
 	b.WriteString("}\n")
 	return b.String()
 }

@@ -85,27 +85,3 @@ func GetStringSlice(meta JSONMap, key string) []string {
 		return nil
 	}
 }
-
-func GetMapSlice(meta JSONMap, key string) []map[string]any {
-	if meta == nil {
-		return nil
-	}
-	raw, ok := meta[key]
-	if !ok || raw == nil {
-		return nil
-	}
-	switch v := raw.(type) {
-	case []map[string]any:
-		return v
-	case []interface{}:
-		out := make([]map[string]any, 0, len(v))
-		for _, it := range v {
-			if m, ok := it.(map[string]any); ok {
-				out = append(out, m)
-			}
-		}
-		return out
-	default:
-		return nil
-	}
-}

@@ -273,7 +273,7 @@ type SessionDTO struct {
 
 	SemanticSource  string `json:"semantic_source"`            // ai | rule
 	SemanticVersion string `json:"semantic_version,omitempty"` // e.g. "v1"
-	EvidenceHint    string `json:"evidence_hint"`              // diff+browser | diff | browser | window_only | diff_only | browser_only
+	EvidenceHint    string `json:"evidence_hint"`              // diff+browser | diff | browser | window_only
 	DegradedReason  string `json:"degraded_reason,omitempty"`  // only meaningful when semantic_source=rule
 }
 
@@ -311,8 +311,6 @@ type SessionWindowEventDTO struct {
 
 type SessionDetailDTO struct {
 	SessionDTO
-	Tags     []string                 `json:"tags"`
-	RAGRefs  []map[string]any         `json:"rag_refs"`
 	AppUsage []SessionAppUsageDTO     `json:"app_usage"`
 	Diffs    []SessionDiffDTO         `json:"diffs"`
 	Browser  []SessionBrowserEventDTO `json:"browser"`
