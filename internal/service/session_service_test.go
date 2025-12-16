@@ -130,6 +130,7 @@ func (f *fakeSessionDiffRepoForSession) BatchInsert(ctx context.Context, session
 // ===== Test Cases =====
 
 func TestSplitSessions_SingleContinuousSession(t *testing.T) {
+	ctx := context.Background()
 	now := time.Now()
 	baseTs := now.Truncate(time.Hour).UnixMilli()
 
@@ -138,26 +139,34 @@ func TestSplitSessions_SingleContinuousSession(t *testing.T) {
 		{Timestamp: baseTs + 5*60*1000, AppName: "code.exe", Duration: 300}, // 5min, 5min duration
 	}
 
+	sessionRepo := &fakeSessionRepoForSession{}
 	svc := NewSessionService(
 		fakeEventRepoForSession{events: events},
 		fakeDiffRepoForSession{},
 		fakeBrowserRepoForSession{},
-		&fakeSessionRepoForSession{},
+		sessionRepo,
 		nil,
 		&SessionServiceConfig{IdleGapMinutes: 6},
 	)
 
-	sessions := svc.splitSessions(events, nil, baseTs, baseTs+30*60*1000)
-
-	if len(sessions) != 1 {
-		t.Fatalf("sessions count=%d, want 1", len(sessions))
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, baseTs+30*60*1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
 	}
-	if sessions[0].PrimaryApp != "code.exe" {
-		t.Fatalf("primaryApp=%q, want code.exe", sessions[0].PrimaryApp)
+	if created != 1 {
+		t.Fatalf("created=%d, want 1", created)
+	}
+
+	if len(sessionRepo.sessions) != 1 {
+		t.Fatalf("persisted sessions=%d, want 1", len(sessionRepo.sessions))
+	}
+	if sessionRepo.sessions[0].PrimaryApp != "code.exe" {
+		t.Fatalf("primaryApp=%q, want code.exe", sessionRepo.sessions[0].PrimaryApp)
 	}
 }
 
 func TestSplitSessions_IdleGapCreatesNewSession(t *testing.T) {
+	ctx := context.Background()
 	now := time.Now()
 	baseTs := now.Truncate(time.Hour).UnixMilli()
 
@@ -168,29 +177,37 @@ func TestSplitSessions_IdleGapCreatesNewSession(t *testing.T) {
 		{Timestamp: baseTs + 15*60*1000, AppName: "chrome.exe", Duration: 120}, // 15min later
 	}
 
+	sessionRepo := &fakeSessionRepoForSession{}
 	svc := NewSessionService(
 		fakeEventRepoForSession{events: events},
 		fakeDiffRepoForSession{},
 		fakeBrowserRepoForSession{},
-		&fakeSessionRepoForSession{},
+		sessionRepo,
 		nil,
 		&SessionServiceConfig{IdleGapMinutes: 6},
 	)
 
-	sessions := svc.splitSessions(events, nil, baseTs, baseTs+30*60*1000)
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, baseTs+30*60*1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
+	}
 
-	if len(sessions) != 2 {
-		t.Fatalf("sessions count=%d, want 2 (idle gap should split)", len(sessions))
+	if created != 2 {
+		t.Fatalf("created=%d, want 2 (idle gap should split)", created)
 	}
-	if sessions[0].PrimaryApp != "code.exe" {
-		t.Fatalf("first session primaryApp=%q, want code.exe", sessions[0].PrimaryApp)
+	if len(sessionRepo.sessions) != 2 {
+		t.Fatalf("persisted sessions=%d, want 2", len(sessionRepo.sessions))
 	}
-	if sessions[1].PrimaryApp != "chrome.exe" {
-		t.Fatalf("second session primaryApp=%q, want chrome.exe", sessions[1].PrimaryApp)
+	if sessionRepo.sessions[0].PrimaryApp != "code.exe" {
+		t.Fatalf("first session primaryApp=%q, want code.exe", sessionRepo.sessions[0].PrimaryApp)
+	}
+	if sessionRepo.sessions[1].PrimaryApp != "chrome.exe" {
+		t.Fatalf("second session primaryApp=%q, want chrome.exe", sessionRepo.sessions[1].PrimaryApp)
 	}
 }
 
 func TestSplitSessions_DiffsAttachedToSession(t *testing.T) {
+	ctx := context.Background()
 	now := time.Now()
 	baseTs := now.Truncate(time.Hour).UnixMilli()
 
@@ -202,45 +219,60 @@ func TestSplitSessions_DiffsAttachedToSession(t *testing.T) {
 		{ID: 102, Timestamp: baseTs + 2*60*1000}, // 2min after session start
 	}
 
+	sessionRepo := &fakeSessionRepoForSession{}
 	svc := NewSessionService(
 		fakeEventRepoForSession{events: events},
 		fakeDiffRepoForSession{diffs: diffs},
 		fakeBrowserRepoForSession{},
-		&fakeSessionRepoForSession{},
+		sessionRepo,
 		nil,
 		&SessionServiceConfig{IdleGapMinutes: 6},
 	)
 
-	sessions := svc.splitSessions(events, diffs, baseTs, baseTs+30*60*1000)
-
-	if len(sessions) != 1 {
-		t.Fatalf("sessions count=%d, want 1", len(sessions))
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, baseTs+30*60*1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
 	}
 
-	diffIDs := getSessionDiffIDs(sessions[0].Metadata)
+	if created != 1 {
+		t.Fatalf("created=%d, want 1", created)
+	}
+	if len(sessionRepo.sessions) != 1 {
+		t.Fatalf("persisted sessions=%d, want 1", len(sessionRepo.sessions))
+	}
+
+	diffIDs := getSessionDiffIDs(sessionRepo.sessions[0].Metadata)
 	if len(diffIDs) != 2 || diffIDs[0] != 101 || diffIDs[1] != 102 {
 		t.Fatalf("diff_ids=%v, want [101, 102]", diffIDs)
 	}
 }
 
 func TestSplitSessions_NoEventsReturnsNil(t *testing.T) {
+	ctx := context.Background()
+	sessionRepo := &fakeSessionRepoForSession{}
 	svc := NewSessionService(
 		fakeEventRepoForSession{},
 		fakeDiffRepoForSession{},
 		fakeBrowserRepoForSession{},
-		&fakeSessionRepoForSession{},
+		sessionRepo,
 		nil,
 		nil,
 	)
 
-	sessions := svc.splitSessions(nil, nil, 0, 1000)
-
-	if sessions != nil {
-		t.Fatalf("sessions should be nil when no events, got %v", sessions)
+	created, err := svc.BuildSessionsForRange(ctx, 0, 1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
+	}
+	if created != 0 {
+		t.Fatalf("created=%d, want 0", created)
+	}
+	if len(sessionRepo.sessions) != 0 {
+		t.Fatalf("persisted sessions=%d, want 0", len(sessionRepo.sessions))
 	}
 }
 
 func TestSplitSessions_PrimaryAppSelection(t *testing.T) {
+	ctx := context.Background()
 	now := time.Now()
 	baseTs := now.Truncate(time.Hour).UnixMilli()
 
@@ -251,23 +283,30 @@ func TestSplitSessions_PrimaryAppSelection(t *testing.T) {
 		{Timestamp: baseTs + 2000, AppName: "code.exe", Duration: 300},   // 5min more
 	}
 
+	sessionRepo := &fakeSessionRepoForSession{}
 	svc := NewSessionService(
 		fakeEventRepoForSession{events: events},
 		fakeDiffRepoForSession{},
 		fakeBrowserRepoForSession{},
-		&fakeSessionRepoForSession{},
+		sessionRepo,
 		nil,
 		&SessionServiceConfig{IdleGapMinutes: 6},
 	)
 
-	sessions := svc.splitSessions(events, nil, baseTs, baseTs+30*60*1000)
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, baseTs+30*60*1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
+	}
 
-	if len(sessions) != 1 {
-		t.Fatalf("sessions count=%d, want 1", len(sessions))
+	if created != 1 {
+		t.Fatalf("created=%d, want 1", created)
+	}
+	if len(sessionRepo.sessions) != 1 {
+		t.Fatalf("persisted sessions=%d, want 1", len(sessionRepo.sessions))
 	}
 	// code.exe total = 600+300=900s, chrome.exe = 300s
-	if sessions[0].PrimaryApp != "code.exe" {
-		t.Fatalf("primaryApp=%q, want code.exe (longer total duration)", sessions[0].PrimaryApp)
+	if sessionRepo.sessions[0].PrimaryApp != "code.exe" {
+		t.Fatalf("primaryApp=%q, want code.exe (longer total duration)", sessionRepo.sessions[0].PrimaryApp)
 	}
 }
 
@@ -299,5 +338,100 @@ func TestBuildSessionsForRange_CreatesAndPersists(t *testing.T) {
 	}
 	if len(sessionRepo.sessions) != 1 {
 		t.Fatalf("persisted sessions=%d, want 1", len(sessionRepo.sessions))
+	}
+}
+
+func TestBuildSessionsForRange_ClampsSessionEndToRange(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	baseTs := now.Truncate(time.Hour).UnixMilli()
+
+	events := []schema.Event{
+		{Timestamp: baseTs, AppName: "code.exe", Duration: 120}, // 2min
+	}
+
+	sessionRepo := &fakeSessionRepoForSession{}
+	svc := NewSessionService(
+		fakeEventRepoForSession{events: events},
+		fakeDiffRepoForSession{},
+		fakeBrowserRepoForSession{},
+		sessionRepo,
+		nil,
+		&SessionServiceConfig{IdleGapMinutes: 6, MinSessionMinutes: 1},
+	)
+
+	end := baseTs + 60*1000 // 仅构建 1 分钟区间
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, end)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
+	}
+	if created != 1 || len(sessionRepo.sessions) != 1 {
+		t.Fatalf("created=%d, persisted=%d, want 1", created, len(sessionRepo.sessions))
+	}
+	if sessionRepo.sessions[0].EndTime != end {
+		t.Fatalf("end_time=%d, want %d", sessionRepo.sessions[0].EndTime, end)
+	}
+}
+
+func TestBuildSessionsForRange_ShortSessionWithoutEvidenceDropped(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	baseTs := now.Truncate(time.Hour).UnixMilli()
+
+	events := []schema.Event{
+		{Timestamp: baseTs, AppName: "code.exe", Duration: 90}, // 1.5min
+	}
+
+	sessionRepo := &fakeSessionRepoForSession{}
+	svc := NewSessionService(
+		fakeEventRepoForSession{events: events},
+		fakeDiffRepoForSession{},
+		fakeBrowserRepoForSession{},
+		sessionRepo,
+		nil,
+		&SessionServiceConfig{IdleGapMinutes: 6, MinSessionMinutes: 2},
+	)
+
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, baseTs+10*60*1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
+	}
+	if created != 0 || len(sessionRepo.sessions) != 0 {
+		t.Fatalf("created=%d, persisted=%d, want 0", created, len(sessionRepo.sessions))
+	}
+}
+
+func TestBuildSessionsForRange_ShortSessionWithDiffKept(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	baseTs := now.Truncate(time.Hour).UnixMilli()
+
+	events := []schema.Event{
+		{Timestamp: baseTs, AppName: "code.exe", Duration: 90}, // 1.5min
+	}
+	diffs := []schema.Diff{
+		{ID: 101, Timestamp: baseTs + 30*1000},
+	}
+
+	sessionRepo := &fakeSessionRepoForSession{}
+	svc := NewSessionService(
+		fakeEventRepoForSession{events: events},
+		fakeDiffRepoForSession{diffs: diffs},
+		fakeBrowserRepoForSession{},
+		sessionRepo,
+		nil,
+		&SessionServiceConfig{IdleGapMinutes: 6, MinSessionMinutes: 2},
+	)
+
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, baseTs+10*60*1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
+	}
+	if created != 1 || len(sessionRepo.sessions) != 1 {
+		t.Fatalf("created=%d, persisted=%d, want 1", created, len(sessionRepo.sessions))
+	}
+	diffIDs := getSessionDiffIDs(sessionRepo.sessions[0].Metadata)
+	if len(diffIDs) != 1 || diffIDs[0] != 101 {
+		t.Fatalf("diff_ids=%v, want [101]", diffIDs)
 	}
 }

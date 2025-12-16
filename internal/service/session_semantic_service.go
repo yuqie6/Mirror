@@ -79,10 +79,12 @@ func (s *SessionSemanticService) EnrichSessionsIncremental(ctx context.Context, 
 	}
 
 	updated := 0
-	for _, sess := range sessions {
+	// 最近优先，避免“新会话 summary 为空但被旧会话饿死”，从而产生明显的 UI 空窗等待期。
+	for i := len(sessions) - 1; i >= 0; i-- {
 		if updated >= cfg.Limit {
 			break
 		}
+		sess := sessions[i]
 		if !shouldEnrichSession(&sess) {
 			continue
 		}
@@ -177,12 +179,23 @@ func shouldEnrichSession(sess *schema.Session) bool {
 	if strings.TrimSpace(sess.Summary) == "" {
 		return true
 	}
+	// Diff AI 解读尚未就绪：需要重试生成更完整的会话摘要。
+	if strings.TrimSpace(getSessionMetaString(sess.Metadata, schema.SessionMetaDegradedReason)) == degradedReasonDiffInsightPending {
+		return true
+	}
+	// v2 语义摘要：旧版本的 AI 会话（且含 diff）需要升级，以确保摘要基于 diff 解读生成。
+	semanticSource := strings.TrimSpace(getSessionMetaString(sess.Metadata, schema.SessionMetaSemanticSource))
+	if semanticSource == "ai" && strings.TrimSpace(getSessionMetaString(sess.Metadata, schema.SessionMetaSemanticVersion)) != sessionSemanticVersionV2 {
+		if len(schema.GetInt64Slice(sess.Metadata, schema.SessionMetaDiffIDs)) > 0 {
+			return true
+		}
+	}
 	// 证据索引缺失也需要补齐（用于 skill→session 追溯）
 	if len(schema.GetStringSlice(sess.Metadata, schema.SessionMetaSkillKeys)) == 0 && len(sess.SkillsInvolved) == 0 {
 		return true
 	}
 	// v0.3：对外契约字段缺失也需要补齐（避免前端启发式猜测）
-	if strings.TrimSpace(getSessionMetaString(sess.Metadata, schema.SessionMetaSemanticSource)) == "" {
+	if semanticSource == "" {
 		return true
 	}
 	if strings.TrimSpace(getSessionMetaString(sess.Metadata, schema.SessionMetaEvidenceHint)) == "" {
@@ -309,11 +322,16 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 	topDomains := topKeysByCount(domainCount, 6)
 
 	diffInfos := make([]ai.DiffInfo, 0, len(diffs))
+	diffInsightPending := false
 	for _, d := range diffs {
+		insight := strings.TrimSpace(d.AIInsight)
+		if s.analyzer != nil && insight == "" {
+			diffInsightPending = true
+		}
 		diffInfos = append(diffInfos, ai.DiffInfo{
 			FileName:     d.FileName,
 			Language:     d.Language,
-			Insight:      truncateRunes(strings.TrimSpace(d.AIInsight), 160),
+			Insight:      truncateRunes(insight, 160),
 			DiffContent:  "",
 			LinesChanged: d.LinesAdded + d.LinesDeleted,
 		})
@@ -354,10 +372,21 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 	}
 
 	semanticSource := strings.TrimSpace(getSessionMetaString(meta, schema.SessionMetaSemanticSource))
+	semanticVersion := strings.TrimSpace(getSessionMetaString(meta, schema.SessionMetaSemanticVersion))
 	degradedReason := strings.TrimSpace(getSessionMetaString(meta, schema.SessionMetaDegradedReason))
 
 	usedAI := false
-	if s.analyzer != nil && strings.TrimSpace(summary) == "" {
+	shouldUpgradeAISummary := semanticSource == "ai" && semanticVersion != sessionSemanticVersionV2 && len(diffs) > 0
+	shouldCallAI := s.analyzer != nil && !diffInsightPending &&
+		(strings.TrimSpace(summary) == "" || degradedReason == degradedReasonDiffInsightPending || shouldUpgradeAISummary)
+
+	// Diff 解读未就绪时不生成 AI 会话摘要，避免“空洞但看似完成”的 session summary。
+	if diffInsightPending && degradedReason == "" && strings.TrimSpace(summary) == "" {
+		degradedReason = degradedReasonDiffInsightPending
+	}
+
+	if shouldCallAI {
+		originalSummary := summary
 		req := &ai.SessionSummaryRequest{
 			SessionID:    sess.ID,
 			Date:         sess.Date,
@@ -371,7 +400,13 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 			Memories:     memories,
 		}
 		if res, err := s.analyzer.GenerateSessionSummary(ctx, req); err == nil && res != nil {
-			summary = strings.TrimSpace(res.Summary)
+			nextSummary := strings.TrimSpace(res.Summary)
+			if nextSummary != "" {
+				summary = nextSummary
+				usedAI = true
+				semanticVersion = sessionSemanticVersionV2
+				degradedReason = ""
+			}
 			if strings.TrimSpace(res.Category) != "" {
 				category = strings.TrimSpace(res.Category)
 			}
@@ -386,16 +421,16 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 				}
 				meta[schema.SessionMetaSkillKeys] = uniqueNonEmpty(keys, 16)
 			}
-			if strings.TrimSpace(summary) != "" {
-				usedAI = true
-			}
 		} else if err != nil {
-			degradedReason = "provider_error"
+			if strings.TrimSpace(originalSummary) == "" || degradedReason == degradedReasonDiffInsightPending {
+				degradedReason = "provider_error"
+			}
 		}
 	}
 
 	if summary == "" {
 		summary = fallbackSessionSummary(sess, diffs, topDomains, skillNames)
+		semanticVersion = sessionSemanticVersionV2
 	}
 	if category == "" {
 		category = fallbackSessionCategory(diffs, browserEvents)
@@ -404,14 +439,15 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 	diffCount := len(getSessionDiffIDs(meta))
 	browserCount := len(getSessionBrowserEventIDs(meta))
 	setSessionMetaString(meta, schema.SessionMetaEvidenceHint, EvidenceHintFromCounts(diffCount, browserCount))
-	setSessionMetaString(meta, schema.SessionMetaSemanticVersion, "v1")
+	setSessionMetaString(meta, schema.SessionMetaSemanticVersion, semanticVersion)
 
-	if semanticSource == "" {
-		if usedAI {
-			semanticSource = "ai"
-		} else {
-			semanticSource = "rule"
-		}
+	// 语义来源以“本次是否成功生成 AI 摘要”为准，避免 rule->ai 升级时语义来源滞后。
+	if usedAI {
+		semanticSource = "ai"
+	} else if degradedReason == degradedReasonDiffInsightPending {
+		semanticSource = "rule"
+	} else if semanticSource == "" {
+		semanticSource = "rule"
 	}
 	if semanticSource == "rule" && degradedReason == "" {
 		if s.analyzer == nil {

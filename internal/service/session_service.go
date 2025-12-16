@@ -31,7 +31,7 @@ type SessionService struct {
 // SessionServiceConfig 会话服务配置
 type SessionServiceConfig struct {
 	IdleGapMinutes    int // 空闲间隔分钟数，超过则切分会话
-	MinSessionMinutes int // 会话最小时长（分钟），低于此值的会话将被过滤
+	MinSessionMinutes int // 会话最小时长（分钟），低于此值且无证据的会话将被过滤
 }
 
 // NewSessionService 创建会话服务
@@ -46,7 +46,7 @@ func NewSessionService(
 	if cfg == nil {
 		cfg = &SessionServiceConfig{
 			IdleGapMinutes:    10, // 增加到10分钟，减少碎片化
-			MinSessionMinutes: 2,  // 过滤掉小于2分钟的碎片会话
+			MinSessionMinutes: 2,  // 过滤掉短且无证据的碎片会话
 		}
 	}
 	if cfg.IdleGapMinutes <= 0 {
@@ -185,8 +185,13 @@ func (s *SessionService) buildSessionsForRange(
 		return 0, nil
 	}
 
-	// 绑定浏览器事件（不参与切分）
+	// 证据归并：diff/browser 仅用于证据，不参与切分（切分只依赖 window + idle gap + diff 活动点）
+	s.attachDiffs(sessions, diffs)
 	s.attachBrowserEvents(sessions, browserEvents)
+	sessions = s.finalizeSessions(events, sessions, startTime, endTime)
+	if len(sessions) == 0 {
+		return 0, nil
+	}
 	for _, sess := range sessions {
 		if sess == nil {
 			continue
@@ -511,79 +516,100 @@ func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Dif
 	sort.Slice(events, func(i, j int) bool { return events[i].Timestamp < events[j].Timestamp })
 	sort.Slice(diffs, func(i, j int) bool { return diffs[i].Timestamp < diffs[j].Timestamp })
 
+	// 没有 window events 时不切分：避免仅靠 diff 产生“碎片会话”，且 window 事件可能是晚到数据。
+	if len(events) == 0 {
+		return nil
+	}
+
+	clamp := func(v, lo, hi int64) int64 {
+		if v < lo {
+			return lo
+		}
+		if v > hi {
+			return hi
+		}
+		return v
+	}
+
 	var sessions []*schema.Session
 
 	var currentStart int64
 	var lastActivityEnd int64
-	appDurations := map[string]int{}
-	diffIDs := make([]int64, 0, 8)
-	windowSeconds := 0
+	hasWindow := false
 
 	openSession := func(start int64) {
+		start = clamp(start, startTime, endTime)
+		if start <= 0 || start > endTime {
+			currentStart = 0
+			lastActivityEnd = 0
+			hasWindow = false
+			return
+		}
 		currentStart = start
 		lastActivityEnd = start
-		appDurations = map[string]int{}
-		diffIDs = diffIDs[:0]
-		windowSeconds = 0
+		hasWindow = false
 	}
 
 	closeSession := func(end int64) {
-		if currentStart == 0 || end <= currentStart {
+		if currentStart == 0 {
+			return
+		}
+		end = clamp(end, startTime, endTime)
+		if end <= currentStart {
+			currentStart = 0
+			hasWindow = false
 			return
 		}
 		// 不产生纯 diff 会话：window 事件是会话锚点，否则容易因事件晚到导致碎片化/重复。
-		if windowSeconds <= 0 {
+		if !hasWindow {
 			currentStart = 0
+			hasWindow = false
 			return
 		}
-		primaryApp := ""
-		maxDur := 0
-		for app, dur := range appDurations {
-			if dur > maxDur {
-				maxDur = dur
-				primaryApp = app
-			}
-		}
-
-		meta := make(schema.JSONMap)
-		setSessionDiffIDs(meta, diffIDs)
 
 		sessions = append(sessions, &schema.Session{
-			Date:       formatDate(currentStart),
-			StartTime:  currentStart,
-			EndTime:    end,
-			PrimaryApp: primaryApp,
-			TimeRange:  FormatTimeRangeMs(currentStart, end),
-			Metadata:   meta,
+			StartTime: currentStart,
+			EndTime:   end,
+			Metadata:  make(schema.JSONMap),
 		})
 		currentStart = 0
+		hasWindow = false
 	}
 
-	// 没有 window events 时不切分：避免仅靠 diff 产生“碎片会话”，且 window 事件可能是晚到数据。
-	if len(events) == 0 {
-		return nil
+	handleDiff := func(ts int64) {
+		if ts <= 0 {
+			return
+		}
+		if ts < startTime || ts > endTime {
+			return
+		}
+		if currentStart == 0 {
+			openSession(ts)
+		} else if ts < currentStart && currentStart-ts <= idleMs {
+			// 允许 diff 轻微“提前”到第一个 window event 之前（例如窗口事件晚到/边界截断）。
+			currentStart = ts
+		} else if ts-lastActivityEnd >= idleMs {
+			closeSession(lastActivityEnd)
+			openSession(ts)
+		}
+		if ts > lastActivityEnd {
+			lastActivityEnd = ts
+		}
 	}
 
 	openSession(events[0].Timestamp)
 	diffIdx := 0
 
 	for _, ev := range events {
-		evStart := ev.Timestamp
-		evEnd := ev.Timestamp + int64(ev.Duration)*1000
+		evStart := clamp(ev.Timestamp, startTime, endTime)
+		evEnd := clamp(ev.Timestamp+int64(ev.Duration)*1000, startTime, endTime)
+		if evEnd <= evStart {
+			continue
+		}
 
 		// 先处理落在当前窗口开始前的 diffs（可能在 idle gap 内）
 		for diffIdx < len(diffs) && diffs[diffIdx].Timestamp < evStart {
-			dt := diffs[diffIdx].Timestamp
-			if dt-lastActivityEnd >= idleMs {
-				closeSession(lastActivityEnd)
-				openSession(dt)
-			} else if currentStart == 0 {
-				openSession(dt)
-			}
-			diffIDs = append(diffIDs, diffs[diffIdx].ID)
-			if dt > lastActivityEnd {
-				lastActivityEnd = dt
-			}
+			handleDiff(diffs[diffIdx].Timestamp)
 			diffIdx++
 		}
 
@@ -595,12 +621,7 @@ func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Dif
 			openSession(evStart)
 		}
 
-		// 累计 app 时长
-		if ev.AppName != "" && ev.Duration > 0 {
-			appDurations[ev.AppName] += ev.Duration
-			windowSeconds += ev.Duration
-		}
-
+		hasWindow = true
 		if evEnd > lastActivityEnd {
 			lastActivityEnd = evEnd
 		}
@@ -608,41 +629,229 @@ func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Dif
 
 	// 处理剩余 diffs（在最后窗口之后）
 	for diffIdx < len(diffs) {
-		dt := diffs[diffIdx].Timestamp
-		if dt-lastActivityEnd >= idleMs {
-			closeSession(lastActivityEnd)
-			openSession(dt)
-		} else if currentStart == 0 {
-			openSession(dt)
-		}
-		diffIDs = append(diffIDs, diffs[diffIdx].ID)
-		if dt > lastActivityEnd {
-			lastActivityEnd = dt
-		}
+		handleDiff(diffs[diffIdx].Timestamp)
 		diffIdx++
 	}
 
 	closeSession(lastActivityEnd)
+	return sessions
+}
 
-	// 过滤空洞会话（无窗口且无 diff）并过滤碎片会话（时长过短）
-	filtered := sessions[:0]
+func (s *SessionService) attachDiffs(sessions []*schema.Session, diffs []schema.Diff) {
+	if len(sessions) == 0 || len(diffs) == 0 {
+		return
+	}
+	sort.Slice(diffs, func(i, j int) bool { return diffs[i].Timestamp < diffs[j].Timestamp })
+	sort.Slice(sessions, func(i, j int) bool { return sessions[i].StartTime < sessions[j].StartTime })
+
+	sessIdx := 0
+	for _, d := range diffs {
+		if d.ID <= 0 || d.Timestamp <= 0 {
+			continue
+		}
+		for sessIdx < len(sessions) && d.Timestamp > sessions[sessIdx].EndTime {
+			sessIdx++
+		}
+		if sessIdx >= len(sessions) {
+			break
+		}
+		sess := sessions[sessIdx]
+		if sess == nil {
+			continue
+		}
+		if d.Timestamp < sess.StartTime || d.Timestamp > sess.EndTime {
+			continue
+		}
+		if sess.Metadata == nil {
+			sess.Metadata = make(schema.JSONMap)
+		}
+		raw := getSessionDiffIDs(sess.Metadata)
+		raw = append(raw, d.ID)
+		setSessionDiffIDs(sess.Metadata, raw)
+	}
+}
+
+func (s *SessionService) finalizeSessions(events []schema.Event, sessions []*schema.Session, startTime, endTime int64) []*schema.Session {
+	if len(sessions) == 0 {
+		return nil
+	}
 	minDurationMs := int64(s.cfg.MinSessionMinutes) * 60 * 1000
+
+	// 先做基础清理与过滤（避免短且无证据的碎片会话污染主链路）
+	cleaned := sessions[:0]
 	for _, sess := range sessions {
 		if sess == nil {
 			continue
 		}
-		hasDiffs := sess.Metadata != nil && len(getSessionDiffIDs(sess.Metadata)) > 0
-		if sess.PrimaryApp == "" && !hasDiffs {
+		if sess.StartTime <= 0 || sess.EndTime <= 0 || sess.EndTime <= sess.StartTime {
 			continue
 		}
-		// 过滤时长过短的碎片会话（避免1-2分钟的无意义会话）
+		if sess.StartTime < startTime {
+			sess.StartTime = startTime
+		}
+		if sess.EndTime > endTime {
+			sess.EndTime = endTime
+		}
+		if sess.EndTime <= sess.StartTime {
+			continue
+		}
+		if sess.Metadata == nil {
+			sess.Metadata = make(schema.JSONMap)
+		}
+		hasDiff := len(getSessionDiffIDs(sess.Metadata)) > 0
+		hasBrowser := len(getSessionBrowserEventIDs(sess.Metadata)) > 0
+		hasEvidence := hasDiff || hasBrowser
+
 		duration := sess.EndTime - sess.StartTime
-		if duration < minDurationMs {
+		if duration < minDurationMs && !hasEvidence {
 			continue
 		}
-		filtered = append(filtered, sess)
+		cleaned = append(cleaned, sess)
 	}
-	return filtered
+	if len(cleaned) == 0 {
+		return nil
+	}
+
+	s.fillPrimaryApp(cleaned, events)
+
+	// 补齐派生字段并做最终兜底过滤（避免 primary_app 与证据都为空的“空洞会话”）
+	out := cleaned[:0]
+	for _, sess := range cleaned {
+		if sess == nil {
+			continue
+		}
+		hasDiff := len(getSessionDiffIDs(sess.Metadata)) > 0
+		hasBrowser := len(getSessionBrowserEventIDs(sess.Metadata)) > 0
+		hasEvidence := hasDiff || hasBrowser
+		if strings.TrimSpace(sess.PrimaryApp) == "" && !hasEvidence {
+			continue
+		}
+		sess.Date = formatDate(sess.StartTime)
+		sess.TimeRange = FormatTimeRangeMs(sess.StartTime, sess.EndTime)
+		out = append(out, sess)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].StartTime < out[j].StartTime })
+	return out
+}
+
+func (s *SessionService) fillPrimaryApp(sessions []*schema.Session, events []schema.Event) {
+	if len(sessions) == 0 || len(events) == 0 {
+		return
+	}
+	sort.Slice(sessions, func(i, j int) bool { return sessions[i].StartTime < sessions[j].StartTime })
+	sort.Slice(events, func(i, j int) bool { return events[i].Timestamp < events[j].Timestamp })
+
+	secRounded := func(ms int64) int {
+		if ms <= 0 {
+			return 0
+		}
+		return int((ms + 500) / 1000)
+	}
+
+	durBySess := make([]map[string]int, len(sessions))
+	cntBySess := make([]map[string]int, len(sessions))
+
+	sessIdx := 0
+	for _, ev := range events {
+		if ev.Timestamp <= 0 || strings.TrimSpace(ev.AppName) == "" || ev.Duration <= 0 {
+			continue
+		}
+		evStart := ev.Timestamp
+		evEndExcl := ev.Timestamp + int64(ev.Duration)*1000
+		if evEndExcl <= evStart {
+			continue
+		}
+
+		for sessIdx < len(sessions) && evStart > sessions[sessIdx].EndTime {
+			sessIdx++
+		}
+		if sessIdx >= len(sessions) {
+			break
+		}
+
+		for i := sessIdx; i < len(sessions); i++ {
+			sess := sessions[i]
+			if sess == nil {
+				continue
+			}
+			// sessions 已按 start_time 升序且不重叠，event 不可能与更晚的 session 相交
+			if evEndExcl <= sess.StartTime {
+				break
+			}
+			if evStart > sess.EndTime {
+				continue
+			}
+
+			// 计算与会话区间的重叠秒数（会话 end 为闭区间，因此 +1 转半开区间）
+			sessStart := sess.StartTime
+			sessEndExcl := sess.EndTime + 1
+			overlapStart := evStart
+			if sessStart > overlapStart {
+				overlapStart = sessStart
+			}
+			overlapEnd := evEndExcl
+			if sessEndExcl < overlapEnd {
+				overlapEnd = sessEndExcl
+			}
+			overlapMs := overlapEnd - overlapStart
+			if overlapMs <= 0 {
+				continue
+			}
+
+			if durBySess[i] == nil {
+				durBySess[i] = make(map[string]int)
+			}
+			if cntBySess[i] == nil {
+				cntBySess[i] = make(map[string]int)
+			}
+			durBySess[i][ev.AppName] += secRounded(overlapMs)
+			cntBySess[i][ev.AppName]++
+
+			// event 不跨会话（collector maxDuration=60s，且会话之间有 idle gap），提前结束内层扫描
+			break
+		}
+	}
+
+	for i, sess := range sessions {
+		if sess == nil {
+			continue
+		}
+		durMap := durBySess[i]
+		cntMap := cntBySess[i]
+		if len(durMap) == 0 && len(cntMap) == 0 {
+			continue
+		}
+
+		type cand struct {
+			app string
+			dur int
+			cnt int
+		}
+		cands := make([]cand, 0, len(durMap)+len(cntMap))
+		seen := make(map[string]struct{}, len(durMap)+len(cntMap))
+		for app, dur := range durMap {
+			seen[app] = struct{}{}
+			cands = append(cands, cand{app: app, dur: dur, cnt: cntMap[app]})
+		}
+		for app, cnt := range cntMap {
+			if _, ok := seen[app]; ok {
+				continue
+			}
+			cands = append(cands, cand{app: app, dur: durMap[app], cnt: cnt})
+		}
+		sort.Slice(cands, func(i, j int) bool {
+			if cands[i].dur != cands[j].dur {
+				return cands[i].dur > cands[j].dur
+			}
+			if cands[i].cnt != cands[j].cnt {
+				return cands[i].cnt > cands[j].cnt
+			}
+			return cands[i].app < cands[j].app
+		})
+		if len(cands) > 0 && strings.TrimSpace(cands[0].app) != "" {
+			sess.PrimaryApp = cands[0].app
+		}
+	}
 }
 
 // attachBrowserEvents 将浏览器事件绑定到对应的会话

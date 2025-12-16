@@ -120,7 +120,7 @@ func (r *DiffRepository) GetPendingAIAnalysis(ctx context.Context, limit int) ([
 	var diffs []schema.Diff
 	if err := r.db.WithContext(ctx).
 		Where("ai_insight = '' OR ai_insight IS NULL").
-		Order("timestamp ASC").
+		Order("timestamp DESC").
 		Limit(limit).
 		Find(&diffs).Error; err != nil {
 		return nil, fmt.Errorf("查询待分析 Diff 失败: %w", err)

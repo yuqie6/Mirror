@@ -66,17 +66,24 @@ func (a *API) HandleBuildSessionsForDate(w http.ResponseWriter, r *http.Request)
 		WriteError(w, http.StatusBadRequest, "会话服务未初始化")
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 	created, err := a.rt.Core.Services.Sessions.BuildSessionsForDate(ctx, date)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	// 构建后自动触发语义丰富，避免“切分完成但 summary 为空”的 UI 空窗期。
+	enriched := 0
+	if a.rt.Core.Services.SessionSemantic != nil {
+		enriched, _ = a.rt.Core.Services.SessionSemantic.EnrichSessionsForDate(ctx, date, 200)
+	}
+
 	if a.hub != nil {
 		a.hub.Publish(eventbus.Event{Type: "pipeline_status_changed"})
 	}
-	WriteJSON(w, http.StatusOK, &dto.SessionBuildResultDTO{Created: created})
+	WriteJSON(w, http.StatusOK, &dto.SessionBuildResultDTO{Created: created, Enriched: enriched})
 }
 
 func (a *API) HandleRebuildSessionsForDate(w http.ResponseWriter, r *http.Request) {

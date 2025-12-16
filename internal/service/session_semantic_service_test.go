@@ -26,6 +26,27 @@ func (f *fakeSessionRepoForSemantic) UpdateSemantic(ctx context.Context, id int6
 		f.updated = make(map[int64]schema.SessionSemanticUpdate)
 	}
 	f.updated[id] = update
+	for i := range f.sessions {
+		if f.sessions[i].ID != id {
+			continue
+		}
+		if update.TimeRange != "" {
+			f.sessions[i].TimeRange = update.TimeRange
+		}
+		if update.Category != "" {
+			f.sessions[i].Category = update.Category
+		}
+		if update.Summary != "" {
+			f.sessions[i].Summary = update.Summary
+		}
+		if len(update.SkillsInvolved) > 0 {
+			f.sessions[i].SkillsInvolved = update.SkillsInvolved
+		}
+		if update.Metadata != nil {
+			f.sessions[i].Metadata = update.Metadata
+		}
+		break
+	}
 	return nil
 }
 func (f *fakeSessionRepoForSemantic) GetByDate(ctx context.Context, date string) ([]schema.Session, error) {
@@ -209,7 +230,7 @@ func TestEnrichSessionsForDate_EnrichesNeedingSessions(t *testing.T) {
 	}
 
 	diffs := []schema.Diff{
-		{ID: 101, Timestamp: baseTs + 500, FileName: "main.go", Language: "Go", SkillsDetected: []string{"Go"}},
+		{ID: 101, Timestamp: baseTs + 500, FileName: "main.go", Language: "Go", AIInsight: "done", SkillsDetected: []string{"Go"}},
 	}
 
 	sessionRepo := &fakeSessionRepoForSemantic{sessions: sessions}
@@ -238,6 +259,95 @@ func TestEnrichSessionsForDate_EnrichesNeedingSessions(t *testing.T) {
 	}
 	if _, ok := sessionRepo.updated[2]; ok {
 		t.Fatal("session 2 should NOT have been updated")
+	}
+}
+
+func TestEnrichSessionsForDate_WaitsForDiffInsightThenUpgradesToAI(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	baseTs := now.Truncate(time.Hour).UnixMilli()
+	date := now.Format("2006-01-02")
+
+	sessions := []schema.Session{
+		{
+			ID:        1,
+			Date:      date,
+			StartTime: baseTs,
+			EndTime:   baseTs + 1000,
+			Summary:   "",
+			Metadata:  schema.JSONMap{schema.SessionMetaDiffIDs: []int64{101}},
+		},
+	}
+	diffs := []schema.Diff{
+		{ID: 101, Timestamp: baseTs + 500, FileName: "main.go", Language: "Go", AIInsight: "", LinesAdded: 3},
+	}
+
+	sessionRepo := &fakeSessionRepoForSemantic{sessions: sessions}
+	analyzer := &fakeAnalyzerForSemantic{
+		sessionResult: &ai.SessionSummaryResult{
+			Summary:        "AI summary with diff insight",
+			Category:       "coding",
+			SkillsInvolved: []string{"Go"},
+		},
+	}
+	svc := NewSessionSemanticService(
+		analyzer,
+		sessionRepo,
+		fakeDiffRepoForSemantic{diffs: diffs},
+		fakeEventRepoForSemantic{},
+		fakeBrowserRepoForSemantic{},
+	)
+
+	updated, err := svc.EnrichSessionsForDate(ctx, date, 10)
+	if err != nil {
+		t.Fatalf("EnrichSessionsForDate error: %v", err)
+	}
+	if updated != 1 {
+		t.Fatalf("updated=%d, want 1", updated)
+	}
+	if analyzer.called != 0 {
+		t.Fatalf("analyzer.called=%d, want 0 (diff insight pending should skip AI)", analyzer.called)
+	}
+	first, ok := sessionRepo.updated[1]
+	if !ok {
+		t.Fatal("session 1 should have been updated")
+	}
+	if got := getSessionMetaString(first.Metadata, schema.SessionMetaSemanticSource); got != "rule" {
+		t.Fatalf("semantic_source=%q, want rule", got)
+	}
+	if got := getSessionMetaString(first.Metadata, schema.SessionMetaDegradedReason); got != degradedReasonDiffInsightPending {
+		t.Fatalf("degraded_reason=%q, want %q", got, degradedReasonDiffInsightPending)
+	}
+	if got := getSessionMetaString(first.Metadata, schema.SessionMetaSemanticVersion); got != sessionSemanticVersionV2 {
+		t.Fatalf("semantic_version=%q, want %q", got, sessionSemanticVersionV2)
+	}
+
+	// Diff 解读就绪后，再次 enrich 应升级为 AI 会话摘要并清理 pending 标记。
+	diffs[0].AIInsight = "done"
+	diffs[0].SkillsDetected = []string{"Go"}
+
+	updated, err = svc.EnrichSessionsForDate(ctx, date, 10)
+	if err != nil {
+		t.Fatalf("EnrichSessionsForDate error: %v", err)
+	}
+	if updated != 1 {
+		t.Fatalf("updated=%d, want 1", updated)
+	}
+	if analyzer.called != 1 {
+		t.Fatalf("analyzer.called=%d, want 1", analyzer.called)
+	}
+	second := sessionRepo.updated[1]
+	if second.Summary != "AI summary with diff insight" {
+		t.Fatalf("summary=%q, want %q", second.Summary, "AI summary with diff insight")
+	}
+	if got := getSessionMetaString(second.Metadata, schema.SessionMetaSemanticSource); got != "ai" {
+		t.Fatalf("semantic_source=%q, want ai", got)
+	}
+	if got := getSessionMetaString(second.Metadata, schema.SessionMetaDegradedReason); got != "" {
+		t.Fatalf("degraded_reason=%q, want empty", got)
+	}
+	if got := getSessionMetaString(second.Metadata, schema.SessionMetaSemanticVersion); got != sessionSemanticVersionV2 {
+		t.Fatalf("semantic_version=%q, want %q", got, sessionSemanticVersionV2)
 	}
 }
 

@@ -134,12 +134,12 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 
 	// AI 定时分析（optional）
 	if core.Clients.LLM != nil && core.Clients.LLM.IsConfigured() {
-		go runPeriodic(ctx, 5*time.Minute, func() { analyzeWithRetry(ctx, core.Services.AI) })
+		go runPeriodic(ctx, 5*time.Minute, func() { analyzeWithRetry(ctx, core.Services.AI, core.Services.SessionSemantic) })
 	}
 
 	// Session 定时切分（可离线，无需 AI）
 	if core.Services.Sessions != nil {
-		go runPeriodic(ctx, 5*time.Minute, func() { splitWithRetry(ctx, core.Services.Sessions) })
+		go runPeriodic(ctx, 5*time.Minute, func() { splitWithRetry(ctx, core.Services.Sessions, core.Services.SessionSemantic) })
 	}
 
 	// Session 语义补全（用于证据链，LLM 未配置时自动降级为规则摘要）
@@ -195,19 +195,47 @@ func runPeriodic(ctx context.Context, interval time.Duration, fn func()) {
 }
 
 // analyzeWithRetry 带重试的 Diff 分析
-func analyzeWithRetry(ctx context.Context, aiService *service.AIService) {
+func analyzeWithRetry(ctx context.Context, aiService *service.AIService, semantic *service.SessionSemanticService) {
 	if aiService == nil {
 		return
 	}
-	_, _ = aiService.AnalyzePendingDiffs(ctx, 10)
+	analyzed, _ := aiService.AnalyzePendingDiffs(ctx, 10)
+	// Diff 解读产出后，尽快触发会话语义升级（例如 diff_insight_pending -> ai）。
+	if analyzed > 0 && semantic != nil {
+		limit := analyzed
+		if limit < 10 {
+			limit = 10
+		}
+		if limit > 50 {
+			limit = 50
+		}
+		_, _ = semantic.EnrichSessionsIncremental(ctx, &service.SessionSemanticServiceConfig{
+			Lookback: 48 * time.Hour,
+			Limit:    limit,
+		})
+	}
 }
 
 // splitWithRetry 带重试的会话切分
-func splitWithRetry(ctx context.Context, sessionService *service.SessionService) {
+func splitWithRetry(ctx context.Context, sessionService *service.SessionService, semantic *service.SessionSemanticService) {
 	if sessionService == nil {
 		return
 	}
-	_, _ = sessionService.BuildSessionsIncremental(ctx)
+	created, _ := sessionService.BuildSessionsIncremental(ctx)
+	// 避免“切分完成但 summary 为空”的空窗期：当产生新 session 时，立即补全最近会话语义（AI 可用则用 AI，否则走规则）。
+	if created > 0 && semantic != nil {
+		limit := created
+		if limit < 10 {
+			limit = 10
+		}
+		if limit > 50 {
+			limit = 50
+		}
+		_, _ = semantic.EnrichSessionsIncremental(ctx, &service.SessionSemanticServiceConfig{
+			Lookback: 48 * time.Hour,
+			Limit:    limit,
+		})
+	}
 }
 
 // enrichWithRetry 带重试的会话语义补全

@@ -2,6 +2,11 @@ package service
 
 import "github.com/yuqie6/WorkMirror/internal/schema"
 
+const (
+	sessionSemanticVersionV2         = "v2"
+	degradedReasonDiffInsightPending = "diff_insight_pending"
+)
+
 func getSessionDiffIDs(meta schema.JSONMap) []int64 {
 	return schema.GetInt64Slice(meta, schema.SessionMetaDiffIDs)
 }
