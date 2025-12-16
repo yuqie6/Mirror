@@ -130,7 +130,6 @@ func registerRoutes(mux *http.ServeMux, api *handler.API) {
 	mux.HandleFunc("/api/sessions/build", requireMethod(http.MethodPost, api.HandleBuildSessionsForDate))
 	mux.HandleFunc("/api/sessions/rebuild", requireMethod(http.MethodPost, api.HandleRebuildSessionsForDate))
 	mux.HandleFunc("/api/sessions/enrich", requireMethod(http.MethodPost, api.HandleEnrichSessionsForDate))
-	mux.HandleFunc("/api/sessions/repair-evidence", requireMethod(http.MethodPost, api.HandleRepairEvidenceForDate))
 
 	mux.HandleFunc("/api/diagnostics/export", requireMethod(http.MethodGet, api.HandleDiagnosticsExport))
 
@@ -207,30 +206,46 @@ func spaHandler(assetFS fs.FS, index string) http.Handler {
 }
 
 // pickUIFS 选择 UI 静态资源来源
-// 优先使用本地 frontend/dist 目录，否则回退到内嵌资源
+// 优先使用可执行文件同目录 frontend/dist，其次尝试 cwd（便于开发态运行），否则回退到内嵌资源
 func pickUIFS() (fs.FS, string) {
-	exe, err := os.Executable()
-	if err == nil {
+	seen := map[string]struct{}{}
+	var candidates []string
+	addCandidate := func(dir string) {
+		if strings.TrimSpace(dir) == "" {
+			return
+		}
+		dir = filepath.Clean(dir)
+		if _, ok := seen[dir]; ok {
+			return
+		}
+		seen[dir] = struct{}{}
+		candidates = append(candidates, dir)
+	}
+
+	if exe, err := os.Executable(); err == nil {
 		exeDir := filepath.Dir(exe)
-		candidates := []string{
-			filepath.Join(exeDir, "frontend", "dist"),
+		addCandidate(filepath.Join(exeDir, "frontend", "dist"))
+		addCandidate(filepath.Join(exeDir, "dist"))
+		addCandidate(filepath.Join(exeDir, "..", "frontend", "dist"))
+		addCandidate(filepath.Join(exeDir, "..", "dist"))
+	}
+	if wd, err := os.Getwd(); err == nil {
+		addCandidate(filepath.Join(wd, "frontend", "dist"))
+		addCandidate(filepath.Join(wd, "dist"))
+	}
+
+	for _, dir := range candidates {
+		indexPath := filepath.Join(dir, "index.html")
+		if _, err := os.Stat(indexPath); err != nil {
+			continue
 		}
-		for _, dir := range candidates {
-			if dir == "" {
+		if b, err := os.ReadFile(indexPath); err == nil {
+			// 避免误用旧的 Wails 构建产物（会引用 wailsjs，导致纯 HTTP 模式不可用）
+			if bytes.Contains(b, []byte("wailsjs")) {
 				continue
 			}
-			indexPath := filepath.Join(dir, "index.html")
-			if _, err := os.Stat(indexPath); err != nil {
-				continue
-			}
-			if b, err := os.ReadFile(indexPath); err == nil {
-				// 避免误用旧的 Wails 构建产物（会引用 wailsjs，导致纯 HTTP 模式不可用）
-				if bytes.Contains(b, []byte("wailsjs")) {
-					continue
-				}
-			}
-			return os.DirFS(dir), dir
 		}
+		return os.DirFS(dir), dir
 	}
 	return uiassets.FS(), "embedded"
 }
@@ -256,6 +271,14 @@ func serveAsset(w http.ResponseWriter, r *http.Request, assetFS fs.FS, name stri
 
 	if ctype := mime.TypeByExtension(path.Ext(name)); ctype != "" {
 		w.Header().Set("Content-Type", ctype)
+	}
+	// 避免 index.html 被缓存导致“看起来还是旧版本”；hash 资源可长缓存。
+	if name == "index.html" {
+		w.Header().Set("Cache-Control", "no-store")
+	} else if strings.HasPrefix(name, "assets/") {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		w.Header().Set("Cache-Control", "no-store")
 	}
 	payload, err := io.ReadAll(f)
 	if err != nil {

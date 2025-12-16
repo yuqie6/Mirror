@@ -155,45 +155,6 @@ func (a *API) HandleEnrichSessionsForDate(w http.ResponseWriter, r *http.Request
 	WriteJSON(w, http.StatusOK, &dto.SessionEnrichResultDTO{Enriched: enriched})
 }
 
-func (a *API) HandleRepairEvidenceForDate(w http.ResponseWriter, r *http.Request) {
-	if !a.requireWritableDB(w) {
-		return
-	}
-	var req dto.RepairEvidenceRequestDTO
-	if err := readJSON(r, &req); err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	date := strings.TrimSpace(req.Date)
-	if date == "" {
-		WriteError(w, http.StatusBadRequest, "date 不能为空")
-		return
-	}
-	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.Sessions == nil {
-		WriteError(w, http.StatusBadRequest, "会话服务未初始化")
-		return
-	}
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-	defer cancel()
-
-	res, err := a.rt.Core.Services.Sessions.RepairEvidenceForDate(ctx, date, req.AttachGapMinutes, req.Limit)
-	if err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if a.hub != nil {
-		a.hub.Publish(eventbus.Event{Type: "pipeline_status_changed"})
-	}
-	WriteJSON(w, http.StatusOK, &dto.RepairEvidenceResultDTO{
-		OrphanDiffs:      res.OrphanDiffs,
-		OrphanBrowser:    res.OrphanBrowser,
-		AttachedDiffs:    res.AttachedDiffs,
-		AttachedBrowser:  res.AttachedBrowser,
-		UpdatedSessions:  res.UpdatedSessions,
-		AttachGapMinutes: res.AttachGapMinutes,
-	})
-}
-
 func (a *API) HandleSessionsByDate(w http.ResponseWriter, r *http.Request) {
 	date := strings.TrimSpace(r.URL.Query().Get("date"))
 	if date == "" {

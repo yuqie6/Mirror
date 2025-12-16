@@ -242,21 +242,6 @@ type DateRequestDTO struct {
 	Date string `json:"date"`
 }
 
-type RepairEvidenceRequestDTO struct {
-	Date             string `json:"date"`
-	AttachGapMinutes int    `json:"attach_gap_minutes,omitempty"`
-	Limit            int    `json:"limit,omitempty"`
-}
-
-type RepairEvidenceResultDTO struct {
-	OrphanDiffs      int `json:"orphan_diffs"`
-	OrphanBrowser    int `json:"orphan_browser"`
-	AttachedDiffs    int `json:"attached_diffs"`
-	AttachedBrowser  int `json:"attached_browser"`
-	UpdatedSessions  int `json:"updated_sessions"`
-	AttachGapMinutes int `json:"attach_gap_minutes"`
-}
-
 type SessionDTO struct {
 	ID             int64    `json:"id"`
 	Date           string   `json:"date"`

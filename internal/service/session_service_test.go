@@ -271,6 +271,70 @@ func TestSplitSessions_NoEventsReturnsNil(t *testing.T) {
 	}
 }
 
+func TestSplitSessions_PureDiffCreatesSession(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	baseTs := now.Truncate(time.Hour).UnixMilli()
+
+	diffs := []schema.Diff{
+		{ID: 101, Timestamp: baseTs + 1*60*1000},
+		{ID: 102, Timestamp: baseTs + 2*60*1000},
+	}
+
+	sessionRepo := &fakeSessionRepoForSession{}
+	svc := NewSessionService(
+		fakeEventRepoForSession{},
+		fakeDiffRepoForSession{diffs: diffs},
+		fakeBrowserRepoForSession{},
+		sessionRepo,
+		nil,
+		&SessionServiceConfig{IdleGapMinutes: 6},
+	)
+
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, baseTs+30*60*1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
+	}
+	if created != 1 || len(sessionRepo.sessions) != 1 {
+		t.Fatalf("created=%d persisted=%d, want 1", created, len(sessionRepo.sessions))
+	}
+	diffIDs := getSessionDiffIDs(sessionRepo.sessions[0].Metadata)
+	if len(diffIDs) != 2 || diffIDs[0] != 101 || diffIDs[1] != 102 {
+		t.Fatalf("diff_ids=%v, want [101, 102]", diffIDs)
+	}
+}
+
+func TestSplitSessions_SingleDiffCreatesNonZeroSession(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now()
+	baseTs := now.Truncate(time.Hour).UnixMilli()
+
+	diffs := []schema.Diff{
+		{ID: 101, Timestamp: baseTs + 1*60*1000},
+	}
+
+	sessionRepo := &fakeSessionRepoForSession{}
+	svc := NewSessionService(
+		fakeEventRepoForSession{},
+		fakeDiffRepoForSession{diffs: diffs},
+		fakeBrowserRepoForSession{},
+		sessionRepo,
+		nil,
+		&SessionServiceConfig{IdleGapMinutes: 6},
+	)
+
+	created, err := svc.BuildSessionsForRange(ctx, baseTs, baseTs+30*60*1000)
+	if err != nil {
+		t.Fatalf("BuildSessionsForRange error: %v", err)
+	}
+	if created != 1 || len(sessionRepo.sessions) != 1 {
+		t.Fatalf("created=%d persisted=%d, want 1", created, len(sessionRepo.sessions))
+	}
+	if sessionRepo.sessions[0].EndTime <= sessionRepo.sessions[0].StartTime {
+		t.Fatalf("invalid range: start=%d end=%d", sessionRepo.sessions[0].StartTime, sessionRepo.sessions[0].EndTime)
+	}
+}
+
 func TestSplitSessions_PrimaryAppSelection(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()

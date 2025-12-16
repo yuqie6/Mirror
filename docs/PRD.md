@@ -303,7 +303,6 @@
 - GET /api/status：汇总健康状态（采集/管道/AI/最近错误/覆盖率）
 - POST /api/sessions/rebuild：按日期重建 sessions
 - POST /api/sessions/enrich：按日期补全语义
-- POST /api/sessions/repair-evidence：按日期尝试修复证据归并
 - GET /api/diagnostics/export：导出诊断包（文件流或生成到 data/ 下并返回路径）
 
 SSE（已有）：

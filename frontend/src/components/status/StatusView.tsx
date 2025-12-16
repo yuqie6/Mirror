@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { StatusDot, StatusType } from '@/components/common/StatusDot';
 import { AlertTriangle, RefreshCw, Download, Play } from 'lucide-react';
-import { GetStatus, RebuildSessionsForDate, EnrichSessionsForDate, BuildSessions, RepairEvidenceForDate } from '@/api/app';
+import { GetStatus, RebuildSessionsForDate, EnrichSessionsForDate, BuildSessions } from '@/api/app';
 import { StatusDTO, extractHealthIndicator } from '@/types/status';
 import { todayLocalISODate } from '@/lib/date';
 import { useTranslation } from '@/lib/i18n';
@@ -39,7 +39,6 @@ export default function StatusView() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() => todayLocalISODate());
-  const [attachGapMinutes, setAttachGapMinutes] = useState<number>(10);
 
   useEffect(() => {
     const loadStatus = async () => {
@@ -100,27 +99,6 @@ export default function StatusView() {
       setStatus(await GetStatus());
     } catch (e) {
       alert(`${t('status.enrichFailed')}: ${e}`);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleRepairEvidence = async () => {
-    const date = selectedDate;
-    const ok = window.confirm(
-      `${t('status.repairEvidenceWarning')}（${date}）。\n\n${t('status.repairEvidenceImpact')}\n\n${t('status.confirmContinue')}`
-    );
-    if (!ok) return;
-    setActionLoading(true);
-    try {
-      const res = await RepairEvidenceForDate(date, attachGapMinutes);
-      const updatedSessions = (res && typeof res.updated_sessions === 'number') ? res.updated_sessions : 0;
-      const attachedDiffs = (res && typeof res.attached_diffs === 'number') ? res.attached_diffs : 0;
-      const attachedBrowser = (res && typeof res.attached_browser === 'number') ? res.attached_browser : 0;
-      alert(`${t('status.repairEvidenceSuccess')}（${date}）：sessions=${updatedSessions}, diffs=${attachedDiffs}, browser=${attachedBrowser}`);
-      setStatus(await GetStatus());
-    } catch (e) {
-      alert(`${t('status.repairEvidenceFailed')}: ${e}`);
     } finally {
       setActionLoading(false);
     }
@@ -272,23 +250,6 @@ export default function StatusView() {
               max={todayLocalISODate()}
             />
           </div>
-          <div className="flex items-center justify-between bg-zinc-950/50 border border-zinc-800 rounded-lg p-3">
-            <div>
-              <div className="text-sm text-zinc-300 font-medium">{t('status.attachGapMinutes')}</div>
-              <div className="text-xs text-zinc-500">{t('status.attachGapMinutesHint')}</div>
-            </div>
-            <input
-              type="number"
-              min={1}
-              max={180}
-              value={Number.isFinite(attachGapMinutes) ? attachGapMinutes : 10}
-              onChange={(e) => {
-                const n = Math.floor(Number(e.target.value));
-                setAttachGapMinutes(Number.isFinite(n) ? Math.max(1, Math.min(180, n)) : 10);
-              }}
-              className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 font-mono w-24 text-right"
-            />
-          </div>
           <button
             onClick={handleBuild}
             disabled={actionLoading}
@@ -323,18 +284,6 @@ export default function StatusView() {
               <div className="text-xs text-zinc-500">{t('status.enrichMissingHint')}</div>
             </div>
             <RefreshCw size={16} className="text-zinc-600 group-hover:text-indigo-400" />
-          </button>
-
-          <button
-            onClick={handleRepairEvidence}
-            disabled={actionLoading}
-            className="w-full flex items-center justify-between p-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors text-left group disabled:opacity-50"
-          >
-            <div>
-              <div className="text-sm text-amber-300 font-medium">{t('status.repairEvidence')}</div>
-              <div className="text-xs text-zinc-500">{t('status.repairEvidenceHint')}</div>
-            </div>
-            <RefreshCw size={16} className="text-amber-600 group-hover:text-amber-400" />
           </button>
 
           <a
